@@ -1,4 +1,6 @@
-/* Modern Aesthetic Styling for Phaser Asset Atlas */
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════ */
 :root {
   --bg-dark: #0f1117;
   --panel-bg: rgba(22, 27, 38, 0.85);
@@ -7,12 +9,17 @@
   --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
+  --accent-violet: #8b5cf6;
   --text-main: #f3f4f6;
   --text-muted: #9ca3af;
   --font-ui: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --tab-bar-h: 54px;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════════════════════════ */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -34,83 +41,118 @@ body, html {
   height: 100vh;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-#game-container {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-}
-
-#game-container canvas {
-  width: 100% !important;
-  height: 100% !important;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  cursor: grab;
-}
-
-#game-container canvas:active {
-  cursor: grabbing;
-}
-
-/* Glassmorphic Top Header */
-.atlas-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: rgba(15, 17, 23, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--panel-border);
+/* ═══════════════════════════════════════════════════════════
+   TOP TAB BAR
+   ═══════════════════════════════════════════════════════════ */
+.top-tab-bar {
+  position: relative;
+  z-index: 20;
+  height: var(--tab-bar-h);
+  background: rgba(10, 12, 20, 0.97);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  z-index: 10;
+  padding: 0 16px;
+  gap: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 24px rgba(0,0,0,0.5);
 }
 
 .brand-badge {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-icon {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .brand-text h1 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  white-space: nowrap;
 }
 
-.brand-text .sub-text {
-  font-size: 11px;
+/* Tab navigation */
+.tab-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-muted);
-  font-weight: 400;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-/* Search Bar */
+.tab-btn .tab-icon {
+  font-size: 15px;
+}
+
+.tab-btn:hover {
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--text-main);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.tab-btn.active {
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--accent-cyan);
+  border-color: rgba(56, 189, 248, 0.4);
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.12);
+}
+
+/* Separator between tabs and controls */
+.tab-nav + .header-right {
+  margin-left: auto;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH BAR
+   ═══════════════════════════════════════════════════════════ */
 .search-box {
   position: relative;
-  width: 380px;
+  width: 320px;
 }
 
 .search-box input {
   width: 100%;
-  padding: 8px 36px 8px 36px;
+  padding: 7px 32px 7px 32px;
   background: rgba(30, 41, 59, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  border-radius: 18px;
   color: #fff;
   font-family: var(--font-ui);
   font-size: 13px;
@@ -126,7 +168,7 @@ body, html {
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 13px;
@@ -135,7 +177,7 @@ body, html {
 
 .search-clear-btn {
   position: absolute;
-  right: 12px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
@@ -147,10 +189,10 @@ body, html {
 
 .search-results-dropdown {
   position: absolute;
-  top: 42px;
+  top: 40px;
   left: 0;
   right: 0;
-  max-height: 320px;
+  max-height: 300px;
   overflow-y: auto;
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -196,13 +238,9 @@ body, html {
   color: var(--text-muted);
 }
 
-/* Header Right Zoom Controls */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+/* ═══════════════════════════════════════════════════════════
+   ZOOM CONTROLS
+   ═══════════════════════════════════════════════════════════ */
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -216,7 +254,7 @@ body, html {
   background: transparent;
   border: none;
   color: var(--text-main);
-  padding: 6px 12px;
+  padding: 5px 11px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -240,7 +278,7 @@ body, html {
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
   border-radius: 8px;
-  padding: 6px 14px;
+  padding: 5px 13px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -252,10 +290,47 @@ body, html {
   border-color: var(--accent-cyan);
 }
 
-/* Category Jump Bar */
+/* ═══════════════════════════════════════════════════════════
+   VIEW PANELS
+   ═══════════════════════════════════════════════════════════ */
+.view-panel {
+  display: none;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.view-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ASSETS MAP VIEW — Phaser container
+   ═══════════════════════════════════════════════════════════ */
+#game-container {
+  width: 100%;
+  flex: 1;
+  position: absolute;
+  top: 44px; /* category bar height */
+  left: 0;
+  right: 0;
+  bottom: 38px; /* footer height */
+  z-index: 1;
+}
+
+#game-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: default;
+}
+
+/* Category Quick-Jump Carousel Bar */
 .category-jump-bar {
   position: absolute;
-  top: 60px;
+  top: 0;
   left: 0;
   right: 0;
   height: 44px;
@@ -303,7 +378,7 @@ body, html {
   font-size: 10px;
 }
 
-/* Footer Status Bar */
+/* Footer */
 .atlas-footer {
   position: absolute;
   bottom: 0;
@@ -358,7 +433,7 @@ body, html {
 /* Side Drawer */
 .category-sidebar {
   position: absolute;
-  top: 60px;
+  top: 44px;
   right: -360px;
   width: 340px;
   bottom: 38px;
@@ -605,6 +680,439 @@ body, html {
   cursor: pointer;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   HOUSES VIEW
+   ═══════════════════════════════════════════════════════════ */
+.houses-content {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Left sidebar */
+.houses-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(13, 17, 28, 0.98);
+  border-right: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.houses-sidebar-header {
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.houses-sidebar-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.houses-count {
+  font-size: 11px;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.houses-list {
+  list-style: none;
+  padding: 10px 8px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.house-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.house-list-item:hover {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.15);
+}
+
+.house-list-item.active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.house-list-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.house-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.house-list-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.house-list-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Houses sidebar divider & pieces section */
+.houses-sidebar-divider {
+  height: 1px;
+  background: var(--panel-border);
+  margin: 8px 16px;
+}
+
+.houses-sidebar-section {
+  padding: 12px 16px;
+}
+
+.houses-sidebar-section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.house-pieces-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.house-piece-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.house-piece-item:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.house-piece-canvas {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: #1e293b;
+}
+
+.house-piece-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.house-piece-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.house-piece-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Main preview area */
+.houses-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: radial-gradient(ellipse at 30% 20%, rgba(30, 41, 59, 0.4) 0%, transparent 70%), var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.house-preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.house-preview-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.house-preview-header p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 700px;
+}
+
+.house-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.house-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+}
+
+/* Canvas wrapper */
+.house-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(12, 16, 25, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.house-canvas-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+#house-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 8px 32px rgba(0,0,0,0.5),
+    0 0 60px rgba(56, 189, 248, 0.06);
+}
+
+.house-canvas-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+.house-canvas-label code {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Legend */
+.house-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.house-legend h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 8px;
+}
+
+.house-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.legend-piece {
+  background: rgba(22, 30, 46, 0.8);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.legend-piece:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.legend-piece-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.legend-piece-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.legend-piece-crop {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HOUSE CARD GRID — Individual 128×128 preview cards
+   ═══════════════════════════════════════════════════════════ */
+.house-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.house-card {
+  background: rgba(22, 30, 46, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.house-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(30, 41, 59, 0.9);
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.08);
+  transform: translateY(-2px);
+}
+
+.house-card-well {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #0c1019;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.house-card-well::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(56, 189, 248, 0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.house-card-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 128px;
+  height: 128px;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
+}
+
+.house-card-dim-label {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  background: rgba(15, 23, 42, 0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  letter-spacing: 0.02em;
+}
+
+.house-card-info {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.house-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.house-card-id {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  opacity: 0.7;
+}
+
+.house-card-native {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.house-card-desc {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════ */
 .hidden {
   display: none !important;
 }

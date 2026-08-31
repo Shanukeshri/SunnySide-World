@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sprite Viewer</title>
+<style>
+body { background: #1a1a2e; color: white; font-family: sans-serif; padding: 20px; }
+img { image-rendering: pixelated; border: 1px solid #333; max-width: 100%; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; margin-top: 20px; }
+.cell { background: #2a2a4a; border: 1px solid #444; padding: 4px; text-align: center; font-size: 10px; }
+.cell img { max-width: 100%; }
+h2 { margin-top: 30px; color: #38bdf8; }
+</style>
+</head>
+<body>
+<h1>Sprites Analysis</h1>
+<h2>houses.png (1536 x 1024)</h2>
+<p>Try different grid sizes to find the right slicing:</p>
+
+<div id="analysis"></div>
+
+<script>
+const img = new Image();
+img.src = '/houses.png';
+img.onload = () => {
+  const a = document.getElementById('analysis');
+  // Try common tile sizes
+  const tileSizes = [16, 24, 32, 48, 64, 96, 128, 192, 256];
+  let html = '';
+  for (const ts of tileSizes) {
+    const cols = 1536 / ts;
+    const rows = 1024 / ts;
+    if (cols === Math.floor(cols) && rows === Math.floor(rows)) {
+      html += `<p><strong>${ts}px tiles:</strong> ${cols} cols × ${rows} rows = ${cols * rows} tiles</p>`;
+    }
+  }
+  // Also draw a grid overlay on a canvas
+  html += '<h3>Grid overlay with 64px tiles (click to cycle sizes)</h3>';
+  html += '<canvas id="grid-canvas" style="max-width:100%;image-rendering:pixelated;"></canvas>';
+  a.innerHTML = html;
+  
+  const c = document.getElementById('grid-canvas');
+  c.width = 1536;
+  c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0);
+  
+  // Draw grid
+  const gridSize = 64;
+  ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= 1536; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1024); ctx.stroke();
+  }
+  for (let y = 0; y <= 1024; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1536, y); ctx.stroke();
+  }
+  
+  // Also show individual crops for a 64px grid
+  let gridHtml = '<h3>Individual tiles (64px grid)</h3><div class="grid">';
+  const cols = 1536 / gridSize;
+  const rows = 1024 / gridSize;
+  for (let r = 0; r < rows; r++) {
+    for (let col = 0; col < cols; col++) {
+      const tc = document.createElement('canvas');
+      tc.width = gridSize;
+      tc.height = gridSize;
+      const tctx = tc.getContext('2d');
+      tctx.imageSmoothingEnabled = false;
+      tctx.drawImage(img, col * gridSize, r * gridSize, gridSize, gridSize, 0, 0, gridSize, gridSize);
+      gridHtml += `<div class="cell"><img src="${tc.toDataURL()}" />[${col},${r}]</div>`;
+    }
+  }
+  gridHtml += '</div>';
+  a.innerHTML += gridHtml;
+};
+</script>
+</body>
+</html>

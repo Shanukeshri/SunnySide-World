@@ -2,11 +2,6 @@ import Phaser from 'phaser';
 import { ASSET_ATLAS_DATA, AssetItem, AssetCategory } from '../data/assetRegistry';
 
 export class AtlasScene extends Phaser.Scene {
-  private isDragging = false;
-  private dragStartX = 0;
-  private dragStartY = 0;
-  private camStartX = 0;
-  private camStartY = 0;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasdKeys!: { [key: string]: Phaser.Input.Keyboard.Key };
   private hoveredCard: Phaser.GameObjects.Container | null = null;
@@ -82,6 +77,7 @@ export class AtlasScene extends Phaser.Scene {
 
     // 2. Extract pixel-perfect sub-texture frames for all tileset slices
     for (const cat of ASSET_ATLAS_DATA.categories) {
+      if (cat.id === 'houses') continue;
       for (const itm of cat.items) {
         if (itm.type === 'tileset_slice' && itm.crop) {
           const tilesetKey = (itm.sourcePath.indexOf('forest') !== -1)
@@ -122,7 +118,10 @@ export class AtlasScene extends Phaser.Scene {
     this.renderBackground(totalW, totalH);
 
     // 5. Render All Categories and Items
+    // Note: the "houses" category is rendered in its own dedicated HTML tab
+    // (see drawHouses in main.ts) and uses houses.png crops, so it is skipped here.
     for (const cat of ASSET_ATLAS_DATA.categories) {
+      if (cat.id === 'houses') continue;
       this.renderCategory(cat);
     }
 
@@ -520,15 +519,7 @@ export class AtlasScene extends Phaser.Scene {
       }
     }, { passive: false });
 
-    // Mouse Drag Panning
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      this.isDragging = true;
-      this.dragStartX = pointer.x;
-      this.dragStartY = pointer.y;
-      this.camStartX = this.cameras.main.scrollX;
-      this.camStartY = this.cameras.main.scrollY;
-    });
-
+    // Cursor world-position tracking (no drag panning)
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       window.dispatchEvent(new CustomEvent('cursor-world-move', {
@@ -537,16 +528,6 @@ export class AtlasScene extends Phaser.Scene {
           y: Math.round(worldPoint.y)
         }
       }));
-
-      if (this.isDragging) {
-        const dx = (pointer.x - this.dragStartX) / this.cameras.main.zoom;
-        const dy = (pointer.y - this.dragStartY) / this.cameras.main.zoom;
-        this.cameras.main.setScroll(this.camStartX - dx, this.camStartY - dy);
-      }
-    });
-
-    this.input.on('pointerup', () => {
-      this.isDragging = false;
     });
   }
 

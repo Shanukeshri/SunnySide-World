@@ -6,8 +6,8 @@
   displayed on the running asset atlas page (http://localhost:3001).
   It is auto-generated from src/data/assetRegistry.ts.
 
-  Total categories : 18
-  Total assets     : 269
+  Total categories : 19
+  Total assets     : 285
   Canvas size      : 2400px wide × 7790px tall
   Generated at     : 2026-08-31T09:42:47.071Z
 
@@ -80,6 +80,7 @@ TABLE OF CONTENTS
   §16  Player Construction & Furniture                18 items    Y: 6486px – 6651px
   §17  Tools & Implements                              9 items    Y: 7004px – 7018px
   §18  UI Visuals (MegaCozy, PixelDiary & Sunnyside)   21 items    Y: 7370px – 7650px
+  §19  Houses & Buildings (128×128 cards)              16 items    Houses tab grid
 ──────────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -3687,6 +3688,241 @@ ui_diary_panel                        320   7522   126x 126     1  image        
 ui_diary_badge_rose                   504   7522   128x 128     1  image           UI_Icon_SingleRose.png
 
 ──────────────────────────────────────────────────────────────────────────────────────────
+
+══════════════════════════════════════════════════════════════════════════════════════════
+CATEGORY: Houses & Buildings
+  ID            : houses
+  Description   : 16 house/building sprites cropped from houses.png — each displayed at 128×128 with aspect-ratio preservation
+  Total items   : 16
+  Source Image  : houses.png (1536 × 1024 px, RGBA)
+  Grid Layout   : 4 columns × 4 rows
+  Display Size  : 128px × 128px per card (aspect-ratio scaled crop from source)
+───────────────────────────────────────────────────────────────────────────────────────────
+
+  [001] house_cottage_01
+       Name        : Cottage (Small)
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Small starter cottage with thatched roof
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 215px wide × 204px tall  (native)
+       Display Size: 128px wide × 122px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=89, y=50, w=215, h=204  (pixels in the source PNG)
+       Crop Region : (89,50) → (304,254)
+       Scale       : 0.595× (215→128)
+
+  [002] house_farmhouse_01
+       Name        : Farmhouse
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Medium farmhouse with porch and chimney
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 292px wide × 181px tall  (native)
+       Display Size: 128px wide × 79px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=435, y=72, w=292, h=181  (pixels in the source PNG)
+       Crop Region : (435,72) → (727,253)
+       Scale       : 0.438× (292→128)
+
+  [003] house_barn_01
+       Name        : Barn
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Tall barn with steep pitched roof
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 179px wide × 212px tall  (native)
+       Display Size: 108px wide × 128px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=873, y=38, w=179, h=212  (pixels in the source PNG)
+       Crop Region : (873,38) → (1052,250)
+       Scale       : 0.604× (212→128)
+
+  [004] house_workshop_01
+       Name        : Workshop
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Wide workshop building with double doors
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 274px wide × 197px tall  (native)
+       Display Size: 128px wide × 92px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=1186, y=60, w=274, h=197  (pixels in the source PNG)
+       Crop Region : (1186,60) → (1460,257)
+       Scale       : 0.467× (274→128)
+
+  [005] house_tavern_01
+       Name        : Tavern
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Two-story village tavern with signage
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 228px wide × 210px tall  (native)
+       Display Size: 128px wide × 118px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=74, y=270, w=228, h=210  (pixels in the source PNG)
+       Crop Region : (74,270) → (302,480)
+       Scale       : 0.561× (228→128)
+
+  [006] house_shop_01
+       Name        : Shop
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Wide single-story village shop
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 280px wide × 174px tall  (native)
+       Display Size: 128px wide × 80px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=444, y=307, w=280, h=174  (pixels in the source PNG)
+       Crop Region : (444,307) → (724,481)
+       Scale       : 0.457× (280→128)
+
+  [007] house_chapel_01
+       Name        : Chapel
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Small chapel with bell tower
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 227px wide × 206px tall  (native)
+       Display Size: 128px wide × 116px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=854, y=273, w=227, h=206  (pixels in the source PNG)
+       Crop Region : (854,273) → (1081,479)
+       Scale       : 0.564× (227→128)
+
+  [008] house_stable_01
+       Name        : Stable
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Low stable building for livestock
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 254px wide × 180px tall  (native)
+       Display Size: 128px wide × 91px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=1198, y=303, w=254, h=180  (pixels in the source PNG)
+       Crop Region : (1198,303) → (1452,483)
+       Scale       : 0.504× (254→128)
+
+  [009] house_warehouse_01
+       Name        : Warehouse
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Square warehouse with flat front
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 208px wide × 212px tall  (native)
+       Display Size: 126px wide × 128px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=80, y=490, w=208, h=212  (pixels in the source PNG)
+       Crop Region : (80,490) → (288,702)
+       Scale       : 0.604× (212→128)
+
+  [010] house_merchant_01
+       Name        : Merchant House
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Wide merchant residence with awning
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 283px wide × 181px tall  (native)
+       Display Size: 128px wide × 82px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=445, y=524, w=283, h=181  (pixels in the source PNG)
+       Crop Region : (445,524) → (728,705)
+       Scale       : 0.452× (283→128)
+
+  [011] house_blacksmith_01
+       Name        : Blacksmith Forge
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Tall forge with chimney and anvil
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 182px wide × 218px tall  (native)
+       Display Size: 107px wide × 128px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=877, y=486, w=182, h=218  (pixels in the source PNG)
+       Crop Region : (877,486) → (1059,704)
+       Scale       : 0.587× (218→128)
+
+  [012] house_windmill_01
+       Name        : Windmill
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Low windmill base with gear housing
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 258px wide × 158px tall  (native)
+       Display Size: 128px wide × 78px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=1198, y=545, w=258, h=158  (pixels in the source PNG)
+       Crop Region : (1198,545) → (1456,703)
+       Scale       : 0.496× (258→128)
+
+  [013] house_mansion_01
+       Name        : Mansion
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Large two-story mansion with balcony
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 240px wide × 227px tall  (native)
+       Display Size: 128px wide × 121px tall  (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=67, y=734, w=240, h=227  (pixels in the source PNG)
+       Crop Region : (67,734) → (307,961)
+       Scale       : 0.533× (240→128)
+
+  [014] house_cabin_01
+       Name        : Cabin
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Wide rustic cabin with extended roof
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 262px wide × 198px tall  (native)
+       Display Size: 128px wide × 97px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=457, y=769, w=262, h=198  (pixels in the source PNG)
+       Crop Region : (457,769) → (719,967)
+       Scale       : 0.489× (262→128)
+
+  [015] house_castle_01
+       Name        : Castle Tower
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Tall fortified castle tower with battlements
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 231px wide × 232px tall  (native)
+       Display Size: 128px wide × 128px tall  (aspect-scaled — perfect square)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=841, y=734, w=231, h=232  (pixels in the source PNG)
+       Crop Region : (841,734) → (1072,966)
+       Scale       : 0.552× (232→128)
+
+  [016] house_lighthouse_01
+       Name        : Lighthouse
+       Type        : TILESET SLICE  (crop from houses.png)
+       Description : Wide lighthouse base with lantern room
+       Canvas Pos  : (Houses tab card grid — see drawHouses)
+       Frame Size  : 261px wide × 181px tall  (native)
+       Display Size: 128px wide × 89px tall   (aspect-scaled to fit 128×128)
+       Card Size   : 128px wide × 128px tall  (preview well)
+       Animation   : 1 frame @ 8 FPS
+       Source      : houses.png
+       Crop Rect   : x=1212, y=787, w=261, h=181  (pixels in the source PNG)
+       Crop Region : (1212,787) → (1473,968)
+       Scale       : 0.490× (261→128)
+
 
 ══════════════════════════════════════════════════════════════════════════════════════════
 SOURCE FILES REFERENCE
