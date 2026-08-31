@@ -1111,8 +1111,224 @@ body, html {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   UTILITIES
+   TERRAIN / BIOME LAYER LEGEND
    ═══════════════════════════════════════════════════════════ */
+.terrain-layer-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.tl-item {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.tl-surface {
+  background: rgba(16,185,129,0.18);
+  border: 1px solid rgba(16,185,129,0.35);
+  color: #6ee7b7;
+}
+
+.tl-subsoil {
+  background: rgba(139,92,246,0.15);
+  border: 1px solid rgba(139,92,246,0.3);
+  color: #c4b5fd;
+}
+
+.tl-bedrock {
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.25);
+  color: #fbbf24;
+}
+
+/* ═══════════════════════════════════════════════════════════
+    SETTLEMENT GENERATOR VIEW
+    ═══════════════════════════════════════════════════════════ */
+
+.settlement-content {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settlement-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: radial-gradient(ellipse at 30% 20%, rgba(30, 41, 59, 0.4) 0%, transparent 70%), var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settlement-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settlement-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.settlement-header p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 700px;
+}
+
+.settlement-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.generate-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #10b981 100%);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  padding: 8px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+.generate-btn:hover {
+  box-shadow: 0 4px 24px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.settlement-info-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settlement-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.settlement-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(12, 16, 25, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.settlement-canvas-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+#settlement-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 8px 32px rgba(0,0,0,0.5),
+    0 0 60px rgba(56, 189, 248, 0.06);
+}
+
+.settlement-canvas-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+.settlement-canvas-label code {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.settlement-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settlement-legend h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 8px;
+}
+
+.settlement-legend-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sl-item {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.sl-grass { background: rgba(26, 107, 60, 0.25); border: 1px solid rgba(26, 107, 60, 0.4); color: #4ade80; }
+.sl-water { background: rgba(26, 82, 118, 0.25); border: 1px solid rgba(26, 82, 118, 0.4); color: #38bdf8; }
+.sl-shore { background: rgba(93, 109, 126, 0.2); border: 1px solid rgba(93, 109, 126, 0.35); color: #94a3b8; }
+.sl-path { background: rgba(139, 105, 20, 0.2); border: 1px solid rgba(139, 105, 20, 0.35); color: #d97706; }
+.sl-fence { background: rgba(139, 115, 85, 0.2); border: 1px solid rgba(139, 115, 85, 0.35); color: #d6930c; }
+.sl-tree { background: rgba(21, 128, 61, 0.2); border: 1px solid rgba(21, 128, 61, 0.35); color: #4ade80; }
+.sl-building { background: rgba(93, 78, 55, 0.2); border: 1px solid rgba(93, 78, 55, 0.35); color: #d6930c; }
+.sl-farm { background: rgba(103, 231, 193, 0.15); border: 1px solid rgba(103, 231, 193, 0.3); color: #6ee7b7; }
+.sl-well { background: rgba(107, 114, 128, 0.2); border: 1px solid rgba(107, 114, 128, 0.35); color: #9ca3af; }
+.sl-boat { background: rgba(146, 64, 14, 0.2); border: 1px solid rgba(146, 64, 14, 0.35); color: #d97706; }
+.sl-duck { background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24; }
+.sl-rock { background: rgba(107, 114, 128, 0.2); border: 1px solid rgba(107, 114, 128, 0.3); color: #9ca3af; }
+.sl-flower { background: rgba(244, 114, 182, 0.15); border: 1px solid rgba(244, 114, 182, 0.3); color: #f472b6; }
+.sl-mushroom { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; }
+.sl-chest { background: rgba(146, 64, 14, 0.2); border: 1px solid rgba(146, 64, 14, 0.35); color: #d97706; }
+.sl-center { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; }
+
+/* ═══════════════════════════════════════════════════════════
+    UTILITIES
+    ═══════════════════════════════════════════════════════════ */
 .hidden {
   display: none !important;
 }
