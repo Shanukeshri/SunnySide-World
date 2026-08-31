@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-CTvfeEZ0.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-m0z4SBdG.css">
+  <script type="module" crossorigin src="/assets/index-Cdd35t-a.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-C0xKvk9E.css">
 </head>
 <body>
   <div id="app">
@@ -34,6 +34,14 @@
         <button id="tab-houses" class="tab-btn active" role="tab" aria-selected="true" aria-controls="houses-view">
           <span class="tab-icon">🏠</span>
           <span>Houses</span>
+        </button>
+        <button id="tab-terrain" class="tab-btn" role="tab" aria-selected="false" aria-controls="terrain-view">
+          <span class="tab-icon">🌍</span>
+          <span>Terrain & Biome</span>
+        </button>
+        <button id="tab-settlement" class="tab-btn" role="tab" aria-selected="false" aria-controls="settlement-view">
+          <span class="tab-icon">🏘️</span>
+          <span>Settlement</span>
         </button>
       </nav>
 
@@ -153,50 +161,109 @@
     <!-- ═══════════════════════════════════════════════ -->
     <div id="houses-view" class="view-panel active">
       <div class="houses-content">
-        <!-- Left sidebar: house list -->
-        <aside class="houses-sidebar">
-          <div class="houses-sidebar-header">
-            <h2>🏘️ Structures</h2>
-            <span class="houses-count" id="houses-count">5 buildings</span>
-          </div>
-          <ul class="houses-list" id="houses-list">
-            <!-- Injected by JS -->
-          </ul>
-          <div class="houses-sidebar-divider"></div>
-          <div class="houses-sidebar-section">
-            <h3>🧱 Building Pieces</h3>
-            <div class="house-pieces-grid" id="house-pieces-grid">
-              <!-- Injected by JS -->
-            </div>
-          </div>
-        </aside>
-
         <!-- Main preview area -->
         <main class="houses-main">
           <div class="house-preview-header">
             <div>
-              <h2 id="house-title">Loading...</h2>
-              <p id="house-desc"></p>
+              <h2 id="house-title">Houses & Buildings</h2>
+              <p id="house-desc">16 house/building sprites cropped from houses.png (1536×1024). Each card shows the exact 128×128 render size with aspect-ratio preservation.</p>
             </div>
-            <div class="house-badge-row" id="house-badge-row"></div>
+            <div class="house-badge-row">
+              <span class="house-badge">16 Houses</span>
+              <span class="house-badge" style="background:rgba(56,189,248,0.15);border-color:rgba(56,189,248,0.35);color:#7dd3fc;">128×128 Display</span>
+              <span class="house-badge" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.35);color:#6ee7b7;">Pixel-Perfect Crop</span>
+            </div>
           </div>
 
-          <!-- The canvas where the house is drawn -->
+          <!-- Full-sheet preview -->
           <div class="house-canvas-wrapper">
             <canvas id="house-canvas"></canvas>
-            <div class="house-canvas-label">Pixel-perfect render from <code>houses.png</code></div>
+            <div class="house-canvas-label">Full sprite sheet from <code>houses.png</code> — 1536×1024</div>
           </div>
 
-          <!-- Piece legend -->
-          <div class="house-legend">
-            <h3>Building Pieces</h3>
-            <div class="house-legend-grid" id="house-legend-grid">
-              <!-- Injected by JS -->
+          <!-- House card grid — dynamically populated -->
+          <div id="house-card-grid" class="house-card-grid"></div>
+        </main>
+      </div>
+    </div><!-- /houses-view -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- VIEW: TERRAIN & BIOME                           -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="terrain-view" class="view-panel">
+      <div class="houses-content">
+        <main class="houses-main">
+          <div class="house-preview-header">
+            <div>
+              <h2>Terrain Elevation Example</h2>
+              <p>Single-layer elevation sample assembled from the real terrain tiles listed in map.txt. The preview uses only the atlas tiles already present in the map data: grass, dirt, sand, shore, water, and the elevation wall.</p>
+            </div>
+            <div class="house-badge-row">
+              <span class="house-badge" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.35);color:#6ee7b7;">Map-driven</span>
+              <span class="house-badge">One-layer Elevation</span>
+              <span class="house-badge" style="background:rgba(56,189,248,0.15);border-color:rgba(56,189,248,0.35);color:#7dd3fc;">Real Tiles</span>
+            </div>
+          </div>
+          <div id="terrain-card-grid" class="house-card-grid"></div>
+        </main>
+      </div>
+    </div><!-- /terrain-view -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- VIEW: SETTLEMENT GENERATOR                      -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="settlement-view" class="view-panel">
+      <div class="settlement-content">
+        <main class="settlement-main">
+          <div class="settlement-header">
+            <div>
+              <h2>Procedural Settlement Generator</h2>
+              <p>Click "Generate Settlement" to create a new random village/town. Each seed produces a unique, coherent, cozy settlement. All assets sourced from map.txt.</p>
+            </div>
+            <div class="settlement-controls">
+              <button id="generate-settlement-btn" class="action-btn generate-btn">🏗️ Generate Settlement</button>
+              <button id="regenerate-settlement-btn" class="action-btn">🔄 Regenerate</button>
+            </div>
+          </div>
+
+          <div class="settlement-info-bar">
+            <span class="settlement-badge" id="seed-badge">Seed: —</span>
+            <span class="settlement-badge" id="center-badge">Center: —</span>
+            <span class="settlement-badge" id="buildings-badge">Buildings: 0</span>
+            <span class="settlement-badge" id="farms-badge">Farms: 0</span>
+            <span class="settlement-badge" id="water-badge">Water: No</span>
+            <span class="settlement-badge" id="objects-badge">Objects: 0</span>
+          </div>
+
+          <div class="settlement-canvas-wrapper">
+            <canvas id="settlement-canvas"></canvas>
+            <div class="settlement-canvas-label">Top-down logical grid view — each cell = 16px</div>
+          </div>
+
+          <div class="settlement-legend">
+            <h3>Legend</h3>
+            <div class="settlement-legend-grid">
+              <span class="sl-item sl-grass">Grass</span>
+              <span class="sl-item sl-water">Water</span>
+              <span class="sl-item sl-shore">Shore</span>
+              <span class="sl-item sl-path">Path</span>
+              <span class="sl-item sl-fence">Fence</span>
+              <span class="sl-item sl-tree">Tree</span>
+              <span class="sl-item sl-building">Building</span>
+              <span class="sl-item sl-farm">Farm</span>
+              <span class="sl-item sl-well">Well</span>
+              <span class="sl-item sl-boat">Boat</span>
+              <span class="sl-item sl-duck">Duck</span>
+              <span class="sl-item sl-rock">Rock</span>
+              <span class="sl-item sl-flower">Flower</span>
+              <span class="sl-item sl-mushroom">Mushroom</span>
+              <span class="sl-item sl-chest">Chest</span>
+              <span class="sl-item sl-center">Center</span>
             </div>
           </div>
         </main>
       </div>
-    </div><!-- /houses-view -->
+    </div><!-- /settlement-view -->
 
   </div><!-- /app -->
 
