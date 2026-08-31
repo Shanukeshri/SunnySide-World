@@ -1,0 +1,991 @@
+==========================================================================================
+           SUNNYSIDE 2D RTS/SURVIVAL GAME — VISUAL ASSET ATLAS MAP
+               Total Canvas Extents: 2400px (W) x 8080px (H)
+==========================================================================================
+
+This document is the master coordinate directory for every single asset and
+visual concept declared in v0.txt. Use these exact paths, slices, and canvas
+coordinates whenever referencing, spawning, or modifying assets.
+
+------------------------------------------------------------------------------------------
+CATEGORY                                      | ITEMS    | Y-POSITION
+------------------------------------------------------------------------------------------
+World / Terrain                               | 20       | Y: 120px to 498px
+Isometric "Block" System                      | 16       | Y: 638px to 864px
+Player (Hairstyles & Animations)              | 26       | Y: 1004px to 1382px
+Friendly NPCs                                 | 8        | Y: 1522px to 1748px
+Animals & Wildlife                            | 8        | Y: 1888px to 2114px
+Trees & Species Progression                   | 5        | Y: 2254px to 2480px
+Plants & Foliage                              | 7        | Y: 2620px to 2846px
+Farming & Crops (Growth Stages 00–05)         | 67       | Y: 2986px to 3668px
+Farm Objects & Storage                        | 16       | Y: 3808px to 4034px
+Buildings & Modular Construction Pieces       | 10       | Y: 4174px to 4446px
+Water, Boats & Aquatic                        | 5        | Y: 4586px to 4812px
+Resources & Collectibles                      | 11       | Y: 4952px to 5178px
+Enemies (Skeleton & Goblin)                   | 11       | Y: 5318px to 5544px
+Dungeon Visuals & Props                       | 3        | Y: 5684px to 5910px
+Weather, Atmosphere & VFX                     | 8        | Y: 6050px to 6276px
+Player Construction & Furniture               | 18       | Y: 6416px to 6794px
+Tools & Implements                            | 9        | Y: 6934px to 7160px
+UI Visuals (MegaCozy, PixelDiary & Sunnyside) | 21       | Y: 7300px to 7740px
+------------------------------------------------------------------------------------------
+
+==========================================================================================
+SECTION 01: WORLD / TERRAIN
+Description: Core terrain tiles, shorelines, paths, cliffs, and scatter details
+Bounds: X: 60px to 2280px | Y: 120px to 498px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+grass_tile_01                | (60,190)       | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:48, w:16, h:16]
+  └─ Name: Grass Tile (Lush) — Standard vibrant green top-down grass tile
+
+grass_tile_02                | (190,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:32, y:48, w:16, h:16]
+  └─ Name: Grass Tile (Edge Detail) — Grass terrain edge with natural shading
+
+dirt_tile_01                 | (320,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:112, w:16, h:16]
+  └─ Name: Dirt Tile (Basic) — Rich brown dirt terrain tile
+
+sand_tile_01                 | (450,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:208, y:48, w:16, h:16]
+  └─ Name: Sand Tile (Beach/Desert) — Warm golden beach and desert sand tile
+
+stone_tile_01                | (580,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:192, y:112, w:16, h:16]
+  └─ Name: Stone / Cobblestone — Natural stone and paved cobblestone surface
+
+water_tile_01                | (710,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:352, y:112, w:16, h:16]
+  └─ Name: Water Tile (River Blue) — Crystal blue river and ocean water tile
+
+shore_transition_01          | (840,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:368, y:112, w:16, h:16]
+  └─ Name: Shore / Water Transition — Coastline shore transition from sand/grass to water
+
+path_tile_01                 | (970,190)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:112, w:16, h:16]
+  └─ Name: Path 01 (Dirt Trail) — Worn walking trail / dirt road connector
+
+path_tile_02                 | (1100,190)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:192, y:112, w:16, h:16]
+  └─ Name: Path 02 (Cobblestone Path) — Paved stone village walkway
+
+path_tile_03                 | (1230,190)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:544, y:112, w:16, h:16]
+  └─ Name: Path 03 (Wooden Boardwalk) — Wooden walkway and boardwalk path
+
+cliff_elevation_01           | (1360,190)     | 16x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:64, w:16, h:32]
+  └─ Name: Cliffs / Elevation Wall — Raised cliff face, ledge elevation, and height step
+
+small_rock_01                | (1490,190)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png
+  └─ Name: Small Rock Decor — Small scatter rock for natural ground decoration
+
+grass_tuft_01                | (1620,190)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:48, y:48, w:16, h:16]
+  └─ Name: Grass Tuft Accent — Decorative grass tuft and wild greenery overlay
+
+flowers_wild_01              | (1750,190)     | 8x18       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_flowers_house_01/36388643-e82c-4037-97b4-3d1fa4cb65fb.png
+  └─ Name: Wild Flowers (Scatter 1) — Wild field flowers in blooming colors
+
+flowers_wild_02              | (1880,190)     | 12x19      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_flowers_house_02/93175c94-bed5-4a79-9562-232e8f9f075e.png
+  └─ Name: Wild Flowers (Scatter 2) — Clumped cottage flowers
+
+mushrooms_deco_blue          | (2010,190)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_blue_01/28f072d2-4413-4dab-a4b7-7473337cd625.png
+  └─ Name: Blue Forest Mushroom — Glowing wild blue forest mushrooms
+
+mushrooms_deco_red           | (2140,190)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_red_01/32c3ffa9-6757-47f4-9800-5b7024450659.png
+  └─ Name: Red Forest Mushroom — Classic red cap spotted forest mushroom
+
+acorn_deco_01                | (60,342)       | 10x9       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_acron/ada48c07-f133-4861-ac13-16e671ac36cd.png
+  └─ Name: Fallen Forest Acorn — Fallen oak acorn scatter item
+
+truffle_deco_01              | (190,342)      | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_truffle/e6dbb225-174c-41bd-ab66-36e9fff04f0a.png
+  └─ Name: Wild Truffle Mushroom — Rare forageable wild ground truffle
+
+stump_deco_01                | (320,342)      | 32x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png
+  └─ Crop rect in tileset: [x:256, y:96, w:32, h:32]
+  └─ Name: Tree Stump — Chopped tree stump and remaining root base
+
+==========================================================================================
+SECTION 02: ISOMETRIC "BLOCK" SYSTEM
+Description: 2D isometric block primitives, modular construction cubes, highlights, and destruction states
+Bounds: X: 60px to 2280px | Y: 638px to 864px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+iso_grass_block              | (60,708)       | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Grass Block — Isometric 3D-styled grass top cube block
+
+iso_dirt_block               | (190,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Dirt Block — Isometric rich soil block for terrain excavation
+
+iso_stone_block              | (320,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Stone Block — Chiseled stone block for mountain & construction
+
+iso_sand_block               | (450,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Sand Block — Desert and beach sand cube
+
+iso_wood_block               | (580,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Wood Block / Planks — Crafted wooden timber block for building
+
+iso_water_block              | (710,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Water Block — Translucent water volume cube
+
+iso_path_block               | (840,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Path Block — Packed earth walkway block
+
+iso_wall_block               | (970,708)      | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Wall Block (Stone/Brick) — Solid structural wall block
+
+iso_floor_block              | (1100,708)     | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Floor Tile Block — Low-profile floor slab
+
+iso_corner_block             | (1230,708)     | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Corner / Slope Block — Beveled corner/ramp elevation transition
+
+iso_half_block               | (1360,708)     | 48x48      | 1      | [Procedural Isometric 3D-styled Block]
+  └─ Name: Half-Height Raised Slab — Half-step height modular elevation block
+
+iso_block_edge               | (1490,708)     | 48x48      | 1      | [Isometric UI Overlay Effect]
+  └─ Name: Block Edge Highlight — Edge border grid indicator for 3D alignment
+
+iso_block_corner             | (1620,708)     | 48x48      | 1      | [Isometric UI Overlay Effect]
+  └─ Name: Block Corner Accent — Corner vertex connection marker
+
+iso_block_shadow             | (1750,708)     | 48x48      | 1      | [Isometric UI Overlay Effect]
+  └─ Name: Block Ambient Shadow — Ground cast shadow beneath placed block
+
+iso_placement_preview        | (1880,708)     | 48x48      | 1      | [Isometric UI Overlay Effect]
+  └─ Name: Placement Preview (Holo) — Cyan holographic preview guide for player placement
+
+iso_break_effect             | (2010,708)     | 48x48      | 1      | [Isometric UI Overlay Effect]
+  └─ Name: Destroy / Break Effect — Cracking damage overlay (Stage 1 to 3)
+
+==========================================================================================
+SECTION 03: PLAYER (HAIRSTYLES & ANIMATIONS)
+Description: All character action strips and hairstyles (96x64 native frame resolution)
+Bounds: X: 60px to 2280px | Y: 1004px to 1382px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+player_base_idle             | (60,1074)      | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/base_idle_strip9.png
+  └─ Name: Player: Idle Stance (Base) — Player character animation for Idle Stance (96x64 frame size, 9 frames)
+
+player_base_walking          | (214,1074)     | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png
+  └─ Name: Player: Walk Cycle (Base) — Player character animation for Walk Cycle (96x64 frame size, 8 frames)
+
+player_base_run              | (368,1074)     | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/RUN/base_run_strip8.png
+  └─ Name: Player: Run Sprint (Base) — Player character animation for Run Sprint (96x64 frame size, 8 frames)
+
+player_base_attack           | (522,1074)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/ATTACK/base_attack_strip10.png
+  └─ Name: Player: Attack / Swing (Base) — Player character animation for Attack / Swing (96x64 frame size, 10 frames)
+
+player_base_mining           | (676,1074)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/MINING/base_mining_strip10.png
+  └─ Name: Player: Pickaxe Mining (Base) — Player character animation for Pickaxe Mining (96x64 frame size, 10 frames)
+
+player_base_axe              | (830,1074)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/AXE/base_axe_strip10.png
+  └─ Name: Player: Axe Chopping (Base) — Player character animation for Axe Chopping (96x64 frame size, 10 frames)
+
+player_base_dig              | (984,1074)     | 96x64      | 13f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/DIG/base_dig_strip13.png
+  └─ Name: Player: Shovel Digging (Base) — Player character animation for Shovel Digging (96x64 frame size, 13 frames)
+
+player_base_hammering        | (1138,1074)    | 96x64      | 23f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/HAMMERING/base_hamering_strip23.png
+  └─ Name: Player: Hammer Building (Base) — Player character animation for Hammer Building (96x64 frame size, 23 frames)
+
+player_base_watering         | (1292,1074)    | 96x64      | 5f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WATERING/base_watering_strip5.png
+  └─ Name: Player: Can Watering (Base) — Player character animation for Can Watering (96x64 frame size, 5 frames)
+
+player_base_carry            | (1446,1074)    | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/CARRY/base_carry_strip8.png
+  └─ Name: Player: Carry Object (Base) — Player character animation for Carry Object (96x64 frame size, 8 frames)
+
+player_base_hurt             | (1600,1074)    | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/HURT/base_hurt_strip8.png
+  └─ Name: Player: Damage Hurt (Base) — Player character animation for Damage Hurt (96x64 frame size, 8 frames)
+
+player_base_death            | (1754,1074)    | 96x64      | 13f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/DEATH/base_death_strip13.png
+  └─ Name: Player: Death Collapse (Base) — Player character animation for Death Collapse (96x64 frame size, 13 frames)
+
+player_base_jump             | (1908,1074)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/JUMP/base_jump_strip9.png
+  └─ Name: Player: Jump Action (Base) — Player character animation for Jump Action (96x64 frame size, 9 frames)
+
+player_base_swimming         | (2062,1074)    | 96x64      | 12f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/SWIMMING/base_swimming_strip12.png
+  └─ Name: Player: Water Swimming (Base) — Player character animation for Water Swimming (96x64 frame size, 12 frames)
+
+player_base_waiting          | (60,1226)      | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WAITING/base_waiting_strip9.png
+  └─ Name: Player: Idle Waiting (Base) — Player character animation for Idle Waiting (96x64 frame size, 9 frames)
+
+player_base_roll             | (214,1226)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/ROLL/base_roll_strip10.png
+  └─ Name: Player: Evasion Roll (Base) — Player character animation for Evasion Roll (96x64 frame size, 10 frames)
+
+player_base_casting          | (368,1226)     | 96x64      | 15f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/CASTING/base_casting_strip15.png
+  └─ Name: Player: Fishing Cast (Base) — Player character animation for Fishing Cast (96x64 frame size, 15 frames)
+
+player_base_reeling          | (522,1226)     | 96x64      | 13f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/REELING/base_reeling_strip13.png
+  └─ Name: Player: Fishing Reel (Base) — Player character animation for Fishing Reel (96x64 frame size, 13 frames)
+
+player_base_caught           | (676,1226)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/CAUGHT/base_caught_strip10.png
+  └─ Name: Player: Fish Caught Catch (Base) — Player character animation for Fish Caught Catch (96x64 frame size, 10 frames)
+
+player_hair_curlyhair        | (830,1226)     | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/curlyhair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Curly Hair — Player hairstyle overlay: Curly Hair (96x64 frames)
+
+player_hair_shorthair        | (984,1226)     | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/shorthair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Short Hair — Player hairstyle overlay: Short Hair (96x64 frames)
+
+player_hair_longhair         | (1138,1226)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/longhair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Long Hair — Player hairstyle overlay: Long Hair (96x64 frames)
+
+player_hair_spikeyhair       | (1292,1226)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/spikeyhair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Spikey Hair — Player hairstyle overlay: Spikey Hair (96x64 frames)
+
+player_hair_bowlhair         | (1446,1226)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/bowlhair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Bowl Cut — Player hairstyle overlay: Bowl Cut (96x64 frames)
+
+player_hair_mophair          | (1600,1226)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/mophair_idle_strip9.png
+  └─ Name: Hairstyle Variant: Mop Hair — Player hairstyle overlay: Mop Hair (96x64 frames)
+
+player_hair_tools            | (1754,1226)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/IDLE/tools_idle_strip9.png
+  └─ Name: Hairstyle Variant: Held Tool Overlay — Player hairstyle overlay: Held Tool Overlay (96x64 frames)
+
+==========================================================================================
+SECTION 04: FRIENDLY NPCS
+Description: Villager roles: Farmer, Merchant, Blacksmith, Builder, Fisher, Dungeon Guide, Children
+Bounds: X: 60px to 2280px | Y: 1522px to 1748px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+npc_villager_default         | (60,1592)      | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/shorthair_walk_strip8.png
+  └─ Name: Villager (Short Hair Citizen) — Town citizen NPC walking animation
+
+npc_farmer                   | (214,1592)     | 96x64      | 5f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WATERING/curlyhair_watering_strip5.png
+  └─ Name: Farmer NPC (Watering) — Friendly farmer tending to village crops
+
+npc_merchant                 | (368,1592)     | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WAITING/longhair_waiting_strip9.png
+  └─ Name: Merchant / Trader (Waiting) — Shopkeeper NPC at storefront stall
+
+npc_blacksmith               | (522,1592)     | 96x64      | 23f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/HAMMERING/spikeyhair_hamering_strip23.png
+  └─ Name: Blacksmith (Hammering) — Village smith crafting armor & tools
+
+npc_builder                  | (676,1592)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/AXE/mophair_axe_strip10.png
+  └─ Name: Builder / Carpenter — Construction builder working on wooden structures
+
+npc_fisher                   | (830,1592)     | 96x64      | 13f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/REELING/bowlhair_reeling_strip13.png
+  └─ Name: Fisher NPC (Reeling) — Angler fishing by dock or river shore
+
+npc_dungeon_guide            | (984,1592)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/ATTACK/longhair_attack_strip10.png
+  └─ Name: Dungeon Explorer NPC — Veteran dungeon guide ready with weapon
+
+npc_child_variant            | (1138,1592)    | 96x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/JUMP/bowlhair_jump_strip9.png
+  └─ Name: Child / Cosmetic Variant — Village child playing / jumping variant
+
+==========================================================================================
+SECTION 05: ANIMALS & WILDLIFE
+Description: Chicken, Cow, Duck, Pig, Sheep, Bird, Fish, and Blinking Wildlife
+Bounds: X: 60px to 2280px | Y: 1888px to 2114px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+animal_chicken               | (60,1958)      | 32x32      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_chicken_01_strip4.png
+  └─ Name: Chicken (Animated) — Pecking farm chicken animation (32x32)
+
+animal_cow                   | (190,1958)     | 32x32      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_cow_strip4.png
+  └─ Name: Cow (Animated) — Grazing dairy cow animation (32x32)
+
+animal_duck                  | (320,1958)     | 16x16      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_duck_01_strip4.png
+  └─ Name: Duck (Animated) — Waddling duck for ponds & farms (16x16)
+
+animal_pig                   | (450,1958)     | 32x32      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_pig_01_strip4.png
+  └─ Name: Pig (Animated) — Mud farm pig animation (32x32)
+
+animal_sheep                 | (580,1958)     | 32x32      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_sheep_01_strip4.png
+  └─ Name: Sheep (Animated) — Wooly sheep animation (32x32)
+
+animal_bird                  | (710,1958)     | 16x16      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_bird_01_strip4.png
+  └─ Name: Bird (Animated) — Wild songbird perching and hopping (16x16)
+
+animal_fish                  | (840,1958)     | 11x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/fish.png
+  └─ Name: Fish (Water / Caught) — River fish for fishing and cooking
+
+animal_blinking              | (970,1958)     | 16x16      | 12f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_blinking_strip12.png
+  └─ Name: Blinking Eyes FX — Nocturnal animal / foliage blinking eyes effect (16x16)
+
+==========================================================================================
+SECTION 06: TREES & SPECIES PROGRESSION
+Description: Oak trees, Pine trees, Animated swaying trees, and tree stumps
+Bounds: X: 60px to 2280px | Y: 2254px to 2480px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+tree_oak_01                  | (60,2324)      | 32x34      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_tree_01/35b80d4c-f4cb-4aa8-a423-b9a9470fb6ef.png
+  └─ Name: Oak Tree (Deciduous) — Full green foliage deciduous oak tree (32x34)
+
+tree_pine_01                 | (190,2324)     | 28x43      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_tree_02/203e8642-ec7b-4c07-8f7e-dc272e6c2b2e.png
+  └─ Name: Pine / Evergreen Tree — Slender evergreen pine tree (28x43)
+
+tree_sway_strip              | (320,2324)     | 28x43      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Plants/spr_deco_tree_02_strip4.png
+  └─ Name: Swaying Canopy Tree — Wind blowing gentle tree animation (28x43, 4 frames)
+
+tree_prog_small              | (450,2324)     | 32x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png
+  └─ Crop rect in tileset: [x:32, y:32, w:32, h:32]
+  └─ Name: Tree Sapling Sprout — Growing young tree sapling
+
+tree_prog_stump              | (580,2324)     | 32x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png
+  └─ Crop rect in tileset: [x:256, y:96, w:32, h:32]
+  └─ Name: Chopped Forest Stump — Harvested tree stump with rings
+
+==========================================================================================
+SECTION 07: PLANTS & FOLIAGE
+Description: Wild mushrooms (Blue & Red), cottage flowers, and ground flora
+Bounds: X: 60px to 2280px | Y: 2620px to 2846px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+plant_shroom_blue_01         | (60,2690)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_blue_01/28f072d2-4413-4dab-a4b7-7473337cd625.png
+  └─ Name: Blue Mushroom Spores — Bioluminescent blue mushroom (16x16)
+
+plant_shroom_blue_02         | (190,2690)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_blue_02/23da7306-ebba-4a87-beb6-f1efb7a83299.png
+  └─ Name: Blue Mushroom Cluster — Medium cluster blue forest mushroom
+
+plant_shroom_blue_03         | (320,2690)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_blue_03/0c25baa1-66a6-4296-b5b2-2bf77063c6f1.png
+  └─ Name: Giant Blue Toadstool — Large blue cap toadstool
+
+plant_shroom_red_01          | (450,2690)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mushroom_red_01/32c3ffa9-6757-47f4-9800-5b7024450659.png
+  └─ Name: Red Forest Mushroom — Classic spotted red toadstool
+
+plant_flowers_01             | (580,2690)     | 8x18       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_flowers_house_01/36388643-e82c-4037-97b4-3d1fa4cb65fb.png
+  └─ Name: Cottage Flower Bed 01 — Blooming front porch floral arrangement
+
+plant_flowers_02             | (710,2690)     | 12x19      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_flowers_house_02/93175c94-bed5-4a79-9562-232e8f9f075e.png
+  └─ Name: Cottage Flower Bed 02 — Pastel flower bed detail
+
+plant_leaf_accent            | (840,2690)     | 64x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/leaves_hit/0caf98ee-bd98-4e43-87f5-94b0ad1c68d3.png
+  └─ Name: Leaf Particle Decor — Fallen autumn leaf ground accent
+
+==========================================================================================
+SECTION 08: FARMING & CROPS (GROWTH STAGES 00–05)
+Description: Complete growth sequences for all 11 crops: Wheat, Carrot, Potato, Pumpkin, Cabbage, Cauliflower, Kale, Parsnip, Radish, Beetroot, Sunflower + Seeds
+Bounds: X: 60px to 2280px | Y: 2986px to 3668px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+crop_seeds_generic           | (60,3056)      | 11x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png
+  └─ Name: Generic Crop Seeds Pouch — Seed bag for planting farm crops
+
+crop_wheat_stage_0           | (190,3056)     | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_00.png
+  └─ Name: Wheat (00: Seed) — Wheat growth stage 0 (00: Seed)
+
+crop_wheat_stage_1           | (320,3056)     | 11x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_01.png
+  └─ Name: Wheat (01: Sprout) — Wheat growth stage 1 (01: Sprout)
+
+crop_wheat_stage_2           | (450,3056)     | 11x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_02.png
+  └─ Name: Wheat (02: Small Plant) — Wheat growth stage 2 (02: Small Plant)
+
+crop_wheat_stage_3           | (580,3056)     | 13x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_03.png
+  └─ Name: Wheat (03: Growing) — Wheat growth stage 3 (03: Growing)
+
+crop_wheat_stage_4           | (710,3056)     | 13x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_04.png
+  └─ Name: Wheat (04: Mature) — Wheat growth stage 4 (04: Mature)
+
+crop_wheat_stage_5           | (840,3056)     | 13x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_05.png
+  └─ Name: Wheat (05: Harvested) — Wheat growth stage 5 (05: Harvested)
+
+crop_carrot_stage_0          | (970,3056)     | 7x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_00.png
+  └─ Name: Carrot (00: Seed) — Carrot growth stage 0 (00: Seed)
+
+crop_carrot_stage_1          | (1100,3056)    | 6x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_01.png
+  └─ Name: Carrot (01: Sprout) — Carrot growth stage 1 (01: Sprout)
+
+crop_carrot_stage_2          | (1230,3056)    | 6x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_02.png
+  └─ Name: Carrot (02: Small Plant) — Carrot growth stage 2 (02: Small Plant)
+
+crop_carrot_stage_3          | (1360,3056)    | 8x10       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_03.png
+  └─ Name: Carrot (03: Growing) — Carrot growth stage 3 (03: Growing)
+
+crop_carrot_stage_4          | (1490,3056)    | 10x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_04.png
+  └─ Name: Carrot (04: Mature) — Carrot growth stage 4 (04: Mature)
+
+crop_carrot_stage_5          | (1620,3056)    | 12x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_05.png
+  └─ Name: Carrot (05: Harvested) — Carrot growth stage 5 (05: Harvested)
+
+crop_potato_stage_0          | (1750,3056)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_00.png
+  └─ Name: Potato (00: Seed) — Potato growth stage 0 (00: Seed)
+
+crop_potato_stage_1          | (1880,3056)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_01.png
+  └─ Name: Potato (01: Sprout) — Potato growth stage 1 (01: Sprout)
+
+crop_potato_stage_2          | (2010,3056)    | 8x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_02.png
+  └─ Name: Potato (02: Small Plant) — Potato growth stage 2 (02: Small Plant)
+
+crop_potato_stage_3          | (2140,3056)    | 8x11       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_03.png
+  └─ Name: Potato (03: Growing) — Potato growth stage 3 (03: Growing)
+
+crop_potato_stage_4          | (60,3208)      | 11x15      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_04.png
+  └─ Name: Potato (04: Mature) — Potato growth stage 4 (04: Mature)
+
+crop_potato_stage_5          | (190,3208)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/potato_05.png
+  └─ Name: Potato (05: Harvested) — Potato growth stage 5 (05: Harvested)
+
+crop_pumpkin_stage_0         | (320,3208)     | 7x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_00.png
+  └─ Name: Pumpkin (00: Seed) — Pumpkin growth stage 0 (00: Seed)
+
+crop_pumpkin_stage_1         | (450,3208)     | 8x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_01.png
+  └─ Name: Pumpkin (01: Sprout) — Pumpkin growth stage 1 (01: Sprout)
+
+crop_pumpkin_stage_2         | (580,3208)     | 9x9        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_02.png
+  └─ Name: Pumpkin (02: Small Plant) — Pumpkin growth stage 2 (02: Small Plant)
+
+crop_pumpkin_stage_3         | (710,3208)     | 12x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_03.png
+  └─ Name: Pumpkin (03: Growing) — Pumpkin growth stage 3 (03: Growing)
+
+crop_pumpkin_stage_4         | (840,3208)     | 12x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_04.png
+  └─ Name: Pumpkin (04: Mature) — Pumpkin growth stage 4 (04: Mature)
+
+crop_pumpkin_stage_5         | (970,3208)     | 12x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pumpkin_05.png
+  └─ Name: Pumpkin (05: Harvested) — Pumpkin growth stage 5 (05: Harvested)
+
+crop_cabbage_stage_0         | (1100,3208)    | 5x5        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_00.png
+  └─ Name: Cabbage (00: Seed) — Cabbage growth stage 0 (00: Seed)
+
+crop_cabbage_stage_1         | (1230,3208)    | 10x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_01.png
+  └─ Name: Cabbage (01: Sprout) — Cabbage growth stage 1 (01: Sprout)
+
+crop_cabbage_stage_2         | (1360,3208)    | 8x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_02.png
+  └─ Name: Cabbage (02: Small Plant) — Cabbage growth stage 2 (02: Small Plant)
+
+crop_cabbage_stage_3         | (1490,3208)    | 12x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_03.png
+  └─ Name: Cabbage (03: Growing) — Cabbage growth stage 3 (03: Growing)
+
+crop_cabbage_stage_4         | (1620,3208)    | 16x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_04.png
+  └─ Name: Cabbage (04: Mature) — Cabbage growth stage 4 (04: Mature)
+
+crop_cabbage_stage_5         | (1750,3208)    | 12x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cabbage_05.png
+  └─ Name: Cabbage (05: Harvested) — Cabbage growth stage 5 (05: Harvested)
+
+crop_cauliflower_stage_0     | (1880,3208)    | 5x5        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_00.png
+  └─ Name: Cauliflower (00: Seed) — Cauliflower growth stage 0 (00: Seed)
+
+crop_cauliflower_stage_1     | (2010,3208)    | 6x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_01.png
+  └─ Name: Cauliflower (01: Sprout) — Cauliflower growth stage 1 (01: Sprout)
+
+crop_cauliflower_stage_2     | (2140,3208)    | 8x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_02.png
+  └─ Name: Cauliflower (02: Small Plant) — Cauliflower growth stage 2 (02: Small Plant)
+
+crop_cauliflower_stage_3     | (60,3360)      | 10x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_03.png
+  └─ Name: Cauliflower (03: Growing) — Cauliflower growth stage 3 (03: Growing)
+
+crop_cauliflower_stage_4     | (190,3360)     | 12x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_04.png
+  └─ Name: Cauliflower (04: Mature) — Cauliflower growth stage 4 (04: Mature)
+
+crop_cauliflower_stage_5     | (320,3360)     | 12x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/cauliflower_05.png
+  └─ Name: Cauliflower (05: Harvested) — Cauliflower growth stage 5 (05: Harvested)
+
+crop_kale_stage_0            | (450,3360)     | 5x5        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_00.png
+  └─ Name: Kale (00: Seed) — Kale growth stage 0 (00: Seed)
+
+crop_kale_stage_1            | (580,3360)     | 4x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_01.png
+  └─ Name: Kale (01: Sprout) — Kale growth stage 1 (01: Sprout)
+
+crop_kale_stage_2            | (710,3360)     | 6x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_02.png
+  └─ Name: Kale (02: Small Plant) — Kale growth stage 2 (02: Small Plant)
+
+crop_kale_stage_3            | (840,3360)     | 10x9       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_03.png
+  └─ Name: Kale (03: Growing) — Kale growth stage 3 (03: Growing)
+
+crop_kale_stage_4            | (970,3360)     | 14x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_04.png
+  └─ Name: Kale (04: Mature) — Kale growth stage 4 (04: Mature)
+
+crop_kale_stage_5            | (1100,3360)    | 14x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/kale_05.png
+  └─ Name: Kale (05: Harvested) — Kale growth stage 5 (05: Harvested)
+
+crop_parsnip_stage_0         | (1230,3360)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_00.png
+  └─ Name: Parsnip (00: Seed) — Parsnip growth stage 0 (00: Seed)
+
+crop_parsnip_stage_1         | (1360,3360)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_01.png
+  └─ Name: Parsnip (01: Sprout) — Parsnip growth stage 1 (01: Sprout)
+
+crop_parsnip_stage_2         | (1490,3360)    | 8x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_02.png
+  └─ Name: Parsnip (02: Small Plant) — Parsnip growth stage 2 (02: Small Plant)
+
+crop_parsnip_stage_3         | (1620,3360)    | 8x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_03.png
+  └─ Name: Parsnip (03: Growing) — Parsnip growth stage 3 (03: Growing)
+
+crop_parsnip_stage_4         | (1750,3360)    | 10x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_04.png
+  └─ Name: Parsnip (04: Mature) — Parsnip growth stage 4 (04: Mature)
+
+crop_parsnip_stage_5         | (1880,3360)    | 14x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/parsnip_05.png
+  └─ Name: Parsnip (05: Harvested) — Parsnip growth stage 5 (05: Harvested)
+
+crop_radish_stage_0          | (2010,3360)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_00.png
+  └─ Name: Radish (00: Seed) — Radish growth stage 0 (00: Seed)
+
+crop_radish_stage_1          | (2140,3360)    | 6x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_01.png
+  └─ Name: Radish (01: Sprout) — Radish growth stage 1 (01: Sprout)
+
+crop_radish_stage_2          | (60,3512)      | 8x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_02.png
+  └─ Name: Radish (02: Small Plant) — Radish growth stage 2 (02: Small Plant)
+
+crop_radish_stage_3          | (190,3512)     | 8x10       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_03.png
+  └─ Name: Radish (03: Growing) — Radish growth stage 3 (03: Growing)
+
+crop_radish_stage_4          | (320,3512)     | 12x15      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_04.png
+  └─ Name: Radish (04: Mature) — Radish growth stage 4 (04: Mature)
+
+crop_radish_stage_5          | (450,3512)     | 12x15      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_05.png
+  └─ Name: Radish (05: Harvested) — Radish growth stage 5 (05: Harvested)
+
+crop_beetroot_stage_0        | (580,3512)     | 5x5        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_00.png
+  └─ Name: Beetroot (00: Seed) — Beetroot growth stage 0 (00: Seed)
+
+crop_beetroot_stage_1        | (710,3512)     | 6x5        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_01.png
+  └─ Name: Beetroot (01: Sprout) — Beetroot growth stage 1 (01: Sprout)
+
+crop_beetroot_stage_2        | (840,3512)     | 8x6        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_02.png
+  └─ Name: Beetroot (02: Small Plant) — Beetroot growth stage 2 (02: Small Plant)
+
+crop_beetroot_stage_3        | (970,3512)     | 8x11       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_03.png
+  └─ Name: Beetroot (03: Growing) — Beetroot growth stage 3 (03: Growing)
+
+crop_beetroot_stage_4        | (1100,3512)    | 12x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_04.png
+  └─ Name: Beetroot (04: Mature) — Beetroot growth stage 4 (04: Mature)
+
+crop_beetroot_stage_5        | (1230,3512)    | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/beetroot_05.png
+  └─ Name: Beetroot (05: Harvested) — Beetroot growth stage 5 (05: Harvested)
+
+crop_sunflower_stage_0       | (1360,3512)    | 7x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_00.png
+  └─ Name: Sunflower (00: Seed) — Sunflower growth stage 0 (00: Seed)
+
+crop_sunflower_stage_1       | (1490,3512)    | 10x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_01.png
+  └─ Name: Sunflower (01: Sprout) — Sunflower growth stage 1 (01: Sprout)
+
+crop_sunflower_stage_2       | (1620,3512)    | 11x9       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_02.png
+  └─ Name: Sunflower (02: Small Plant) — Sunflower growth stage 2 (02: Small Plant)
+
+crop_sunflower_stage_3       | (1750,3512)    | 11x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_03.png
+  └─ Name: Sunflower (03: Growing) — Sunflower growth stage 3 (03: Growing)
+
+crop_sunflower_stage_4       | (1880,3512)    | 13x19      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_04.png
+  └─ Name: Sunflower (04: Mature) — Sunflower growth stage 4 (04: Mature)
+
+crop_sunflower_stage_5       | (2010,3512)    | 13x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/sunflower_05.png
+  └─ Name: Sunflower (05: Harvested) — Sunflower growth stage 5 (05: Harvested)
+
+==========================================================================================
+SECTION 09: FARM OBJECTS & STORAGE
+Description: Tilled soil, water wells, troughs, crates, and storage chests
+Bounds: X: 60px to 2280px | Y: 3808px to 4034px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+farm_soil_00                 | (60,3878)      | 16x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_00.png
+  └─ Name: Tilled Soil (Dry) — Freshly hoed soil tile
+
+farm_soil_01                 | (190,3878)     | 16x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_01.png
+  └─ Name: Tilled Soil (Wet / Watered) — Watered dark fertile soil ready for growth
+
+farm_soil_03                 | (320,3878)     | 16x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_03.png
+  └─ Name: Tilled Soil Corner — Soil patch boundary transition
+
+farm_soil_04                 | (450,3878)     | 16x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_04.png
+  └─ Name: Tilled Soil Enclosed Bed — Complete tilled garden plot tile
+
+farm_well                    | (580,3878)     | 20x25      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_well/c3d011a3-e1d2-4f14-83d7-d21b9f689713.png
+  └─ Name: Stone Water Well — Village stone water well with bucket
+
+farm_well_covered            | (710,3878)     | 20x40      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_well_covered/28ee3935-0d63-4141-b01a-2338fa50e040.png
+  └─ Name: Roofed Water Well — Sheltered timber-roofed well
+
+farm_trough                  | (840,3878)     | 29x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_trough/e83dc18e-a89c-4aae-999e-4531c1c9bb02.png
+  └─ Name: Animal Feed Trough — Wooden feeding trough for livestock
+
+farm_waterbowl               | (970,3878)     | 8x11       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_waterbowl/fb5f5698-0641-4a29-aad1-d97504abe0d6.png
+  └─ Name: Animal Water Bowl — Clay watering bowl for pets & poultry
+
+farm_crate_base              | (1100,3878)    | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/crate_base.png
+  └─ Name: Storage Crate Base — Wooden storage container bottom
+
+farm_crate_top               | (1230,3878)    | 16x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/crate_top.png
+  └─ Name: Storage Crate Top / Lid — Wooden storage container lid
+
+farm_crate_01                | (1360,3878)    | 16x21      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_crate_01/658157b4-7ff5-452e-9e1d-c4cad561928b.png
+  └─ Name: Wooden Crate (Small) — Small goods storage crate
+
+farm_crate_02                | (1490,3878)    | 16x21      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_crate_02/d9ac3d57-03c4-4730-98eb-600ee4457ee2.png
+  └─ Name: Wooden Crate (Large) — Large reinforced cargo crate
+
+farm_chest_closed            | (1620,3878)    | 16x21      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_01_closed/496b079e-4729-46a2-8b47-cff42b294c71.png
+  └─ Name: Chest 01 (Closed) — Wood and iron lockbox closed
+
+farm_chest_open              | (1750,3878)    | 16x25      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_01_open/5578aba6-58ee-41ae-ba04-2ef8911e81e6.png
+  └─ Name: Chest 01 (Open) — Wood and iron lockbox open with inventory
+
+farm_chest2_closed           | (1880,3878)    | 16x21      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_02_closed/791d5570-e16a-4994-afed-848c60f51ac2.png
+  └─ Name: Chest 02 (Golden Closed) — Ornate treasure chest closed
+
+farm_chest2_open             | (2010,3878)    | 16x27      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_02_open/a5797610-9270-4be9-b1cf-4653faf8f131.png
+  └─ Name: Chest 02 (Golden Open) — Ornate treasure chest open
+
+==========================================================================================
+SECTION 10: BUILDINGS & MODULAR CONSTRUCTION PIECES
+Description: Rotating windmill and modular wall, door, roof, beam, and chimney pieces
+Bounds: X: 60px to 2280px | Y: 4174px to 4446px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+bld_windmill                 | (60,4244)      | 112x112    | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_windmill_withshadow_strip9.png
+  └─ Name: Windmill (Animated 9-Frame) — Large 112x112 rotating grain windmill structure
+
+piece_beam                   | (230,4244)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_beam/12bd53e7-32e4-4a56-9cbe-87d03fc99557.png
+  └─ Name: Structural Wooden Beam — Heavy timber construction beam
+
+piece_chimney_brick          | (360,4244)     | 11x37      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chinmney/31ab948f-42c9-47ce-9cb7-456406ed0139.png
+  └─ Name: Brick Chimney — Cottage rooftop brick chimney
+
+piece_chimney_cook           | (490,4244)     | 27x37      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_cook_chinmney/31ab948f-42c9-47ce-9cb7-456406ed0139.png
+  └─ Name: Cookhouse Stove Chimney — Stove chimney with stovepipe
+
+piece_wall_wood_01           | (620,4244)     | 16x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:144, w:16, h:32]
+  └─ Name: Building 01 Wall Segment — Modular wood plank exterior house wall
+
+piece_door_01                | (750,4244)     | 16x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:32, y:144, w:16, h:32]
+  └─ Name: Building 01 Doorway — Entrance door with frame
+
+piece_roof_01                | (880,4244)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:160, w:16, h:16]
+  └─ Name: Building 01 Roof Shingle — Slanted cottage roof shingle
+
+piece_wall_wood_02           | (1010,4244)    | 16x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:240, w:16, h:32]
+  └─ Name: Building 02 Wall Segment — Variant timber exterior wall
+
+piece_roof_02                | (1140,4244)    | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:256, w:16, h:16]
+  └─ Name: Building 02 Roof Shingle — Variant roof shingle panel
+
+piece_inner_wall             | (1270,4244)    | 16x32      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:16, y:192, w:16, h:32]
+  └─ Name: Interior Partition Wall — Indoor room dividing wall
+
+==========================================================================================
+SECTION 11: WATER, BOATS & AQUATIC
+Description: Water depths, shores, floating animated coracle boats, and rowing oars
+Bounds: X: 60px to 2280px | Y: 4586px to 4812px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+water_river_tile             | (60,4656)      | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:352, y:112, w:16, h:16]
+  └─ Name: River Water Tile — Clear flowing river water
+
+water_shore_edge             | (190,4656)     | 16x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png
+  └─ Crop rect in tileset: [x:368, y:112, w:16, h:16]
+  └─ Name: Water Shoreline Bank — Shallow water bank transition
+
+boat_coracle_water           | (320,4656)     | 48x37      | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_coracle_strip4.png
+  └─ Name: Coracle Boat (Floating 4-Frame) — Round traditional fishing coracle boat in water (48x37)
+
+boat_coracle_land            | (450,4656)     | 32x30      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_coracle_land.png
+  └─ Name: Coracle Boat (Dry Land) — Beached coracle boat on shore (32x30)
+
+boat_oar                     | (580,4656)     | 16x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_oar/fe38398a-e5f7-4553-ad1e-1bda5dfe3054.png
+  └─ Name: Wooden Rowing Oar — Boat steering and rowing paddle
+
+==========================================================================================
+SECTION 12: RESOURCES & COLLECTIBLES
+Description: Wood, stone, ores (Coal, Gold, Silver, Bluestone), milk, eggs, wool, and coins
+Bounds: X: 60px to 2280px | Y: 4952px to 5178px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+res_wood                     | (60,5022)      | 11x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png
+  └─ Name: Lumber / Wood Log — Harvested timber wood resource
+
+res_stone                    | (190,5022)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png
+  └─ Name: Stone / Cobblestone — Mined rough stone chunk
+
+res_ore_coal                 | (320,5022)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_ore_coal/d341ef0a-1c5d-43e8-9668-89fc3dc15dca.png
+  └─ Name: Coal Ore Deposit — Fuel source ore mined underground
+
+res_ore_gold                 | (450,5022)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_ore_gold/b3de43b1-1359-40b8-9808-47f9e13d689a.png
+  └─ Name: Gold Ore Deposit — Precious gold metal deposit
+
+res_ore_silver               | (580,5022)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_ore_silver/17421a3c-bdd6-4f7b-8e02-7bdebd98ee6b.png
+  └─ Name: Silver Ore Deposit — Refined silver mineral node
+
+res_ore_bluestone            | (710,5022)     | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_ore_bluestone/1c05efea-a2ce-4c19-b4e3-006e3ac51a80.png
+  └─ Name: Lapis / Bluestone Ore — Magical blue crystal ore
+
+res_milk                     | (840,5022)     | 10x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/milk.png
+  └─ Name: Fresh Milk Jug — Dairy resource collected from cows
+
+res_egg                      | (970,5022)     | 10x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png
+  └─ Name: Farm Egg — Poultry resource collected from chickens
+
+res_wool                     | (1100,5022)    | 10x10      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_wool/41561382-d892-49ce-924d-89e938245419.png
+  └─ Name: Wool Fleece — Sheared fluffy sheep wool
+
+res_coin_single              | (1230,5022)    | 8x7        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_coin/5aeaf3c7-f8a8-4609-9bd8-3ff390a2c287.png
+  └─ Name: Gold Coin — Single currency gold coin
+
+res_coins_pile               | (1360,5022)    | 16x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_coins/688830ed-a0e4-454f-b0e3-a9381229b94e.png
+  └─ Name: Coins Treasure Pile — Heaped pile of shiny coins
+
+==========================================================================================
+SECTION 13: ENEMIES (SKELETON & GOBLIN)
+Description: Combat ready animated monsters with exact 96x64 frame strips
+Bounds: X: 60px to 2280px | Y: 5318px to 5544px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+enemy_skel_idle              | (60,5388)      | 96x64      | 6f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/skeleton_idle_strip6.png
+  └─ Name: Skeleton (Idle) — Undead skeleton idle stance (96x64)
+
+enemy_skel_walk              | (214,5388)     | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/skeleton_walk_strip8.png
+  └─ Name: Skeleton (Walk / Patrol) — Skeleton patrol walk (96x64)
+
+enemy_skel_attack            | (368,5388)     | 96x64      | 7f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/skeleton_attack_strip7.png
+  └─ Name: Skeleton (Attack Strike) — Undead skeleton sword strike animation (96x64)
+
+enemy_skel_hurt              | (522,5388)     | 96x64      | 7f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/skeleton_hurt_strip7.png
+  └─ Name: Skeleton (Hurt) — Skeleton taking combat damage (96x64)
+
+enemy_skel_death             | (676,5388)     | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/skeleton_death_strip10.png
+  └─ Name: Skeleton (Death / Crumble) — Skeleton crumbling into bone pile (96x64)
+
+enemy_goblin_idle            | (830,5388)     | 85x64      | 9f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_idle_strip9.png
+  └─ Name: Goblin (Idle Stance) — Goblin scout idle stance (96x64)
+
+enemy_goblin_walk            | (973,5388)     | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_walk_strip8.png
+  └─ Name: Goblin (Walk Patrol) — Goblin scout patrol walk (96x64)
+
+enemy_goblin_run             | (1127,5388)    | 96x64      | 8f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_run_strip8.png
+  └─ Name: Goblin (Run Charge) — Goblin fast charge attack (96x64)
+
+enemy_goblin_attack          | (1281,5388)    | 86x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_attack_strip10.png
+  └─ Name: Goblin (Attack) — Goblin combat dagger swing (96x64)
+
+enemy_goblin_death           | (1425,5388)    | 66x64      | 13f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_death_strip13.png
+  └─ Name: Goblin (Death) — Defeated goblin collapse (96x64)
+
+enemy_goblin_mining          | (1555,5388)    | 96x64      | 10f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/spr_mining_strip10.png
+  └─ Name: Goblin (Mining Ore) — Goblin mining dungeon minerals (96x64)
+
+==========================================================================================
+SECTION 14: DUNGEON VISUALS & PROPS
+Description: Minecarts, floor swords, and ancient dungeon treasure chests
+Bounds: X: 60px to 2280px | Y: 5684px to 5910px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+dungeon_minecart             | (60,5754)      | 14x23      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_minecart/93e55657-819e-4c24-b31d-1eee61932f2c.png
+  └─ Name: Dungeon Ore Minecart — Subterranean rail ore transport cart
+
+dungeon_sword_floor          | (190,5754)     | 10x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_sword_floor/c73f6cdb-ee94-4a33-be69-c0cb0a6eb581.png
+  └─ Name: Sword Embedded in Floor — Ancient warrior sword stuck in dungeon stone
+
+dungeon_chest_closed         | (320,5754)     | 16x21      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_02_closed/791d5570-e16a-4994-afed-848c60f51ac2.png
+  └─ Name: Ornate Dungeon Chest — Gold trim dungeon vault chest
+
+==========================================================================================
+SECTION 15: WEATHER, ATMOSPHERE & VFX
+Description: Chimney smoke strips, burning campfire flames, treasure sparkle glints, and particles
+Bounds: X: 60px to 2280px | Y: 6050px to 6276px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+vfx_smoke_01                 | (60,6120)      | 15x37      | 30f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Chimney Smoke/chimneysmoke_01_strip30.png
+  └─ Name: Chimney Smoke 01 — Soft rising white chimney puff (15x37, 30 frames)
+
+vfx_smoke_02                 | (190,6120)     | 10x30      | 30f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Chimney Smoke/chimneysmoke_02_strip30.png
+  └─ Name: Chimney Smoke 02 — Dense billowing woodfire smoke (10x30, 30 frames)
+
+vfx_smoke_03                 | (320,6120)     | 18x21      | 30f    | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Chimney Smoke/chimneysmoke_03_strip30.png
+  └─ Name: Chimney Smoke 03 — Whispering drifting chimney plume (18x21, 30 frames)
+
+vfx_fire_01                  | (450,6120)     | 5x10       | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Fire/spr_deco_fire_01_strip4.png
+  └─ Name: Campfire Flame 01 — Flickering warm fire effect
+
+vfx_fire_02                  | (580,6120)     | 8x12       | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Fire/spr_deco_fire_02_strip4.png
+  └─ Name: Furnace Flame 02 — Roaring hearth fire animation
+
+vfx_glint_01                 | (710,6120)     | 7x7        | 6f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_01_strip6.png
+  └─ Name: Sparkle Glint 01 — Treasure and ore shimmer sparkle (6 frames)
+
+vfx_glint_02                 | (840,6120)     | 7x7        | 4f     | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_02_strip4.png
+  └─ Name: Star Sparkle 02 — Item discovery twinkle effect (4 frames)
+
+vfx_dust_run                 | (970,6120)     | 32x32      | 1      | 
+  └─ Name: Dust Run Particles — Player movement footstep dust puff
+
+==========================================================================================
+SECTION 16: PLAYER CONSTRUCTION & FURNITURE
+Description: Chairs, sidetables, rugs, paintings, anvils, campfires, barrels, tableware, books, and buckets
+Bounds: X: 60px to 2280px | Y: 6416px to 6794px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+furn_chair                   | (60,6486)      | 10x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chair_01/feef7d7c-b629-41cb-8196-d20519255aba.png
+  └─ Name: Wooden Dining Chair — Carved wood cottage chair
+
+furn_sidetable               | (190,6486)     | 12x26      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_sidetable_01/e6e599b0-3edb-47fe-95cc-6aa5a7510470.png
+  └─ Name: Bedside Sidetable — Small nightstand / sidetable
+
+furn_rug                     | (320,6486)     | 10x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_rug_01/027742b0-79ce-4754-88e8-5ccb994a91a3.png
+  └─ Name: Cozy Home Rug — Woven interior floor rug
+
+furn_picture                 | (450,6486)     | 9x9        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_picture_01/7958b214-effa-4c97-b329-91addd38ef5c.png
+  └─ Name: Wall Painting Picture — Framed artwork for cottage walls
+
+furn_anvil                   | (580,6486)     | 22x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_anvil/57ceffeb-4f94-4e27-bb37-7b4d7f393dbf.png
+  └─ Name: Blacksmith Anvil — Heavy cast iron forging anvil
+
+furn_campfire                | (710,6486)     | 23x20      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_campfire/d292d1cc-d3d3-4222-9506-b1c7072c523c.png
+  └─ Name: Campfire Pit — Stone-ringed cooking campfire
+
+furn_firepit                 | (840,6486)     | 14x17      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_firepit/31ab948f-42c9-47ce-9cb7-456406ed0139.png
+  └─ Name: Outdoor Firepit — Outdoor stone fire pit
+
+furn_barrel_closed           | (970,6486)     | 13x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_barrel_closed/b4310058-6dec-4d35-8a31-9e73bf28de81.png
+  └─ Name: Storage Barrel (Sealed) — Sealed oak barrel for wine & grain
+
+furn_barrel_open             | (1100,6486)    | 13x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_barrel_open/4df50da4-b052-491d-b5d3-64c3b8907e75.png
+  └─ Name: Storage Barrel (Open) — Open top barrel showing storage
+
+furn_barrel_swords           | (1230,6486)    | 13x20      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_barrel_swords/32e8bdd4-0a9c-4c60-95b6-668dfd3cf8fa.png
+  └─ Name: Weapons Barrel (Swords) — Armory barrel storing blades
+
+furn_barrel_water            | (1360,6486)    | 13x16      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_barrel_water/f94953e0-ed39-478c-ba0a-77997d20642d.png
+  └─ Name: Rain Barrel (Water) — Water collection barrel
+
+furn_dishware                | (1490,6486)    | 7x13       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_plate_knifeandfork/dccf9a58-bb66-470b-a383-cd92b544bdc0.png
+  └─ Name: Plate, Knife & Fork — Table setting tableware
+
+furn_plate_food              | (1620,6486)    | 7x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_plate_food/228f3267-d04d-4cb2-b221-c192bce48019.png
+  └─ Name: Plate with Hot Food — Cooked meal on porcelain plate
+
+furn_jar                     | (1750,6486)    | 10x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_jar_01/d022fe0a-a813-4c94-8b2d-06cb8134bf3e.png
+  └─ Name: Ceramic Storage Jar — Glazed pottery pantry jar
+
+furn_mug                     | (1880,6486)    | 7x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_mug_02/3b66c172-f07f-4ab2-b873-c99789076790.png
+  └─ Name: Clay Drinking Mug — Warm beverage ceramic tankard
+
+furn_book                    | (2010,6486)    | 7x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_book_01/8846673b-d1ab-4a11-8cf2-b304a7704950.png
+  └─ Name: Spellbook / Diary — Leather-bound tome and crafting journal
+
+furn_bucket                  | (2140,6486)    | 10x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_bucket/ab70be7f-a053-4a5a-935d-832e8974d477.png
+  └─ Name: Wooden Bucket — Water and milking pail
+
+furn_bucket_rope             | (60,6638)      | 11x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_buckect_rope/b594dcb2-acad-4436-9c37-783f762cd98c.png
+  └─ Name: Well Bucket & Rope — Bucket attached to winch rope
+
+==========================================================================================
+SECTION 17: TOOLS & IMPLEMENTS
+Description: Axe, Pickaxe, Shovel, Hammer, Watering Can, Fishing Rods, Sword, and Foraging Basket
+Bounds: X: 60px to 2280px | Y: 6934px to 7160px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+tool_axe                     | (60,7004)      | 15x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png
+  └─ Name: Woodcutter's Axe — Essential tool for felling trees and gathering timber
+
+tool_pickaxe                 | (190,7004)     | 13x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png
+  └─ Name: Miner's Pickaxe — Heavy tool for mining stone, ores and gems
+
+tool_shovel                  | (320,7004)     | 14x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png
+  └─ Name: Gardening Shovel — Tool for digging earth, sand, and preparing ground
+
+tool_hammer                  | (450,7004)     | 13x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png
+  └─ Name: Builder's Hammer — Construction tool for placing and upgrading structures
+
+tool_watering_can            | (580,7004)     | 13x13      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png
+  └─ Name: Watering Can (Hoe/Water) — Farm implement for irrigating crops
+
+tool_fishing_rod             | (710,7004)     | 15x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/rod.png
+  └─ Name: Fishing Rod (Bamboo) — Angler's rod with line for catching river fish
+
+tool_fishing_rod_alt         | (840,7004)     | 16x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/rod alt.png
+  └─ Name: Fishing Rod (Reinforced) — Upgraded deep-water fishing rod
+
+tool_sword                   | (970,7004)     | 14x14      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png
+  └─ Name: Hero's Sword — Steel weapon for combat defense against dungeon foes
+
+tool_basket                  | (1100,7004)    | 12x12      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/basket.png
+  └─ Name: Forager's Woven Basket — Gathering basket for harvesting crops and wild berries
+
+==========================================================================================
+SECTION 18: UI VISUALS (MEGACOZY, PIXELDIARY & SUNNYSIDE)
+Description: Buttons, Frames, Cards, Inventory slots, Flat icons, Health/Stamina bars, 9-slice boxes, Dialogue bubbles, and Diary panels
+Bounds: X: 60px to 2280px | Y: 7300px to 7740px
+==========================================================================================
+ID                           | POS (X,Y)      | SIZE (WxH) | FRAMES | SOURCE PATH
+------------------------------------------------------------------------------------------
+ui_9slice_white              | (60,7370)      | 3x3        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/9slice_box_white/w_box_9slice_c.png
+  └─ Name: 9-Slice Window Box (White) — Window background 9-slice panel
+
+ui_bar_health                | (190,7370)     | 15x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/redbar_00.png
+  └─ Name: Health Bar (Red Full) — Player vital health meter bar
+
+ui_bar_energy                | (320,7370)     | 15x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/greenbar_00.png
+  └─ Name: Energy Bar (Green Full) — Player stamina / energy meter
+
+ui_bar_mana                  | (450,7370)     | 15x7       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/bluebar_00.png
+  └─ Name: Mana Bar (Blue Full) — Magic / thirst meter
+
+ui_cursor_01                 | (580,7370)     | 11x19      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/cursor_01.png
+  └─ Name: Pixel Mouse Cursor (Pointer) — Crisp pixel-art arrow mouse cursor
+
+ui_cursor_hand               | (710,7370)     | 11x11      | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hand_open_01.png
+  └─ Name: Interactive Hand Cursor — Open grab hand cursor for inventory and building
+
+ui_emote_chat                | (840,7370)     | 9x9        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/expression_chat.png
+  └─ Name: Emote Bubble: Chat — NPC conversation speech balloon
+
+ui_emote_love                | (970,7370)     | 9x8        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/expression_love.png
+  └─ Name: Emote Bubble: Heart Love — Animal friendship / romance heart icon
+
+ui_emote_working             | (1100,7370)    | 7x9        | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/expression_working.png
+  └─ Name: Emote Bubble: Working — Crafting in-progress status balloon
+
+ui_sandtimer                 | (1230,7370)    | 8x11       | 1      | Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sandtimer.png
+  └─ Name: Hourglass Sandtimer — Crafting time remaining icon
+
+ui_cozy_btn_wood             | (1360,7370)    | 66x27      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/PlayButton.png
+  └─ Name: Cozy Button (Wood Play) — Tactile wooden push button
+
+ui_cozy_btn_picnic           | (1490,7370)    | 67x35      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/CozyPicnic/CozyPicnicButton_blue.png
+  └─ Name: Cozy Button (Picnic Blue) — Pastel aesthetic action button
+
+ui_cozy_card                 | (1620,7370)    | 40x55      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Cards/Card1_gray.png
+  └─ Name: Info Card Panel — Item description info container card
+
+ui_cozy_frame                | (1750,7370)    | 34x34      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Frames/Frame1_wood.png
+  └─ Name: Wood Picture Frame — Decorative border frame
+
+ui_cozy_slot                 | (1880,7370)    | 33x33      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png
+  └─ Name: Inventory Item Slot — Hotbar and bag grid slot container
+
+ui_cozy_toggle               | (2010,7370)    | 22x23      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Toggles/Toggle1.png
+  └─ Name: Switch Toggle — Settings ON/OFF slider switch
+
+ui_cozy_icon_heart           | (2140,7370)    | 10x14      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Icons/IconsFlat_16px/IconFlat1.png
+  └─ Name: Flat Icon: Heart — 16px flat UI health icon
+
+ui_cozy_icon_coin            | (60,7522)      | 18x17      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Icons/IconsFlat_16px/IconFlat9.png
+  └─ Name: Flat Icon: Coin — 16px flat UI economy icon
+
+ui_cozy_icon_bag             | (190,7522)     | 16x18      | 1      | Assets/DEMO_MegaCozyUIPack_doboui - copia/Icons/IconsFlat_16px/IconFlat10.png
+  └─ Name: Flat Icon: Backpack — 16px flat UI inventory bag icon
+
+ui_diary_panel               | (320,7522)     | 126x126    | 1      | Assets/PixelInventoryDiaryUI_FreeDemo/UI_Elements_Demo/UI_Panel_ItemArea.png
+  └─ Name: Diary Item Area Panel — Illustrated quest & inventory diary background
+
+ui_diary_badge_rose          | (504,7522)     | 128x128    | 1      | Assets/PixelInventoryDiaryUI_FreeDemo/Icons_Demo/UI_Icon_SingleRose.png
+  └─ Name: Deco Icon: Single Rose — Diary gift and romance achievement rose
+
+==========================================================================================
+TOTAL CATALOGED ITEMS: 269 across 18 categories
+==========================================================================================

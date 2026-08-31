@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> @/game/config\":{\"id\":\"app/page.tsx -> @/game/config\",\"files\":[\"static/chunks/_app-pages-browser_src_game_config_ts.js\"]},\"app/page.tsx -> phaser\":{\"id\":\"app/page.tsx -> phaser\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_phaser_dist_phaser_js.js\"]}}"

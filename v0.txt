@@ -1,0 +1,381 @@
+Yes. For the **visual scope**, I would define the game asset list like this.
+
+### World / terrain
+
+* Grass tiles
+* Dirt tiles
+* Sand
+* Stone
+* Water
+* Shore/transition tiles
+* Paths
+* Cliffs/elevations
+* Small rocks
+* Grass tufts
+* Flowers
+* Mushrooms
+* Fallen leaves
+* Stumps
+* Logs
+
+### Isometric "block" system
+
+* Grass block
+* Dirt block
+* Stone block
+* Sand block
+* Wood block
+* Water block
+* Path block
+* Wall block
+* Floor block
+* Corner blocks
+* Half-height/raised blocks
+* Block edges
+* Block corners
+* Block shadows
+* Placement preview
+* Destroy/break effect
+
+These can be **2D isometric sprites that visually behave like 3D blocks**.
+
+### Player
+
+* Multiple hairstyles
+* Idle
+* Walk
+* Run
+* Attack
+* Mine
+* Chop
+* Dig
+* Hammer/build
+* Water
+* Carry
+* Hurt
+* Death
+* Jump
+* Swim
+* Different directions
+* Tools held in hand
+
+Your pack already has many of these human animations. 
+
+### Friendly NPCs
+
+* Villagers
+* Farmer
+* Merchant
+* Blacksmith
+* Builder
+* Fisher
+* Dungeon-related NPC
+* Children/other cosmetic variants
+* Idle/walking/working animations
+
+**These would require additional assets** unless suitable human sprites in your pack are sufficient.
+
+### Animals
+
+* Chicken
+* Cow
+* Duck
+* Pig
+* Sheep
+* Bird
+* Fish
+* Additional wildlife
+
+Your pack already contains chicken, cow, duck, pig, sheep and bird sprites. 
+
+### Trees
+
+This is important for your idea.
+
+Have trees visually progress:
+
+```text
+Seedling
+   ↓
+Small tree
+   ↓
+Young tree
+   ↓
+Mature tree
+   ↓
+Large/mature tree
+   ↓
+Chopped stump
+```
+
+Different species:
+
+* Oak
+* Pine
+* Fruit tree
+* Other forest trees
+
+Each should have different **visual sizes/silhouettes**.
+
+### Plants
+
+* Grass
+* Flowers
+* Bushes
+* Vines
+* Mushrooms
+* Wild plants
+* Berry bushes
+* Small decorative plants
+
+### Farming
+
+For each crop:
+
+```text
+Seed
+ ↓
+Sprout
+ ↓
+Small plant
+ ↓
+Growing
+ ↓
+Mature
+ ↓
+Harvested
+```
+
+Your existing pack is particularly useful here because crops already have numbered growth-stage PNGs. 
+
+Possible crops:
+
+* Wheat
+* Carrot
+* Potato
+* Pumpkin
+* Cabbage
+* Cauliflower
+* Kale
+* Parsnip
+* Radish
+* Beetroot
+* Sunflower
+
+### Farm objects
+
+* Tilled soil
+* Watered soil
+* Seeds
+* Crops
+* Fences
+* Gates
+* Scarecrow
+* Barn
+* Coop
+* Well
+* Water trough
+* Hay
+* Storage crates
+* Chests
+
+### Buildings
+
+* Player house
+* Small cabin
+* Farmhouse
+* Barn
+* Chicken coop
+* Workshop
+* Blacksmith
+* Storage shed
+* Dungeon entrance
+* Merchant/shop
+* Decorative buildings
+
+### Building pieces
+
+Instead of only complete houses, eventually have:
+
+```text
+Foundation
+Floor
+Wall
+Window
+Door
+Roof
+Roof corner
+Roof edge
+Chimney
+Fence
+Gate
+Stairs
+Platform
+```
+
+This is what will make **player construction** feel much more like Minecraft.
+
+### Water
+
+* Water tiles
+* Shore
+* Shallow water
+* Deep water
+* Water animation
+* Ripples
+* Fishing spots
+* Bridges
+* Water plants
+* Lily pads
+
+### Fish
+
+* Small fish
+* Medium fish
+* Rare fish
+* Fish swimming animation
+* Fish caught animation/icon
+
+### Resources
+
+* Tree → wood
+* Rock → stone
+* Ore → ore
+* Bush → berries
+* Crops → food
+* Animals → animal resources
+* Fish → food
+* Dungeon → special materials
+
+### Enemies
+
+Overworld:
+
+* None initially / peaceful
+
+Dungeon:
+
+* Skeleton
+* Goblin
+* Slime
+* Bat
+* Spider
+* Other dungeon creatures
+
+Your pack already has **Goblin and Skeleton** character assets with combat/death/etc. animations.  
+
+### Dungeon visuals
+
+* Dungeon floor
+* Dungeon walls
+* Pillars
+* Torches
+* Doors
+* Locked doors
+* Chests
+* Traps
+* Stairs
+* Dungeon entrance
+* Dungeon exit
+* Boss room
+* Treasure room
+* Enemy spawn points
+* Destruction effects
+
+### Weather / atmosphere
+
+* Day
+* Night
+* Clouds
+* Rain
+* Snow
+* Fog
+* Wind
+* Ambient particles
+* Fire
+* Smoke
+* Water effects
+
+### Player construction/decorations
+
+* Chest
+* Table
+* Chair
+* Bed
+* Furnace
+* Crafting table
+* Campfire
+* Torch
+* Lantern
+* Sign
+* Barrel
+* Crate
+* Flower pot
+* Decorative plants
+* Wooden structures
+
+### Tools
+
+* Axe
+* Pickaxe
+* Shovel
+* Hammer
+* Hoe
+* Watering can
+* Fishing rod
+* Sword
+
+Your pack already has extensive tool/action animation coverage. 
+
+### UI visuals
+
+* Hotbar
+* Inventory
+* Health
+* Hunger
+* Stamina
+* Equipment
+* Crafting menu
+* Building menu
+* Map
+* Quest/objective panel
+* Item icons
+* Resource counters
+* Dungeon UI
+* Notifications
+
+---
+
+## The visual identity I'd aim for
+
+```text
+                 TREES
+             🌲       🌳
+          🌿     🐦       🌿
+
+       ┌─────────────────────┐
+       │     ISOMETRIC       │
+       │       WORLD         │
+       │                     │
+       │  🐄       🌾🌾      │
+       │       🧑            │
+       │  🏠    🪵  🪨       │
+       │                     │
+       │ ~~~~~ WATER ~~~~~   │
+       │     🐟              │
+       └─────────────────────┘
+
+             ↓
+
+       DUNGEON ENTRANCE
+              ↓
+       🧑 ⚔️ 👹 💀
+              ↓
+           CHEST
+```
+
+So the **complete visual target** is essentially:
+
+**isometric Minecraft-like building + Stardew-like farming + peaceful exploration + optional dungeon combat**, using the Sunnyside aesthetic.
+
+The biggest missing visual category from your current pack is **true modular isometric construction/block pieces**. That is the one asset category I'd solve carefully before implementing the building system.

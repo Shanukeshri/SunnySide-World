@@ -1,0 +1,1565 @@
+2D SURVIVAL SANDBOX — PILOT IMPLEMENTATION SPEC
+=================================================
+
+PURPOSE
+-------
+This document explains how the pilot game should actually be implemented:
+- how PNG sprite strips/sheets are sliced
+- how individual animation frames become usable sprites
+- how player/world layering works
+- how keyboard/controller gameplay works
+- how mouse is restricted to building/placement
+- what the player does in the game
+- how the world, resources, farming, combat, inventory and saving work
+- how the Next.js + Phaser architecture is organized
+
+TARGET
+------
+Build a small, polished-feeling, single-player, top-down 2D survival sandbox.
+
+The gameplay philosophy is inspired by Minecraft:
+EXPLORE -> GATHER -> CRAFT/BUILD -> FARM -> SURVIVE -> EXPLORE DUNGEON -> PROGRESS
+
+Do NOT attempt to reproduce Minecraft's 3D voxel rendering.
+The supplied Sunnyside World assets are top-down pixel-art assets, so the
+game should translate the survival/building loop into a 2D top-down format.
+
+
+1. TECHNOLOGY ARCHITECTURE
+--------------------------
+
+Use:
+
+Next.js
+TypeScript
+Phaser
+WebGL with Canvas fallback
+
+NEXT.JS RESPONSIBILITIES
+------------------------
+Next.js is the application shell.
+
+Use React/Next.js for:
+- main menu
+- settings
+- loading shell
+- game page
+- future authentication
+- future account/profile UI
+- future backend communication
+
+Do NOT use React for the realtime game loop.
+
+PHASER RESPONSIBILITIES
+-----------------------
+Phaser owns:
+- game loop
+- rendering
+- keyboard input
+- controller input if added later
+- mouse placement input
+- camera
+- tilemaps
+- sprites
+- animations
+- collision
+- world objects
+- player state
+- NPC state
+- combat
+- farming
+- building
+- game-time simulation
+
+The Phaser game should run independently inside a client-only
+Next.js component.
+
+
+2. GAME LOOP
+------------
+
+Phaser runs the realtime loop.
+
+Conceptually:
+
+INPUT
+  |
+  v
+PLAYER / WORLD SIMULATION
+  |
+  +--> movement
+  +--> collision
+  +--> interaction
+  +--> combat
+  +--> farming
+  +--> NPC AI
+  +--> world state
+  |
+  v
+ANIMATION STATE
+  |
+  v
+CAMERA
+  |
+  v
+WEBGL RENDER
+  |
+  v
+SCREEN
+
+React does not participate in this per-frame loop.
+
+
+3. PLAYER INPUT
+---------------
+
+IMPORTANT DESIGN DECISION:
+
+The player should NOT need the mouse for normal gameplay.
+
+Keyboard/controller-first gameplay:
+
+W / A / S / D
+--------------
+Move the player.
+
+SHIFT
+-----
+Run.
+
+E
+-
+Interact with the nearest valid object.
+
+Q
+-
+Drop/use secondary action if needed later.
+
+SPACE
+-----
+Jump/roll if the chosen character animation requires it.
+For the initial prototype this may be disabled.
+
+1-8
+---
+Select hotbar slot.
+
+TAB
+---
+Open inventory.
+
+ESC
+---
+Pause / close current UI.
+
+F
+-
+Use/eat selected food where appropriate.
+
+R
+-
+Optional tool/action modifier if needed later.
+
+LEFT MOUSE BUTTON
+-----------------
+ONLY for world building/placement.
+
+RIGHT MOUSE BUTTON
+------------------
+Not required for gameplay.
+
+Mouse should NOT be used for:
+- movement
+- attacking
+- talking
+- picking up items
+- opening chests
+- mining
+- chopping
+- farming
+- selecting NPCs
+- selecting enemies
+
+Those actions are keyboard/action-button driven.
+
+
+4. INTERACTION MODEL
+--------------------
+
+The player has a small interaction radius.
+
+When the player is near an interactable object:
+
+E = interact.
+
+Examples:
+
+Near tree:
+E -> chop/perform tool interaction
+
+Near chest:
+E -> open chest
+
+Near door:
+E -> open/enter
+
+Near dungeon entrance:
+E -> enter dungeon
+
+Near dropped item:
+E -> pick up
+
+Near animal:
+E -> future interaction
+
+Near crop:
+E -> harvest when mature
+
+The game should determine the target automatically based on:
+1. distance
+2. facing direction
+3. object type
+4. valid interaction state
+
+This avoids mouse targeting.
+
+
+5. DIRECTIONAL INTERACTION
+--------------------------
+
+The player has a facing direction:
+
+UP
+DOWN
+LEFT
+RIGHT
+
+When E is pressed, search for interactables:
+- in front of player first
+- then within a small nearby radius
+
+Prefer the object closest to the player's facing direction.
+
+Example:
+
+PLAYER -> TREE
+
+Press E.
+
+The interaction system finds the tree in front of the player and
+uses the currently selected tool/action.
+
+
+6. PLAYER STATE MACHINE
+-----------------------
+
+Player states:
+
+IDLE
+WALK
+RUN
+ATTACK
+AXE
+MINING
+DIG
+WATERING
+CARRY
+HURT
+DEATH
+SWIMMING
+WAITING
+
+Only valid transitions should occur.
+
+Example:
+
+IDLE
+ |
+W pressed
+ v
+WALK
+ |
+SHIFT
+ v
+RUN
+ |
+E/tool action
+ v
+AXE / MINING / DIG / WATERING
+ |
+action complete
+ v
+IDLE
+
+
+7. SPRITE SHEET / STRIP PROCESSING
+----------------------------------
+
+The supplied asset pack contains PNG sprite strips.
+
+Example assets include files such as:
+
+spr_idle_strip9.png
+spr_walk_strip8.png
+spr_run_strip8.png
+spr_mining_strip10.png
+spr_attack_strip10.png
+
+The asset inventory confirms separate PNG strips for many Human and
+Goblin animations.
+
+Example:
+Human has separate folders for ATTACK, AXE, CARRY, CASTING, CAUGHT,
+DEATH, DIG, DOING, HAMMERING, HURT, IDLE, JUMP, MINING, REELING,
+ROLL, RUN, SWIMMING, WAITING, WALKING and WATERING.
+
+Goblin similarly has PNG animation strips.
+
+Do NOT require Aseprite at runtime.
+
+
+8. HOW A SPRITE STRIP IS SLICED
+--------------------------------
+
+A sprite strip is a single PNG containing multiple animation frames.
+
+Example:
+
+spr_walk_strip8.png
+
+means:
+- animation = walk
+- number of frames = 8
+
+The important rule is:
+
+FRAME_WIDTH = texture_width / frame_count
+
+FRAME_HEIGHT = texture_height
+
+Then:
+
+frame 0:
+x = 0
+
+frame 1:
+x = FRAME_WIDTH
+
+frame 2:
+x = FRAME_WIDTH * 2
+
+...
+
+frame 7:
+x = FRAME_WIDTH * 7
+
+
+9. DO NOT ASSUME FRAME SIZE FROM THE FILE NAME
+----------------------------------------------
+
+The filename says how many frames exist, but the loader should determine
+the actual frame dimensions.
+
+Recommended asset manifest:
+
+{
+  "human_walk": {
+    "path": "/assets/characters/human/walk.png",
+    "frames": 8,
+    "frameWidth": 32,
+    "frameHeight": 32
+  }
+}
+
+If the supplied image is 256x32:
+
+256 / 8 = 32
+
+Therefore each animation frame is 32x32.
+
+
+10. PHASER SPRITE SHEET LOADING
+-------------------------------
+
+Use Phaser's spritesheet loading mechanism.
+
+Conceptually:
+
+this.load.spritesheet(
+    "human_walk",
+    "/assets/characters/human/walk.png",
+    {
+        frameWidth: 32,
+        frameHeight: 32
+    }
+);
+
+Then define an animation:
+
+this.anims.create({
+    key: "player-walk-down",
+    frames: this.anims.generateFrameNumbers(
+        "human_walk",
+        { start: 0, end: 7 }
+    ),
+    frameRate: 10,
+    repeat: -1
+});
+
+The exact frame size must come from the actual PNG dimensions/asset
+metadata, not from an assumption.
+
+
+11. TURNING ANIMATION STRIPS INTO INDEPENDENT MATERIAL
+------------------------------------------------------
+
+There are two meanings of "independent material".
+
+A. Independent animation frames
+B. Independent gameplay items/resources
+
+Do NOT physically generate thousands of separate PNG files.
+
+Keep the source PNG sheets intact.
+
+Phaser treats individual frames as independently addressable frames.
+
+For example:
+
+human_walk:
+  frame 0
+  frame 1
+  frame 2
+  ...
+  frame 7
+
+Then the animation system references those frames.
+
+For static items, use individual PNG files directly.
+
+Examples from the supplied assets include:
+
+wood.png
+rock.png
+egg.png
+fish.png
+milk.png
+seeds_generic.png
+
+For crops, each growth stage is already represented by a separate PNG.
+
+Example:
+
+carrot_00.png
+carrot_01.png
+carrot_02.png
+carrot_03.png
+carrot_04.png
+carrot_05.png
+
+Therefore crop growth does not require slicing.
+
+
+12. ASSET MANIFEST
+------------------
+
+Create a central asset manifest.
+
+Example:
+
+assets.ts
+
+PLAYER:
+  idle
+  walk
+  run
+  attack
+  axe
+  mining
+  dig
+  watering
+  hurt
+  death
+
+ANIMALS:
+  chicken
+  cow
+  sheep
+  duck
+  pig
+
+RESOURCES:
+  wood
+  rock
+  ore
+  mushroom
+
+CROPS:
+  carrot
+  wheat
+  potato
+  pumpkin
+  etc.
+
+TOOLS:
+  axe
+  hammer
+  pickaxe
+  shovel
+  sword
+
+This prevents asset paths from being scattered throughout the code.
+
+
+13. ANIMATION SYSTEM
+--------------------
+
+Do not manually change sprite frames throughout gameplay code.
+
+Instead create:
+
+AnimationController
+
+It receives:
+
+entity
+direction
+state
+
+Example:
+
+player.setState("walk");
+player.setDirection("down");
+
+The animation controller chooses:
+
+walk-down
+walk-up
+walk-left
+walk-right
+
+If the asset pack contains directional layers/variants, map them to the
+correct animation.
+
+If an animation is not directional, flip horizontally when appropriate.
+
+
+14. CHARACTER LAYERING
+----------------------
+
+The supplied Human assets include base/body and variants such as
+different hairstyles and tool layers.
+
+This should NOT be flattened into one giant image at runtime.
+
+Use layered sprites where the asset structure supports it.
+
+Recommended player render stack:
+
+1. shadow
+2. feet/lower body
+3. base body
+4. clothing/equipment
+5. hair
+6. held tool/item
+7. temporary effect
+
+Conceptually:
+
+PlayerContainer
+|
++-- ShadowSprite
++-- BodySprite
++-- ClothingSprite
++-- HairSprite
++-- ToolSprite
++-- EffectSprite
+
+The container moves as one object.
+
+
+15. WHY LAYERING MATTERS
+------------------------
+
+Suppose the player equips an axe.
+
+Do not create:
+
+human_with_every_possible_axe_combination.png
+
+Instead:
+
+BODY
++
+HAIR
++
+AXE
+
+The equipment layer changes.
+
+This makes:
+- tool swapping easy
+- future clothing easy
+- character customization possible
+- animations easier to maintain
+
+
+16. FRONT/BACK LAYERING
+-----------------------
+
+The world needs depth sorting.
+
+Example:
+
+Tree
+Player
+Bush
+Building
+
+If the player walks behind a tree, the tree should visually cover the
+player.
+
+If the player walks in front of the tree, the player should cover the
+lower portion.
+
+Use a depth value based on world Y.
+
+Typical approach:
+
+sprite.depth = sprite.y
+
+This gives a top-down painter-style ordering.
+
+For objects with multiple parts, use an explicit base/sort point.
+
+Example:
+
+tree.sortY = tree.baseY
+
+NOT the top of the tree.
+
+The tree's trunk/base determines its depth.
+
+
+17. WORLD LAYERS
+----------------
+
+Separate the world into logical render layers.
+
+Recommended:
+
+GROUND
+GROUND_DECORATION
+OBJECTS_BEHIND
+ACTORS
+OBJECTS_FRONT
+EFFECTS
+UI
+
+Example:
+
+GROUND
+  grass / dirt / water
+
+GROUND_DECORATION
+  flowers / small details
+
+OBJECTS_BEHIND
+  roof/back walls/tree canopy
+
+ACTORS
+  player / animals / enemies
+
+OBJECTS_FRONT
+  foreground tree trunks / walls / tall objects
+
+EFFECTS
+  smoke / hit effects / particles
+
+UI
+  hotbar / health / notifications
+
+
+18. TILEMAP
+-----------
+
+Use Phaser Tilemap for the world ground.
+
+Do NOT create one Phaser image object per grass tile if a tilemap can
+represent it.
+
+The tilemap contains:
+
+grass
+dirt
+water
+paths
+walls
+etc.
+
+Use separate layers when useful:
+
+groundLayer
+waterLayer
+collisionLayer
+decorationLayer
+
+
+19. COLLISION
+-------------
+
+Not every visible tile is solid.
+
+Create collision information separately.
+
+Examples:
+
+GRASS:
+walkable
+
+DIRT:
+walkable
+
+WATER:
+not walkable unless swimming
+
+TREE:
+not walkable
+
+ROCK:
+not walkable
+
+WALL:
+not walkable
+
+CROP:
+usually walkable/interaction dependent
+
+Use a collision map or object collision metadata.
+
+
+20. WORLD OBJECT MODEL
+----------------------
+
+World objects should be data-driven.
+
+Example:
+
+{
+  id: "tree_102",
+  type: "tree",
+  x: 40,
+  y: 72,
+  hp: 5,
+  resourceDrops: [
+    { item: "wood", quantity: 3 }
+  ]
+}
+
+The rendered sprite is a representation of this state.
+
+The state is the source of truth.
+
+
+21. RESOURCE GATHERING
+----------------------
+
+TREE
+----
+Player equips axe.
+
+Press E near tree.
+
+System:
+1. Finds tree.
+2. Checks selected tool.
+3. Plays axe animation.
+4. Applies damage.
+5. Plays hit effect.
+6. If HP reaches zero:
+   - remove tree
+   - spawn wood
+   - add wood to inventory
+
+ROCK
+----
+Same idea using pickaxe.
+
+Do not make gathering mouse-based.
+
+
+22. DROPPED ITEMS
+-----------------
+
+When a resource drops:
+
+Create a small world item.
+
+Example:
+
+wood pickup
+
+Player approaches it.
+
+Press E.
+
+The item is automatically collected.
+
+No clicking.
+
+
+23. INVENTORY
+------------
+
+Use data, not UI components, as the source of truth.
+
+Inventory:
+
+slots[0..7]
+
+Each slot:
+
+itemId
+quantity
+
+Hotbar:
+- selected slot
+- keyboard selection
+
+TAB opens the larger inventory screen.
+
+Gameplay never depends on clicking inventory items.
+
+
+24. MOUSE BUILDING SYSTEM
+-------------------------
+
+Mouse is ONLY used for block/object placement.
+
+When building mode is active:
+
+1. Mouse position is converted from screen coordinates to world
+   coordinates.
+2. World coordinates are converted to tile coordinates.
+3. Tile coordinates are snapped to the grid.
+4. Show placement ghost.
+5. Validate placement.
+6. LEFT CLICK places object.
+
+Example:
+
+mouse screen position
+        |
+        v
+camera transform
+        |
+        v
+world position
+        |
+        v
+tile coordinate
+        |
+        v
+placement validation
+        |
+        v
+ghost / placement
+
+
+25. BUILDING GHOST
+------------------
+
+While in build mode:
+
+Valid tile:
+show placement preview.
+
+Invalid tile:
+show invalid preview.
+
+The ghost must NOT modify the actual world.
+
+Only on LEFT CLICK:
+
+if valid:
+    place object
+    consume resource
+    save world state
+
+Mouse movement should only control the placement cursor.
+
+
+26. BUILDING VALIDATION
+-----------------------
+
+A building can be placed only if:
+
+- inside world bounds
+- not in water
+- not occupied
+- not inside player
+- not overlapping protected objects
+- required item exists in inventory
+
+For example:
+
+wooden_floor:
+cost = 2 wood
+
+campfire:
+cost = 5 wood + 2 stone
+
+chest:
+cost = 8 wood
+
+
+27. FARMING
+-----------
+
+Farming is keyboard driven.
+
+Player approaches soil.
+
+E:
+prepare/interact with soil depending on selected tool.
+
+Then:
+
+E -> plant selected seed
+
+E -> water crop
+
+E -> harvest mature crop
+
+No mouse clicking required.
+
+Crop stages come from the supplied PNG files.
+
+Example:
+
+carrot_00.png
+carrot_01.png
+carrot_02.png
+carrot_03.png
+carrot_04.png
+carrot_05.png
+
+Store only:
+
+cropType
+growthStage
+plantedAt
+wateredState
+
+Render the corresponding PNG for the current stage.
+
+
+28. DAY/NIGHT
+-------------
+
+Create a world clock.
+
+Example:
+
+1 game day = 10 real minutes.
+
+Store:
+
+day
+hour
+minute
+
+The renderer applies a night overlay during nighttime.
+
+The simulation can continue regardless of React.
+
+
+29. ANIMALS
+-----------
+
+Animals are passive NPCs.
+
+Initial animals:
+
+chicken
+cow
+sheep
+
+Behavior:
+
+IDLE
+WANDER
+STOP
+
+Use simple random movement.
+
+Do not implement complicated pathfinding in the pilot.
+
+Prevent animals from entering blocked cells.
+
+
+30. COMBAT
+----------
+
+Combat is keyboard driven.
+
+Player selects sword in hotbar.
+
+Move near enemy.
+
+Press E.
+
+Player performs attack animation.
+
+If enemy is within melee range:
+apply damage.
+
+No mouse aiming.
+
+Skeleton behavior:
+
+IDLE
+WANDER
+CHASE
+ATTACK
+HURT
+DEATH
+
+Use the supplied skeleton PNG animations.
+
+
+31. DUNGEON
+-----------
+
+The overworld contains one dungeon entrance.
+
+E near entrance:
+enter dungeon.
+
+Dungeon is a separate Phaser scene or a separate world layer/state.
+
+Pilot dungeon:
+
+- 3-5 rooms
+- walls
+- 1-3 skeletons
+- chest
+- reward
+- exit
+
+No procedural generation required.
+
+
+32. WHAT THE PLAYER ACTUALLY DOES
+---------------------------------
+
+The core player experience should be:
+
+START
+  |
+  v
+Spawn in small world
+  |
+  v
+Explore
+  |
+  +--> find trees
+  +--> find rocks
+  +--> find water
+  +--> find farm area
+  +--> find dungeon
+  |
+  v
+Gather resources
+  |
+  +--> chop trees
+  +--> mine rocks
+  |
+  v
+Build
+  |
+  +--> floor
+  +--> wall
+  +--> chest
+  +--> campfire
+  |
+  v
+Farm
+  |
+  +--> till
+  +--> plant
+  +--> water
+  +--> wait
+  +--> harvest
+  |
+  v
+Survive
+  |
+  +--> hunger
+  +--> health
+  +--> food
+  |
+  v
+Explore dungeon
+  |
+  +--> fight skeletons
+  +--> open chest
+  +--> collect reward
+  |
+  v
+Return home
+  |
+  v
+Improve base
+  |
+  v
+Continue exploring
+
+
+33. THE GAME SHOULD FEEL LIKE
+-----------------------------
+
+A compact personal survival world.
+
+The player starts with very little.
+
+They gather nearby materials.
+
+They establish a small base.
+
+They plant crops.
+
+They collect food.
+
+They explore.
+
+They eventually enter the dungeon.
+
+They fight enemies.
+
+They bring resources back.
+
+They expand their little settlement.
+
+This gives the prototype an actual gameplay loop instead of being a
+technical demo.
+
+
+34. SAVING
+----------
+
+Use localStorage in the pilot.
+
+Save:
+
+player position
+inventory
+world objects
+destroyed resources
+placed buildings
+crop states
+day/time
+health
+hunger
+
+Autosave every few seconds.
+
+Also save after major actions.
+
+Do not introduce a database until the single-player simulation works.
+
+
+35. WORLD STATE VS RENDER STATE
+-------------------------------
+
+This distinction is important.
+
+WORLD STATE:
+
+{
+  player,
+  inventory,
+  objects,
+  crops,
+  animals,
+  enemies,
+  time
+}
+
+RENDER STATE:
+
+Phaser sprites
+Phaser containers
+animations
+particles
+camera
+
+The render layer visualizes the world state.
+
+Do not store the authoritative game state inside React components.
+
+
+36. RECOMMENDED PROJECT STRUCTURE
+---------------------------------
+
+src/
+  app/
+    page.tsx
+    game/
+      page.tsx
+
+  game/
+    PhaserGame.ts
+    config.ts
+
+    scenes/
+      BootScene.ts
+      WorldScene.ts
+      DungeonScene.ts
+      UIScene.ts
+
+    entities/
+      Player.ts
+      Animal.ts
+      Skeleton.ts
+      ResourceNode.ts
+      DroppedItem.ts
+      Crop.ts
+      Building.ts
+
+    systems/
+      InputSystem.ts
+      InteractionSystem.ts
+      MovementSystem.ts
+      InventorySystem.ts
+      FarmingSystem.ts
+      BuildingSystem.ts
+      CombatSystem.ts
+      DayNightSystem.ts
+      SaveSystem.ts
+      DepthSortSystem.ts
+
+    rendering/
+      PlayerRenderer.ts
+      AnimationController.ts
+      LayerManager.ts
+
+    world/
+      WorldState.ts
+      WorldGenerator.ts
+      TilemapManager.ts
+      CollisionMap.ts
+
+    data/
+      assets.ts
+      items.ts
+      crops.ts
+      buildings.ts
+      enemies.ts
+      tools.ts
+
+
+37. ASSET DIRECTORY
+-------------------
+
+Recommended normalized project asset structure:
+
+public/
+  assets/
+    tiles/
+    characters/
+      human/
+      goblin/
+      skeleton/
+    animals/
+    crops/
+    resources/
+    tools/
+    buildings/
+    vfx/
+    ui/
+
+
+Do not copy the entire GameMaker project into the browser runtime.
+
+Use the exported PNG assets required by the game.
+
+
+38. PNG IMPORT PIPELINE
+-----------------------
+
+For each PNG:
+
+1. Identify whether it is:
+   - single image
+   - animation strip
+   - crop stage
+   - tileset
+
+2. For animation strips:
+   - determine frame count
+   - determine frame width
+   - load as spritesheet
+
+3. For individual PNG assets:
+   - load as image
+
+4. For tilesets:
+   - load with correct tile dimensions
+
+5. Register animations once during boot.
+
+
+39. TILESET HANDLING
+--------------------
+
+The pack includes tilesets at 16px and 32px scale.
+
+Do not mix tile sizes arbitrarily.
+
+Pick one primary world grid for the pilot.
+
+Recommended:
+16x16 logical world tiles.
+
+If a 32x32 visual tileset is used, treat it consistently as a 32px
+tile world or map its artwork carefully.
+
+The key requirement is that:
+- collision
+- player interaction
+- building placement
+- crop placement
+- world coordinates
+
+all use the same logical grid.
+
+
+40. PIXEL ART RENDERING
+-----------------------
+
+Use nearest-neighbor texture filtering.
+
+Avoid:
+- blurry scaling
+- fractional sprite positions where avoidable
+- CSS scaling of game sprites
+- DOM-based world rendering
+
+Use Phaser/WebGL for the world.
+
+
+41. PERFORMANCE
+---------------
+
+Target 60 FPS.
+
+Important rules:
+
+- Phaser owns the frame loop.
+- React does not update every frame.
+- Use tilemaps for terrain.
+- Reuse textures.
+- Avoid unnecessary sprite creation.
+- Destroy inactive temporary effects.
+- Use simple collision.
+- Keep the pilot world finite.
+- Only perform expensive AI checks when needed.
+- Use proximity checks for interaction.
+- Avoid checking every world object against every other object.
+
+
+42. FUTURE MULTIPLAYER COMPATIBILITY
+------------------------------------
+
+Even though the pilot is single-player, structure the simulation so it can
+later become server-authoritative.
+
+Avoid deeply coupling gameplay to DOM or browser APIs.
+
+Later:
+
+CLIENT
+  |
+  | input
+  v
+SERVER
+  |
+  | authoritative state
+  v
+CLIENT RENDER
+
+For now:
+
+INPUT
+  |
+  v
+LOCAL GAME SIMULATION
+  |
+  v
+PHASER
+
+The pilot should make this transition possible without rewriting the
+entire renderer.
+
+
+43. PILOT IMPLEMENTATION ORDER
+------------------------------
+
+PHASE 1:
+Boot Phaser inside Next.js.
+
+Success:
+blank Phaser game renders at 60 FPS.
+
+PHASE 2:
+Load one tileset.
+
+Success:
+world renders.
+
+PHASE 3:
+Load player PNG animation.
+
+Success:
+player idles and walks.
+
+PHASE 4:
+Keyboard movement + collision.
+
+Success:
+WASD movement works without mouse.
+
+PHASE 5:
+Camera.
+
+Success:
+camera follows player.
+
+PHASE 6:
+Interaction system.
+
+Success:
+E interacts with nearby objects.
+
+PHASE 7:
+Trees/rocks/resources.
+
+Success:
+player gathers wood and stone.
+
+PHASE 8:
+Inventory + hotbar.
+
+Success:
+resources appear in inventory.
+
+PHASE 9:
+Building.
+
+Success:
+mouse only controls placement ghost and LEFT CLICK places buildings.
+
+PHASE 10:
+Farming.
+
+Success:
+plant -> grow -> harvest.
+
+PHASE 11:
+Animals.
+
+Success:
+animals wander.
+
+PHASE 12:
+Day/night.
+
+Success:
+world transitions between day and night.
+
+PHASE 13:
+Combat.
+
+Success:
+skeletons can attack and die.
+
+PHASE 14:
+Dungeon.
+
+Success:
+enter -> fight -> loot -> exit.
+
+PHASE 15:
+Saving.
+
+Success:
+reload browser and world persists.
+
+
+44. IMPORTANT INPUT RULE
+------------------------
+
+There must be NO gameplay requirement to use the mouse.
+
+The player should be able to:
+
+MOVE
+GATHER
+ATTACK
+INTERACT
+FARM
+EAT
+OPEN CHESTS
+ENTER DUNGEON
+USE TOOLS
+CHANGE HOTBAR
+
+using keyboard/action buttons.
+
+The mouse is exclusively:
+
+BUILDING CURSOR
+      +
+PLACEMENT CONFIRMATION
+
+This should be treated as a hard design constraint.
+
+
+45. FINAL PILOT DEFINITION
+--------------------------
+
+The pilot is complete when a player can:
+
+- launch the game
+- move entirely with keyboard
+- explore the world
+- gather wood
+- gather stone
+- manage inventory
+- switch tools
+- farm
+- harvest crops
+- eat food
+- see day/night
+- encounter animals
+- build using the mouse only for placement
+- break structures
+- enter a dungeon
+- fight skeletons
+- loot a chest
+- return home
+- save
+- reload
+- continue playing
+
+The result should feel like a small playable game.
+
+It should NOT feel like:
+- a tilemap demo
+- an asset viewer
+- a React animation demo
+- a UI prototype
+
+The first goal is a functioning game loop.
+Polish and content expansion come after the loop works.
