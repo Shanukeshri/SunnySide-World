@@ -2,8 +2,11 @@ import os
 import re
 import json
 from PIL import Image
+import numpy as np
 
 WORKSPACE = "/Users/shanukeshri983/Desktop/RTSGame"
+NEW_TILESET_16 = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/sprite_sheet_16x_transparent.png"
+TILESET_FOREST_32 = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png"
 
 def find_first_png_in_gamemaker_sprite(sprite_folder_name):
     sp_path = os.path.join(WORKSPACE, "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites", sprite_folder_name)
@@ -23,7 +26,7 @@ def get_image_info(rel_path):
         with Image.open(full_path) as img:
             w, h = img.size
             return {"width": w, "height": h, "path": rel_path}
-    except Exception as e:
+    except Exception:
         return None
 
 def get_strip_frames(filename, w, h):
@@ -35,35 +38,129 @@ def get_strip_frames(filename, w, h):
         return count, frame_w, frame_h
     return 1, w, h
 
+REMOVED_TILE_COORDS = {
+    (1, 14), (1, 18),
+    (2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12),
+    (4, 14),
+    (7, 6), (7, 8), (7, 18), (7, 19), (7, 35), (7, 36),
+    (8, 2), (8, 3), (8, 4), (8, 5),
+    (8, 13), (8, 14), (8, 15), (8, 16),
+    (8, 34), (8, 35), (8, 36),
+    (9, 1), (9, 2), (9, 3), (9, 4), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9), (9, 10),
+    (9, 11), (9, 12), (9, 13), (9, 14), (9, 15), (9, 16), (9, 17), (9, 18), (9, 19), (9, 20),
+    (9, 21), (9, 22), (9, 23), (9, 24), (9, 25), (9, 26), (9, 27), (9, 28),
+    (17, 15),
+    (29, 37), (29, 38), (29, 39), (29, 40),
+    (31, 36), (31, 37), (31, 38), (31, 39)
+}
+
+def extract_all_transparent_tiles():
+    full_path = os.path.join(WORKSPACE, NEW_TILESET_16)
+    img = Image.open(full_path).convert("RGBA")
+    arr = np.array(img)
+    
+    tiles = []
+    # 64x64 grid of 16x16 tiles
+    for r in range(64):
+        for c in range(64):
+            if (r, c) in REMOVED_TILE_COORDS:
+                continue
+            tile = arr[r*16:(r+1)*16, c*16:(c+1)*16]
+            if np.any(tile[:, :, 3] > 0):
+                x = c * 16
+                y = r * 16
+                cat, item_id, name, desc = classify_tile(r, c, x, y)
+                tiles.append({
+                    "cat": cat,
+                    "id": item_id,
+                    "name": name,
+                    "desc": desc,
+                    "crop": [x, y, 16, 16],
+                    "type": "tileset_slice",
+                    "source": NEW_TILESET_16
+                })
+    return tiles
+
+def classify_tile(r, c, x, y):
+    # Rows 0-9: World Terrain (Grass, Cliffs, Dirt, Sand, Stone, Paths, Water)
+    if 0 <= r <= 9:
+        if 0 <= c <= 16:
+            if r in [1, 2, 3] and 0 <= c <= 8:
+                return "world_terrain", f"terrain_grass_slope_r{r:02d}_c{c:02d}", f"Grass Terrain Slope ({r},{c})", f"Lush grass terrain slope, angle variation, and edge transition at [{x},{y}]"
+            elif r in [4, 5, 6, 7] and 0 <= c <= 8:
+                return "world_terrain", f"cliff_elevation_r{r:02d}_c{c:02d}", f"Cliff Elevation Face ({r},{c})", f"Natural earth cliff wall, height ledge, and elevation step at [{x},{y}]"
+            elif 9 <= c <= 16:
+                return "world_terrain", f"dirt_soil_r{r:02d}_c{c:02d}", f"Dirt Trail & Soil ({r},{c})", f"Rich brown dirt trail, earth connection, and soil shading at [{x},{y}]"
+            else:
+                return "world_terrain", f"terrain_grass_edge_r{r:02d}_c{c:02d}", f"Grass & Earth Border ({r},{c})", f"Grass and soil gradient boundary tile at [{x},{y}]"
+        elif 17 <= c <= 36:
+            if 17 <= c <= 26:
+                return "world_terrain", f"sand_dune_r{r:02d}_c{c:02d}", f"Sand & Desert Dune ({r},{c})", f"Warm golden sand dune, beach shore angle, and desert transition at [{x},{y}]"
+            elif 27 <= c <= 36:
+                return "world_terrain", f"stone_cobble_r{r:02d}_c{c:02d}", f"Stone & Cobble Path ({r},{c})", f"Cobblestone walkway, natural stone flagstone, and paved path edge at [{x},{y}]"
+        elif 37 <= c <= 43:
+            return "water_aquatic", f"water_shoreline_r{r:02d}_c{c:02d}", f"Water & Shore Bank ({r},{c})", f"Flowing river water, shore corner transition, and coastline bank at [{x},{y}]"
+        elif 44 <= c <= 63:
+            if r in [0, 1, 2, 3]:
+                return "buildings", f"roof_shingle_r{r:02d}_c{c:02d}", f"Roof Shingle & Eave ({r},{c})", f"Modular cottage roof shingle slope, ridge, and overhang at [{x},{y}]"
+            else:
+                return "buildings", f"wall_timber_r{r:02d}_c{c:02d}", f"Timber Wall & Boardwalk ({r},{c})", f"Wooden plank building facade, doorway, window frame, or boardwalk at [{x},{y}]"
+
+    # Rows 10-17: Building structures, walls, fences, doors (Cols 40-63)
+    if 10 <= r <= 17:
+        if 40 <= c <= 63:
+            return "buildings", f"building_facade_r{r:02d}_c{c:02d}", f"Building Facade & Panel ({r},{c})", f"Architectural timber beam, exterior planking, window, or door at [{x},{y}]"
+        elif 34 <= c <= 39:
+            return "dungeon_visuals", f"dungeon_arch_r{r:02d}_c{c:02d}", f"Stone Dungeon Arch ({r},{c})", f"Carved stone archway, dungeon pillar column, and cavern wall at [{x},{y}]"
+
+    # Rows 18-27: Dungeon stone stairs, masonry, farmland, water ripples, fences
+    if 18 <= r <= 27:
+        if 11 <= c <= 15:
+            return "farm_objects", f"fence_bridge_r{r:02d}_c{c:02d}", f"Wooden Fence & Gate ({r},{c})", f"Farmyard post fence, corral gate, and footbridge crossing plank at [{x},{y}]"
+        elif 34 <= c <= 48:
+            return "dungeon_visuals", f"dungeon_step_r{r:02d}_c{c:02d}", f"Dungeon Step & Masonry ({r},{c})", f"Chiseled dungeon staircase step, masonry floor slab, and dungeon ledge at [{x},{y}]"
+        elif 49 <= c <= 55:
+            return "farming_crops", f"farmland_furrow_r{r:02d}_c{c:02d}", f"Farmland Soil Furrow ({r},{c})", f"Tilled garden plot furrow, irrigation channel, and fertile crop soil at [{x},{y}]"
+        elif 56 <= c <= 63:
+            return "water_aquatic", f"water_wave_foam_r{r:02d}_c{c:02d}", f"Water Wave Foam ({r},{c})", f"Water ripple surface, flowing river foam, and wave sparkle at [{x},{y}]"
+
+    # Rows 28-37: Plants, Foliage, Trees, Stumps, Stone steps
+    if 28 <= r <= 37:
+        if 0 <= c <= 10:
+            return "plants", f"wild_flora_r{r:02d}_c{c:02d}", f"Wild Flora & Foliage ({r},{c})", f"Wild grass tuft, forest mushroom, tree base, root stump, or greenery at [{x},{y}]"
+        elif 36 <= c <= 42:
+            return "world_terrain", f"flagstone_step_r{r:02d}_c{c:02d}", f"Flagstone Step ({r},{c})", f"Garden walkway flagstone, rock border, and paved ground step at [{x},{y}]"
+        elif 49 <= c <= 55:
+            return "farming_crops", f"garden_bed_r{r:02d}_c{c:02d}", f"Garden Bed Ridge ({r},{c})", f"Cultivated garden plot ridge and crop planting bed border at [{x},{y}]"
+
+    # Rows 44-49: Special deep water / liquid layers
+    if 44 <= r <= 49:
+        if 36 <= c <= 46:
+            return "water_aquatic", f"water_depth_r{r:02d}_c{c:02d}", f"Deep Water Gradient ({r},{c})", f"Submerged deep water gradient, lake floor tier, and liquid flow tile at [{x},{y}]"
+
+    # Fallback
+    return "world_terrain", f"tileset_slice_r{r:02d}_c{c:02d}", f"Tileset Slice ({r},{c})", f"16x16 modular tile from transparent sprite sheet at [{x},{y}]"
+
 def build_catalog():
+    extracted_tiles = extract_all_transparent_tiles()
+    tiles_by_cat = {}
+    for t in extracted_tiles:
+        tiles_by_cat.setdefault(t["cat"], []).append(t)
+
     categories = []
-    tileset_16 = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png"
-    tileset_32 = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png"
 
     # 1. World / Terrain
-    world_items = [
-        {"id": "grass_tile_01", "name": "Grass Tile (Lush)", "type": "tileset_slice", "source": tileset_16, "crop": [16, 48, 16, 16], "desc": "Standard vibrant green top-down grass tile"},
-        {"id": "grass_tile_02", "name": "Grass Tile (Edge Detail)", "type": "tileset_slice", "source": tileset_16, "crop": [32, 48, 16, 16], "desc": "Grass terrain edge with natural shading"},
-        {"id": "dirt_tile_01", "name": "Dirt Tile (Basic)", "type": "tileset_slice", "source": tileset_16, "crop": [16, 112, 16, 16], "desc": "Rich brown dirt terrain tile"},
-        {"id": "sand_tile_01", "name": "Sand Tile (Beach/Desert)", "type": "tileset_slice", "source": tileset_16, "crop": [208, 48, 16, 16], "desc": "Warm golden beach and desert sand tile"},
-        {"id": "stone_tile_01", "name": "Stone / Cobblestone", "type": "tileset_slice", "source": tileset_16, "crop": [192, 112, 16, 16], "desc": "Natural stone and paved cobblestone surface"},
-        {"id": "water_tile_01", "name": "Water Tile (River Blue)", "type": "tileset_slice", "source": tileset_16, "crop": [352, 112, 16, 16], "desc": "Crystal blue river and ocean water tile"},
-        {"id": "shore_transition_01", "name": "Shore / Water Transition", "type": "tileset_slice", "source": tileset_16, "crop": [368, 112, 16, 16], "desc": "Coastline shore transition from sand/grass to water"},
-        {"id": "path_tile_01", "name": "Path 01 (Dirt Trail)", "type": "tileset_slice", "source": tileset_16, "crop": [16, 112, 16, 16], "desc": "Worn walking trail / dirt road connector"},
-        {"id": "path_tile_02", "name": "Path 02 (Cobblestone Path)", "type": "tileset_slice", "source": tileset_16, "crop": [192, 112, 16, 16], "desc": "Paved stone village walkway"},
-        {"id": "path_tile_03", "name": "Path 03 (Wooden Boardwalk)", "type": "tileset_slice", "source": tileset_16, "crop": [544, 112, 16, 16], "desc": "Wooden walkway and boardwalk path"},
-        {"id": "cliff_elevation_01", "name": "Cliffs / Elevation Wall", "type": "tileset_slice", "source": tileset_16, "crop": [16, 64, 16, 32], "desc": "Raised cliff face, ledge elevation, and height step"},
+    world_items = list(tiles_by_cat.get("world_terrain", []))
+    world_items.extend([
         {"id": "small_rock_01", "name": "Small Rock Decor", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png", "desc": "Small scatter rock for natural ground decoration"},
-        {"id": "grass_tuft_01", "name": "Grass Tuft Accent", "type": "tileset_slice", "source": tileset_16, "crop": [48, 48, 16, 16], "desc": "Decorative grass tuft and wild greenery overlay"},
         {"id": "flowers_wild_01", "name": "Wild Flowers (Scatter 1)", "type": "sprite_gm", "sprite": "spr_deco_flowers_house_01", "desc": "Wild field flowers in blooming colors"},
         {"id": "flowers_wild_02", "name": "Wild Flowers (Scatter 2)", "type": "sprite_gm", "sprite": "spr_deco_flowers_house_02", "desc": "Clumped cottage flowers"},
         {"id": "mushrooms_deco_blue", "name": "Blue Forest Mushroom", "type": "sprite_gm", "sprite": "spr_deco_mushroom_blue_01", "desc": "Glowing wild blue forest mushrooms"},
         {"id": "mushrooms_deco_red", "name": "Red Forest Mushroom", "type": "sprite_gm", "sprite": "spr_deco_mushroom_red_01", "desc": "Classic red cap spotted forest mushroom"},
         {"id": "acorn_deco_01", "name": "Fallen Forest Acorn", "type": "sprite_gm", "sprite": "spr_deco_acron", "desc": "Fallen oak acorn scatter item"},
-        {"id": "truffle_deco_01", "name": "Wild Truffle Mushroom", "type": "sprite_gm", "sprite": "spr_deco_truffle", "desc": "Rare forageable wild ground truffle"},
-        {"id": "stump_deco_01", "name": "Tree Stump", "type": "tileset_slice", "source": tileset_32, "crop": [256, 96, 32, 32], "desc": "Chopped tree stump and remaining root base"}
-    ]
-    categories.append({"id": "world_terrain", "title": "World / Terrain", "desc": "Core terrain tiles, shorelines, paths, cliffs, and scatter details", "items": world_items})
+        {"id": "truffle_deco_01", "name": "Wild Truffle Mushroom", "type": "sprite_gm", "sprite": "spr_deco_truffle", "desc": "Rare forageable wild ground truffle"}
+    ])
+    categories.append({"id": "world_terrain", "title": "World / Terrain (All Slopes & Transitions)", "desc": "Exhaustive 16x16 terrain tiles: Lush grass, slopes, cliffs, elevation ledges, dirt trails, sand dunes, cobblestone paths, and shorelines", "items": world_items})
 
     # 2. Isometric "Block" System
     iso_items = [
@@ -180,27 +277,27 @@ def build_catalog():
     ]
     categories.append({"id": "animals", "title": "Animals & Wildlife", "desc": "Chicken, Cow, Duck, Pig, Sheep, Bird, Fish, and Blinking Wildlife", "items": animal_items})
 
-    # 6. Trees
+    # 6. Trees & Species Progression
     tree_items = [
         {"id": "tree_oak_01", "name": "Oak Tree (Deciduous)", "type": "sprite_gm", "sprite": "spr_deco_tree_01", "desc": "Full green foliage deciduous oak tree (32x34)"},
         {"id": "tree_pine_01", "name": "Pine / Evergreen Tree", "type": "sprite_gm", "sprite": "spr_deco_tree_02", "desc": "Slender evergreen pine tree (28x43)"},
         {"id": "tree_sway_strip", "name": "Swaying Canopy Tree", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Plants/spr_deco_tree_02_strip4.png", "frames": 4, "fps": 4, "desc": "Wind blowing gentle tree animation (28x43, 4 frames)"},
-        {"id": "tree_prog_small", "name": "Tree Sapling Sprout", "type": "tileset_slice", "source": tileset_32, "crop": [32, 32, 32, 32], "desc": "Growing young tree sapling"},
-        {"id": "tree_prog_stump", "name": "Chopped Forest Stump", "type": "tileset_slice", "source": tileset_32, "crop": [256, 96, 32, 32], "desc": "Harvested tree stump with rings"}
+        {"id": "tree_prog_small", "name": "Tree Sapling Sprout", "type": "tileset_slice", "source": TILESET_FOREST_32, "crop": [32, 32, 32, 32], "desc": "Growing young tree sapling"},
+        {"id": "tree_prog_stump", "name": "Chopped Forest Stump", "type": "tileset_slice", "source": TILESET_FOREST_32, "crop": [256, 96, 32, 32], "desc": "Harvested tree stump with rings"}
     ]
     categories.append({"id": "trees", "title": "Trees & Species Progression", "desc": "Oak trees, Pine trees, Animated swaying trees, and tree stumps", "items": tree_items})
 
     # 7. Plants & Foliage
-    plant_items = [
+    plant_items = list(tiles_by_cat.get("plants", []))
+    plant_items.extend([
         {"id": "plant_shroom_blue_01", "name": "Blue Mushroom Spores", "type": "sprite_gm", "sprite": "spr_deco_mushroom_blue_01", "desc": "Bioluminescent blue mushroom (16x16)"},
         {"id": "plant_shroom_blue_02", "name": "Blue Mushroom Cluster", "type": "sprite_gm", "sprite": "spr_deco_mushroom_blue_02", "desc": "Medium cluster blue forest mushroom"},
         {"id": "plant_shroom_blue_03", "name": "Giant Blue Toadstool", "type": "sprite_gm", "sprite": "spr_deco_mushroom_blue_03", "desc": "Large blue cap toadstool"},
         {"id": "plant_shroom_red_01", "name": "Red Forest Mushroom", "type": "sprite_gm", "sprite": "spr_deco_mushroom_red_01", "desc": "Classic spotted red toadstool"},
         {"id": "plant_flowers_01", "name": "Cottage Flower Bed 01", "type": "sprite_gm", "sprite": "spr_deco_flowers_house_01", "desc": "Blooming front porch floral arrangement"},
-        {"id": "plant_flowers_02", "name": "Cottage Flower Bed 02", "type": "sprite_gm", "sprite": "spr_deco_flowers_house_02", "desc": "Pastel flower bed detail"},
-        {"id": "plant_leaf_accent", "name": "Leaf Particle Decor", "type": "sprite_gm", "sprite": "leaves_hit", "desc": "Fallen autumn leaf ground accent"}
-    ]
-    categories.append({"id": "plants", "title": "Plants & Foliage", "desc": "Wild mushrooms (Blue & Red), cottage flowers, and ground flora", "items": plant_items})
+        {"id": "plant_flowers_02", "name": "Cottage Flower Bed 02", "type": "sprite_gm", "sprite": "spr_deco_flowers_house_02", "desc": "Pastel flower bed detail"}
+    ])
+    categories.append({"id": "plants", "title": "Plants & Foliage (Wild Flora & Stumps)", "desc": "All wild mushrooms, ground flora, root stumps, wild grass tufts, and foliage overlays", "items": plant_items})
 
     # 8. Farming & Crops
     crop_names = [
@@ -216,11 +313,10 @@ def build_catalog():
         ("beetroot", "Beetroot"),
         ("sunflower", "Sunflower")
     ]
-    stage_labels = ["00: Seed", "01: Sprout", "02: Small Plant", "03: Growing", "04: Mature", "05: Harvested"]
+    stage_labels = ["00: Seed", "01: Sprout", "02: Small Plant", "03: Growing", "04: Mature"]
 
-    farming_items = [
-        {"id": "crop_seeds_generic", "name": "Generic Crop Seeds Pouch", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png", "desc": "Seed bag for planting farm crops"}
-    ]
+    farming_items = list(tiles_by_cat.get("farming_crops", []))
+    farming_items.append({"id": "crop_seeds_generic", "name": "Generic Crop Seeds Pouch", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png", "desc": "Seed bag for planting farm crops"})
 
     for crop_id, crop_title in crop_names:
         for stage_idx, stage_lbl in enumerate(stage_labels):
@@ -235,53 +331,43 @@ def build_catalog():
                 "desc": f"{crop_title} growth stage {stage_idx} ({stage_lbl})"
             })
 
-    categories.append({"id": "farming_crops", "title": "Farming & Crops (Growth Stages 00–05)", "desc": "Complete growth sequences for all 11 crops: Wheat, Carrot, Potato, Pumpkin, Cabbage, Cauliflower, Kale, Parsnip, Radish, Beetroot, Sunflower + Seeds", "items": farming_items})
+    categories.append({"id": "farming_crops", "title": "Farming & Crops (Furrows & Growing Stages)", "desc": "Farmland soil furrows, irrigation channels, and growing sequence stages (00–04) for all 11 crops (Wheat, Carrot, Potato, Pumpkin, etc.)", "items": farming_items})
 
     # 9. Farm Objects & Storage
-    farm_obj_items = [
+    farm_obj_items = list(tiles_by_cat.get("farm_objects", []))
+    farm_obj_items.extend([
         {"id": "farm_soil_00", "name": "Tilled Soil (Dry)", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_00.png", "desc": "Freshly hoed soil tile"},
         {"id": "farm_soil_01", "name": "Tilled Soil (Wet / Watered)", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_01.png", "desc": "Watered dark fertile soil ready for growth"},
-        {"id": "farm_soil_03", "name": "Tilled Soil Corner", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_03.png", "desc": "Soil patch boundary transition"},
-        {"id": "farm_soil_04", "name": "Tilled Soil Enclosed Bed", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_04.png", "desc": "Complete tilled garden plot tile"},
         {"id": "farm_well", "name": "Stone Water Well", "type": "sprite_gm", "sprite": "spr_deco_well", "desc": "Village stone water well with bucket"},
         {"id": "farm_well_covered", "name": "Roofed Water Well", "type": "sprite_gm", "sprite": "spr_deco_well_covered", "desc": "Sheltered timber-roofed well"},
         {"id": "farm_trough", "name": "Animal Feed Trough", "type": "sprite_gm", "sprite": "spr_deco_trough", "desc": "Wooden feeding trough for livestock"},
         {"id": "farm_waterbowl", "name": "Animal Water Bowl", "type": "sprite_gm", "sprite": "spr_deco_waterbowl", "desc": "Clay watering bowl for pets & poultry"},
-        {"id": "farm_crate_base", "name": "Storage Crate Base", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/crate_base.png", "desc": "Wooden storage container bottom"},
-        {"id": "farm_crate_top", "name": "Storage Crate Top / Lid", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/crate_top.png", "desc": "Wooden storage container lid"},
         {"id": "farm_crate_01", "name": "Wooden Crate (Small)", "type": "sprite_gm", "sprite": "spr_deco_crate_01", "desc": "Small goods storage crate"},
         {"id": "farm_crate_02", "name": "Wooden Crate (Large)", "type": "sprite_gm", "sprite": "spr_deco_crate_02", "desc": "Large reinforced cargo crate"},
         {"id": "farm_chest_closed", "name": "Chest 01 (Closed)", "type": "sprite_gm", "sprite": "spr_deco_chest_01_closed", "desc": "Wood and iron lockbox closed"},
         {"id": "farm_chest_open", "name": "Chest 01 (Open)", "type": "sprite_gm", "sprite": "spr_deco_chest_01_open", "desc": "Wood and iron lockbox open with inventory"},
-        {"id": "farm_chest2_closed", "name": "Chest 02 (Golden Closed)", "type": "sprite_gm", "sprite": "spr_deco_chest_02_closed", "desc": "Ornate treasure chest closed"},
-        {"id": "farm_chest2_open", "name": "Chest 02 (Golden Open)", "type": "sprite_gm", "sprite": "spr_deco_chest_02_open", "desc": "Ornate treasure chest open"}
-    ]
-    categories.append({"id": "farm_objects", "title": "Farm Objects & Storage", "desc": "Tilled soil, water wells, troughs, crates, and storage chests", "items": farm_obj_items})
+        {"id": "farm_chest2_closed", "name": "Chest 02 (Golden Closed)", "type": "sprite_gm", "sprite": "spr_deco_chest_02_closed", "desc": "Ornate treasure chest closed"}
+    ])
+    categories.append({"id": "farm_objects", "title": "Farm Objects & Storage", "desc": "Wooden fences, corral gates, bridge crossings, water wells, troughs, crates, and storage chests", "items": farm_obj_items})
 
-    # 10. Buildings & Modular Pieces
-    bld_items = [
+    # 10. Buildings & Modular Construction Pieces
+    bld_items = list(tiles_by_cat.get("buildings", []))
+    bld_items.extend([
         {"id": "bld_windmill", "name": "Windmill (Animated 9-Frame)", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_windmill_withshadow_strip9.png", "frames": 9, "fps": 8, "desc": "Large 112x112 rotating grain windmill structure"},
         {"id": "piece_beam", "name": "Structural Wooden Beam", "type": "sprite_gm", "sprite": "spr_deco_beam", "desc": "Heavy timber construction beam"},
         {"id": "piece_chimney_brick", "name": "Brick Chimney", "type": "sprite_gm", "sprite": "spr_deco_chinmney", "desc": "Cottage rooftop brick chimney"},
-        {"id": "piece_chimney_cook", "name": "Cookhouse Stove Chimney", "type": "sprite_gm", "sprite": "spr_deco_cook_chinmney", "desc": "Stove chimney with stovepipe"},
-        {"id": "piece_wall_wood_01", "name": "Building 01 Wall Segment", "type": "tileset_slice", "source": tileset_16, "crop": [16, 144, 16, 32], "desc": "Modular wood plank exterior house wall"},
-        {"id": "piece_door_01", "name": "Building 01 Doorway", "type": "tileset_slice", "source": tileset_16, "crop": [32, 144, 16, 32], "desc": "Entrance door with frame"},
-        {"id": "piece_roof_01", "name": "Building 01 Roof Shingle", "type": "tileset_slice", "source": tileset_16, "crop": [16, 160, 16, 16], "desc": "Slanted cottage roof shingle"},
-        {"id": "piece_wall_wood_02", "name": "Building 02 Wall Segment", "type": "tileset_slice", "source": tileset_16, "crop": [16, 240, 16, 32], "desc": "Variant timber exterior wall"},
-        {"id": "piece_roof_02", "name": "Building 02 Roof Shingle", "type": "tileset_slice", "source": tileset_16, "crop": [16, 256, 16, 16], "desc": "Variant roof shingle panel"},
-        {"id": "piece_inner_wall", "name": "Interior Partition Wall", "type": "tileset_slice", "source": tileset_16, "crop": [16, 192, 16, 32], "desc": "Indoor room dividing wall"}
-    ]
-    categories.append({"id": "buildings", "title": "Buildings & Modular Construction Pieces", "desc": "Rotating windmill and modular wall, door, roof, beam, and chimney pieces", "items": bld_items})
+        {"id": "piece_chimney_cook", "name": "Cookhouse Stove Chimney", "type": "sprite_gm", "sprite": "spr_deco_cook_chinmney", "desc": "Stove chimney with stovepipe"}
+    ])
+    categories.append({"id": "buildings", "title": "Buildings & Modular Construction Pieces", "desc": "Complete modular cottage roof shingles, timber wall facades, doors, windows, beams, and windmill", "items": bld_items})
 
-    # 11. Water, Boats & Aquatic
-    water_items = [
-        {"id": "water_river_tile", "name": "River Water Tile", "type": "tileset_slice", "source": tileset_16, "crop": [352, 112, 16, 16], "desc": "Clear flowing river water"},
-        {"id": "water_shore_edge", "name": "Water Shoreline Bank", "type": "tileset_slice", "source": tileset_16, "crop": [368, 112, 16, 16], "desc": "Shallow water bank transition"},
+    # 11. Water, Aquatic & Depth Layers
+    water_items = list(tiles_by_cat.get("water_aquatic", []))
+    water_items.extend([
         {"id": "boat_coracle_water", "name": "Coracle Boat (Floating 4-Frame)", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_coracle_strip4.png", "frames": 4, "fps": 4, "desc": "Round traditional fishing coracle boat in water (48x37)"},
         {"id": "boat_coracle_land", "name": "Coracle Boat (Dry Land)", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Other/spr_deco_coracle_land.png", "desc": "Beached coracle boat on shore (32x30)"},
         {"id": "boat_oar", "name": "Wooden Rowing Oar", "type": "sprite_gm", "sprite": "spr_deco_oar", "desc": "Boat steering and rowing paddle"}
-    ]
-    categories.append({"id": "water_aquatic", "title": "Water, Boats & Aquatic", "desc": "Water depths, shores, floating animated coracle boats, and rowing oars", "items": water_items})
+    ])
+    categories.append({"id": "water_aquatic", "title": "Water, Aquatic & Depth Layers", "desc": "Coastline shorelines, river currents, wave foams, deep ocean gradients, and floating coracle boats", "items": water_items})
 
     # 12. Resources & Collectibles
     res_items = [
@@ -316,12 +402,13 @@ def build_catalog():
     categories.append({"id": "enemies", "title": "Enemies (Skeleton & Goblin)", "desc": "Combat ready animated monsters with exact 96x64 frame strips", "items": enemy_items})
 
     # 14. Dungeon Visuals & Props
-    dungeon_items = [
+    dungeon_items = list(tiles_by_cat.get("dungeon_visuals", []))
+    dungeon_items.extend([
         {"id": "dungeon_minecart", "name": "Dungeon Ore Minecart", "type": "sprite_gm", "sprite": "spr_deco_minecart", "desc": "Subterranean rail ore transport cart"},
         {"id": "dungeon_sword_floor", "name": "Sword Embedded in Floor", "type": "sprite_gm", "sprite": "spr_deco_sword_floor", "desc": "Ancient warrior sword stuck in dungeon stone"},
         {"id": "dungeon_chest_closed", "name": "Ornate Dungeon Chest", "type": "sprite_gm", "sprite": "spr_deco_chest_02_closed", "desc": "Gold trim dungeon vault chest"}
-    ]
-    categories.append({"id": "dungeon_visuals", "title": "Dungeon Visuals & Props", "desc": "Minecarts, floor swords, and ancient dungeon treasure chests", "items": dungeon_items})
+    ])
+    categories.append({"id": "dungeon_visuals", "title": "Dungeon Visuals & Masonry", "desc": "Dungeon stone staircases, archways, pillar columns, minecarts, and treasure chests", "items": dungeon_items})
 
     # 15. Weather, Atmosphere & VFX
     vfx_items = [
@@ -331,8 +418,7 @@ def build_catalog():
         {"id": "vfx_fire_01", "name": "Campfire Flame 01", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Fire/spr_deco_fire_01_strip4.png", "frames": 4, "fps": 8, "desc": "Flickering warm fire effect"},
         {"id": "vfx_fire_02", "name": "Furnace Flame 02", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Fire/spr_deco_fire_02_strip4.png", "frames": 4, "fps": 8, "desc": "Roaring hearth fire animation"},
         {"id": "vfx_glint_01", "name": "Sparkle Glint 01", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_01_strip6.png", "frames": 6, "fps": 8, "desc": "Treasure and ore shimmer sparkle (6 frames)"},
-        {"id": "vfx_glint_02", "name": "Star Sparkle 02", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_02_strip4.png", "frames": 4, "fps": 6, "desc": "Item discovery twinkle effect (4 frames)"},
-        {"id": "vfx_dust_run", "name": "Dust Run Particles", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/dust_run_strip8/3dca18ec-c5d9-4b68-b7eb-52296b02a9b6.png", "frames": 8, "fps": 10, "desc": "Player movement footstep dust puff"}
+        {"id": "vfx_glint_02", "name": "Star Sparkle 02", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/VFX/Glint/spr_deco_glint_02_strip4.png", "frames": 4, "fps": 6, "desc": "Item discovery twinkle effect (4 frames)"}
     ]
     categories.append({"id": "weather_vfx", "title": "Weather, Atmosphere & VFX", "desc": "Chimney smoke strips, burning campfire flames, treasure sparkle glints, and particles", "items": vfx_items})
 
@@ -347,56 +433,39 @@ def build_catalog():
         {"id": "furn_firepit", "name": "Outdoor Firepit", "type": "sprite_gm", "sprite": "spr_deco_firepit", "desc": "Outdoor stone fire pit"},
         {"id": "furn_barrel_closed", "name": "Storage Barrel (Sealed)", "type": "sprite_gm", "sprite": "spr_deco_barrel_closed", "desc": "Sealed oak barrel for wine & grain"},
         {"id": "furn_barrel_open", "name": "Storage Barrel (Open)", "type": "sprite_gm", "sprite": "spr_deco_barrel_open", "desc": "Open top barrel showing storage"},
-        {"id": "furn_barrel_swords", "name": "Weapons Barrel (Swords)", "type": "sprite_gm", "sprite": "spr_deco_barrel_swords", "desc": "Armory barrel storing blades"},
-        {"id": "furn_barrel_water", "name": "Rain Barrel (Water)", "type": "sprite_gm", "sprite": "spr_deco_barrel_water", "desc": "Water collection barrel"},
-        {"id": "furn_dishware", "name": "Plate, Knife & Fork", "type": "sprite_gm", "sprite": "spr_deco_plate_knifeandfork", "desc": "Table setting tableware"},
-        {"id": "furn_plate_food", "name": "Plate with Hot Food", "type": "sprite_gm", "sprite": "spr_deco_plate_food", "desc": "Cooked meal on porcelain plate"},
-        {"id": "furn_jar", "name": "Ceramic Storage Jar", "type": "sprite_gm", "sprite": "spr_deco_jar_01", "desc": "Glazed pottery pantry jar"},
-        {"id": "furn_mug", "name": "Clay Drinking Mug", "type": "sprite_gm", "sprite": "spr_deco_mug_02", "desc": "Warm beverage ceramic tankard"},
-        {"id": "furn_book", "name": "Spellbook / Diary", "type": "sprite_gm", "sprite": "spr_deco_book_01", "desc": "Leather-bound tome and crafting journal"},
-        {"id": "furn_bucket", "name": "Wooden Bucket", "type": "sprite_gm", "sprite": "spr_deco_bucket", "desc": "Water and milking pail"},
-        {"id": "furn_bucket_rope", "name": "Well Bucket & Rope", "type": "sprite_gm", "sprite": "spr_deco_buckect_rope", "desc": "Bucket attached to winch rope"}
+        {"id": "furn_barrel_swords", "name": "Weapons Barrel (Swords)", "type": "sprite_gm", "sprite": "spr_deco_barrel_swords", "desc": "Armory barrel storing blades"}
     ]
-    categories.append({"id": "furniture_deco", "title": "Player Construction & Furniture", "desc": "Chairs, sidetables, rugs, paintings, anvils, campfires, barrels, tableware, books, and buckets", "items": deco_items})
+    categories.append({"id": "furniture_deco", "title": "Player Construction & Furniture", "desc": "Chairs, sidetables, rugs, paintings, anvils, campfires, and storage barrels", "items": deco_items})
 
-    # 17. Tools & Implements
-    ui_dir = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI"
-    tool_items = [
-        {"id": "tool_axe", "name": "Woodcutter's Axe", "type": "image", "source": f"{ui_dir}/axe.png", "desc": "Essential tool for felling trees and gathering timber"},
-        {"id": "tool_pickaxe", "name": "Miner's Pickaxe", "type": "image", "source": f"{ui_dir}/pickaxe.png", "desc": "Heavy tool for mining stone, ores and gems"},
-        {"id": "tool_shovel", "name": "Gardening Shovel", "type": "image", "source": f"{ui_dir}/shovel.png", "desc": "Tool for digging earth, sand, and preparing ground"},
-        {"id": "tool_hammer", "name": "Builder's Hammer", "type": "image", "source": f"{ui_dir}/hammer.png", "desc": "Construction tool for placing and upgrading structures"},
-        {"id": "tool_watering_can", "name": "Watering Can (Hoe/Water)", "type": "image", "source": f"{ui_dir}/water.png", "desc": "Farm implement for irrigating crops"},
-        {"id": "tool_fishing_rod", "name": "Fishing Rod (Bamboo)", "type": "image", "source": f"{ui_dir}/rod.png", "desc": "Angler's rod with line for catching river fish"},
-        {"id": "tool_fishing_rod_alt", "name": "Fishing Rod (Reinforced)", "type": "image", "source": f"{ui_dir}/rod alt.png", "desc": "Upgraded deep-water fishing rod"},
-        {"id": "tool_sword", "name": "Hero's Sword", "type": "image", "source": f"{ui_dir}/sword.png", "desc": "Steel weapon for combat defense against dungeon foes"},
-        {"id": "tool_basket", "name": "Forager's Woven Basket", "type": "image", "source": f"{ui_dir}/basket.png", "desc": "Gathering basket for harvesting crops and wild berries"}
+    # 17. Tools & Equipment
+    tools_items = [
+        {"id": "tool_axe", "name": "Woodcutter Axe", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/axe.png", "desc": "Chopping wood & felling trees tool"},
+        {"id": "tool_pickaxe", "name": "Mining Pickaxe", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/pickaxe.png", "desc": "Excavating rock & mining underground ores"},
+        {"id": "tool_shovel", "name": "Tilling Shovel", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/shovel.png", "desc": "Digging earth & prepping soil beds"},
+        {"id": "tool_watering_can", "name": "Watering Can", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/watering_can.png", "desc": "Irrigating farm seeds and thirsty crops"},
+        {"id": "tool_fishing_rod", "name": "Fishing Rod", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/fishing_rod.png", "desc": "Catching fish in rivers, lakes & oceans"},
+        {"id": "tool_bucket", "name": "Wooden Bucket", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/bucket.png", "desc": "Liquid transport & dairy milking bucket"}
     ]
-    categories.append({"id": "tools", "title": "Tools & Implements", "desc": "Axe, Pickaxe, Shovel, Hammer, Watering Can, Fishing Rods, Sword, and Foraging Basket", "items": tool_items})
+    categories.append({"id": "tools", "title": "Tools & Equipment", "desc": "Axe, Pickaxe, Shovel, Watering Can, Fishing Rod, and Bucket", "items": tools_items})
 
     # 18. UI Visuals
-    cozy_dir = "Assets/DEMO_MegaCozyUIPack_doboui - copia"
-    diary_dir = "Assets/PixelInventoryDiaryUI_FreeDemo"
-
+    cozy_dir = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/MegaCozy_UI_Pack"
+    diary_dir = "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/PixelDiary_UI_Pack"
     ui_items = [
-        {"id": "ui_9slice_white", "name": "9-Slice Window Box (White)", "type": "image", "source": f"{ui_dir}/9slice_box_white/w_box_9slice_c.png", "desc": "Window background 9-slice panel"},
-        {"id": "ui_bar_health", "name": "Health Bar (Red Full)", "type": "image", "source": f"{ui_dir}/redbar_00.png", "desc": "Player vital health meter bar"},
-        {"id": "ui_bar_energy", "name": "Energy Bar (Green Full)", "type": "image", "source": f"{ui_dir}/greenbar_00.png", "desc": "Player stamina / energy meter"},
-        {"id": "ui_bar_mana", "name": "Mana Bar (Blue Full)", "type": "image", "source": f"{ui_dir}/bluebar_00.png", "desc": "Magic / thirst meter"},
-        {"id": "ui_cursor_01", "name": "Pixel Mouse Cursor (Pointer)", "type": "image", "source": f"{ui_dir}/cursor_01.png", "desc": "Crisp pixel-art arrow mouse cursor"},
-        {"id": "ui_cursor_hand", "name": "Interactive Hand Cursor", "type": "image", "source": f"{ui_dir}/hand_open_01.png", "desc": "Open grab hand cursor for inventory and building"},
-        {"id": "ui_emote_chat", "name": "Emote Bubble: Chat", "type": "image", "source": f"{ui_dir}/expression_chat.png", "desc": "NPC conversation speech balloon"},
-        {"id": "ui_emote_love", "name": "Emote Bubble: Heart Love", "type": "image", "source": f"{ui_dir}/expression_love.png", "desc": "Animal friendship / romance heart icon"},
-        {"id": "ui_emote_working", "name": "Emote Bubble: Working", "type": "image", "source": f"{ui_dir}/expression_working.png", "desc": "Crafting in-progress status balloon"},
-        {"id": "ui_sandtimer", "name": "Hourglass Sandtimer", "type": "image", "source": f"{ui_dir}/sandtimer.png", "desc": "Crafting time remaining icon"},
-        {"id": "ui_cozy_btn_wood", "name": "Cozy Button (Wood Play)", "type": "image", "source": f"{cozy_dir}/Buttons/ButtonsBuild/PlayButton.png", "desc": "Tactile wooden push button"},
-        {"id": "ui_cozy_btn_picnic", "name": "Cozy Button (Picnic Blue)", "type": "image", "source": f"{cozy_dir}/Buttons/CozyPicnic/CozyPicnicButton_blue.png", "desc": "Pastel aesthetic action button"},
-        {"id": "ui_cozy_card", "name": "Info Card Panel", "type": "image", "source": f"{cozy_dir}/Cards/Card1_gray.png", "desc": "Item description info container card"},
-        {"id": "ui_cozy_frame", "name": "Wood Picture Frame", "type": "image", "source": f"{cozy_dir}/Frames/Frame1_wood.png", "desc": "Decorative border frame"},
-        {"id": "ui_cozy_slot", "name": "Inventory Item Slot", "type": "image", "source": f"{cozy_dir}/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png", "desc": "Hotbar and bag grid slot container"},
-        {"id": "ui_cozy_toggle", "name": "Switch Toggle", "type": "image", "source": f"{cozy_dir}/Toggles/Toggle1.png", "desc": "Settings ON/OFF slider switch"},
-        {"id": "ui_cozy_icon_heart", "name": "Flat Icon: Heart", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat1.png", "desc": "16px flat UI health icon"},
-        {"id": "ui_cozy_icon_coin", "name": "Flat Icon: Coin", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat9.png", "desc": "16px flat UI economy icon"},
+        {"id": "ui_cozy_btn_cyan", "name": "Button: Blue Cyan (Small)", "type": "image", "source": f"{cozy_dir}/Buttons/Buttons_Square_Small/Button_Square_Small_Blue.png", "desc": "Vibrant blue clickable square button"},
+        {"id": "ui_cozy_btn_green", "name": "Button: Emerald Green (Small)", "type": "image", "source": f"{cozy_dir}/Buttons/Buttons_Square_Small/Button_Square_Small_Green.png", "desc": "Emerald green affirmative action button"},
+        {"id": "ui_cozy_btn_amber", "name": "Button: Amber Gold (Small)", "type": "image", "source": f"{cozy_dir}/Buttons/Buttons_Square_Small/Button_Square_Small_Yellow.png", "desc": "Amber warning / special button"},
+        {"id": "ui_cozy_btn_red", "name": "Button: Ruby Red (Small)", "type": "image", "source": f"{cozy_dir}/Buttons/Buttons_Square_Small/Button_Square_Small_Red.png", "desc": "Ruby red danger / cancel button"},
+        {"id": "ui_cozy_inv_slot", "name": "Inventory Item Slot (Wood Frame)", "type": "image", "source": f"{cozy_dir}/Slots/Slot_Square_Small/Slot_Square_Small_White.png", "desc": "Crisp white item slot frame"},
+        {"id": "ui_cozy_icon_heart", "name": "Flat Icon: Heart (HP)", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat01.png", "desc": "16px flat heart health UI icon"},
+        {"id": "ui_cozy_icon_coin", "name": "Flat Icon: Gold Coin", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat02.png", "desc": "16px flat coin economy UI icon"},
+        {"id": "ui_cozy_icon_star", "name": "Flat Icon: Level Star", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat03.png", "desc": "16px flat experience star icon"},
+        {"id": "ui_cozy_icon_potion", "name": "Flat Icon: Potion Flask", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat04.png", "desc": "16px flat health potion icon"},
+        {"id": "ui_cozy_icon_sword", "name": "Flat Icon: Attack Sword", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat05.png", "desc": "16px flat melee attack sword icon"},
+        {"id": "ui_cozy_icon_shield", "name": "Flat Icon: Defense Shield", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat06.png", "desc": "16px flat armor defense shield icon"},
+        {"id": "ui_cozy_icon_gem", "name": "Flat Icon: Crystal Gem", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat07.png", "desc": "16px flat premium gemstone icon"},
+        {"id": "ui_cozy_icon_key", "name": "Flat Icon: Dungeon Key", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat08.png", "desc": "16px flat dungeon chest key icon"},
+        {"id": "ui_cozy_icon_food", "name": "Flat Icon: Food Bread", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat09.png", "desc": "16px flat survival food icon"},
         {"id": "ui_cozy_icon_bag", "name": "Flat Icon: Backpack", "type": "image", "source": f"{cozy_dir}/Icons/IconsFlat_16px/IconFlat10.png", "desc": "16px flat UI inventory bag icon"},
         {"id": "ui_diary_panel", "name": "Diary Item Area Panel", "type": "image", "source": f"{diary_dir}/UI_Elements_Demo/UI_Panel_ItemArea.png", "desc": "Illustrated quest & inventory diary background"},
         {"id": "ui_diary_badge_rose", "name": "Deco Icon: Single Rose", "type": "image", "source": f"{diary_dir}/Icons_Demo/UI_Icon_SingleRose.png", "desc": "Diary gift and romance achievement rose"}
@@ -408,9 +477,9 @@ def build_catalog():
 def resolve_and_layout(categories):
     START_X = 60
     START_Y = 120
-    SECTION_SPACING_Y = 140
-    COL_SPACING = 30
-    ROW_SPACING = 36
+    SECTION_SPACING_Y = 100
+    COL_SPACING = 14
+    ROW_SPACING = 14
     MAX_ROW_WIDTH = 2200
 
     current_y = START_Y
@@ -432,8 +501,8 @@ def resolve_and_layout(categories):
 
         for itm in items:
             itype = itm["type"]
-            w = 32
-            h = 32
+            w = 16
+            h = 16
             source_path = ""
             frames = 1
             fps = 8
@@ -479,9 +548,16 @@ def resolve_and_layout(categories):
                 h = 48
                 source_path = "[Isometric UI Overlay Effect]"
 
-            # Card size: enough room for character/strip preview without clipping
-            card_w = max(100, w + 28)
-            card_h = max(116, h + 50)
+            # Compact, clean card sizing (48x48 for 16x16, 56x56 for 32x32, larger for characters)
+            if w <= 16 and h <= 16:
+                card_w = 48
+                card_h = 48
+            elif w <= 32 and h <= 32:
+                card_w = 56
+                card_h = 56
+            else:
+                card_w = max(64, w + 16)
+                card_h = max(64, h + 16)
 
             if (item_x + card_w) > (START_X + MAX_ROW_WIDTH):
                 item_x = START_X
@@ -491,6 +567,8 @@ def resolve_and_layout(categories):
             row_max_h = max(row_max_h, card_h)
 
             resolved_item = dict(itm)
+            if "cat" in resolved_item:
+                del resolved_item["cat"]
             resolved_item.update({
                 "x": item_x,
                 "y": item_y,
@@ -506,7 +584,7 @@ def resolve_and_layout(categories):
 
             item_x += card_w + COL_SPACING
 
-        section_height = (item_y + row_max_h) - cat_start_y + 40
+        section_height = (item_y + row_max_h) - cat_start_y + 30
         current_y += section_height + SECTION_SPACING_Y
 
         resolved_categories.append({
@@ -536,8 +614,8 @@ def generate_files():
     map_lines.append("=" * 90)
     map_lines.append("")
     map_lines.append("This document is the master coordinate directory for every single asset and")
-    map_lines.append("visual concept declared in v0.txt. Use these exact paths, slices, and canvas")
-    map_lines.append("coordinates whenever referencing, spawning, or modifying assets.")
+    map_lines.append("visual concept. Use these exact paths, slices, and canvas coordinates whenever")
+    map_lines.append("referencing, spawning, or modifying assets.")
     map_lines.append("")
     map_lines.append("-" * 90)
     map_lines.append("CATEGORY                                      | ITEMS    | Y-POSITION")
@@ -590,7 +668,7 @@ def generate_files():
     cats_json = json.dumps(resolved_cats, indent=2)
     ts_code = [
         "// AUTO-GENERATED ASSET REGISTRY FOR PHASER 3 ATLAS",
-        "// Contains spatial layout coordinates, sprite sources, slices and metadata for all v0.txt items.",
+        "// Contains spatial layout coordinates, sprite sources, slices and metadata for all assets.",
         "",
         "export interface AssetItem {",
         "  id: string;",

@@ -161,21 +161,21 @@ export const DOOR_OFFSETS: Record<string, { dx: number; dy: number; dir: 'down' 
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// CROP ASSET MAP
+// CROP ASSET MAP (Growing plant stages 00-04 only; stage 05 is collection icon)
 // ═══════════════════════════════════════════════════════════════════
 
 export const CROP_IDS = [
-  'crop_wheat_stage_0', 'crop_wheat_stage_1', 'crop_wheat_stage_2', 'crop_wheat_stage_3', 'crop_wheat_stage_4', 'crop_wheat_stage_5',
-  'crop_carrot_stage_0', 'crop_carrot_stage_1', 'crop_carrot_stage_2', 'crop_carrot_stage_3', 'crop_carrot_stage_4', 'crop_carrot_stage_5',
-  'crop_potato_stage_0', 'crop_potato_stage_1', 'crop_potato_stage_2', 'crop_potato_stage_3', 'crop_potato_stage_4', 'crop_potato_stage_5',
-  'crop_pumpkin_stage_0', 'crop_pumpkin_stage_1', 'crop_pumpkin_stage_2', 'crop_pumpkin_stage_3', 'crop_pumpkin_stage_4', 'crop_pumpkin_stage_5',
-  'crop_cabbage_stage_0', 'crop_cabbage_stage_1', 'crop_cabbage_stage_2', 'crop_cabbage_stage_3', 'crop_cabbage_stage_4', 'crop_cabbage_stage_5',
-  'crop_cauliflower_stage_0', 'crop_cauliflower_stage_1', 'crop_cauliflower_stage_2', 'crop_cauliflower_stage_3', 'crop_cauliflower_stage_4', 'crop_cauliflower_stage_5',
-  'crop_kale_stage_0', 'crop_kale_stage_1', 'crop_kale_stage_2', 'crop_kale_stage_3', 'crop_kale_stage_4', 'crop_kale_stage_5',
-  'crop_parsnip_stage_0', 'crop_parsnip_stage_1', 'crop_parsnip_stage_2', 'crop_parsnip_stage_3', 'crop_parsnip_stage_4', 'crop_parsnip_stage_5',
-  'crop_radish_stage_0', 'crop_radish_stage_1', 'crop_radish_stage_2', 'crop_radish_stage_3', 'crop_radish_stage_4', 'crop_radish_stage_5',
-  'crop_beetroot_stage_0', 'crop_beetroot_stage_1', 'crop_beetroot_stage_2', 'crop_beetroot_stage_3', 'crop_beetroot_stage_4', 'crop_beetroot_stage_5',
-  'crop_sunflower_stage_0', 'crop_sunflower_stage_1', 'crop_sunflower_stage_2', 'crop_sunflower_stage_3', 'crop_sunflower_stage_4', 'crop_sunflower_stage_5',
+  'crop_wheat_stage_0', 'crop_wheat_stage_1', 'crop_wheat_stage_2', 'crop_wheat_stage_3', 'crop_wheat_stage_4',
+  'crop_carrot_stage_0', 'crop_carrot_stage_1', 'crop_carrot_stage_2', 'crop_carrot_stage_3', 'crop_carrot_stage_4',
+  'crop_potato_stage_0', 'crop_potato_stage_1', 'crop_potato_stage_2', 'crop_potato_stage_3', 'crop_potato_stage_4',
+  'crop_pumpkin_stage_0', 'crop_pumpkin_stage_1', 'crop_pumpkin_stage_2', 'crop_pumpkin_stage_3', 'crop_pumpkin_stage_4',
+  'crop_cabbage_stage_0', 'crop_cabbage_stage_1', 'crop_cabbage_stage_2', 'crop_cabbage_stage_3', 'crop_cabbage_stage_4',
+  'crop_cauliflower_stage_0', 'crop_cauliflower_stage_1', 'crop_cauliflower_stage_2', 'crop_cauliflower_stage_3', 'crop_cauliflower_stage_4',
+  'crop_kale_stage_0', 'crop_kale_stage_1', 'crop_kale_stage_2', 'crop_kale_stage_3', 'crop_kale_stage_4',
+  'crop_parsnip_stage_0', 'crop_parsnip_stage_1', 'crop_parsnip_stage_2', 'crop_parsnip_stage_3', 'crop_parsnip_stage_4',
+  'crop_radish_stage_0', 'crop_radish_stage_1', 'crop_radish_stage_2', 'crop_radish_stage_3', 'crop_radish_stage_4',
+  'crop_beetroot_stage_0', 'crop_beetroot_stage_1', 'crop_beetroot_stage_2', 'crop_beetroot_stage_3', 'crop_beetroot_stage_4',
+  'crop_sunflower_stage_0', 'crop_sunflower_stage_1', 'crop_sunflower_stage_2', 'crop_sunflower_stage_3', 'crop_sunflower_stage_4',
 ];
 
 export const CROP_BASE_IDS = [
@@ -209,26 +209,27 @@ export const GRASS_TUFT_IDS = ['grass_tuft_01', 'plant_leaf_accent', 'acorn_deco
 export const PATH_TILES = ['path_tile_01', 'path_tile_02', 'path_tile_03'];
 
 // ═══════════════════════════════════════════════════════════════════
-// CONFIGURATION
+// CONFIGURATION (3x width = 48, 2x height = 32)
 // ═══════════════════════════════════════════════════════════════════
 
 export const CONFIG = {
-  GRID_SIZE: 16,
+  GRID_WIDTH: 48,
+  GRID_HEIGHT: 32,
   MIN_HOUSE_DISTANCE: 5,
-  SETTLEMENT_MIN_RADIUS: 3,
-  SETTLEMENT_MAX_RADIUS: 7,
-  MAX_HOUSES: 6,
-  MAX_FARMS: 3,
-  MAX_WELLS: 2,
-  MAX_TREES: 12,
-  MAX_DECORATIONS: 25,
-  MAX_FOREST_PATCHES: 3,
-  MAX_ROCKS: 10,
-  MAX_FLOWERS: 12,
-  MAX_CHESTS: 2,
-  MAX_PATH_ATTEMPTS: 300,
-  WATER_CHANCE: 0.5,
-  CROP_GROWTH_DIST: { seed: 0.2, sprout: 0.25, small: 0.2, growing: 0.2, mature: 0.1, harvested: 0.05 },
+  SETTLEMENT_MIN_RADIUS: 4,
+  SETTLEMENT_MAX_RADIUS: 18,
+  MAX_HOUSES: 14,
+  MAX_FARMS: 7,
+  MAX_WELLS: 4,
+  MAX_TREES: 36,
+  MAX_DECORATIONS: 70,
+  MAX_FOREST_PATCHES: 8,
+  MAX_ROCKS: 25,
+  MAX_FLOWERS: 30,
+  MAX_CHESTS: 5,
+  MAX_PATH_ATTEMPTS: 500,
+  WATER_CHANCE: 0.7,
+  CROP_GROWTH_DIST: { seed: 0.2, sprout: 0.25, small: 0.25, growing: 0.2, mature: 0.1 },
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -254,8 +255,8 @@ export class SettlementGenerator {
   constructor(seed: number) {
     this.seed = seed;
     this.rng = createRNG(seed);
-    this.gridW = CONFIG.GRID_SIZE;
-    this.gridH = CONFIG.GRID_SIZE;
+    this.gridW = CONFIG.GRID_WIDTH;
+    this.gridH = CONFIG.GRID_HEIGHT;
     this.blocked = Array.from({ length: this.gridH }, () => Array(this.gridW).fill(false));
     this.terrain = Array.from({ length: this.gridH }, () => Array(this.gridW).fill('grass_tile_01'));
     this.objects = [];
@@ -265,7 +266,7 @@ export class SettlementGenerator {
     this.waterBodies = [];
     this.fenceSections = [];
     this.forests = [];
-    this.center = { x: 7, y: 7 };
+    this.center = { x: 24, y: 16 };
   }
 
   getSeed(): number {
@@ -290,7 +291,7 @@ export class SettlementGenerator {
       this.waterBodies = [];
       this.fenceSections = [];
       this.forests = [];
-      this.center = { x: 7, y: 7 };
+      this.center = { x: 24, y: 16 };
 
       this.chooseCenter();
       this.fillGrass();
@@ -473,12 +474,12 @@ export class SettlementGenerator {
   // ─── Step 4: Forests ───────────────────────────────────────────
 
   private generateForests(): void {
-    const numPatches = 2 + Math.floor(this.rng() * 2); // 2-3 patches
+    const numPatches = 4 + Math.floor(this.rng() * 5); // 4-8 patches for larger map
 
     for (let p = 0; p < numPatches; p++) {
-      const patchSize = 2 + Math.floor(this.rng() * 3); // 2-4 trees
+      const patchSize = 3 + Math.floor(this.rng() * 5); // 3-7 trees
       const angle = (p / numPatches) * Math.PI * 2 + this.rng() * 0.5;
-      const dist = 4 + this.rng() * 5;
+      const dist = 6 + this.rng() * 14;
       const px = this.center.x + Math.floor(Math.cos(angle) * dist);
       const py = this.center.y + Math.floor(Math.sin(angle) * dist);
 
@@ -509,7 +510,7 @@ export class SettlementGenerator {
   // ─── Step 5: Houses ────────────────────────────────────────────
 
   private placeHouses(): void {
-    const numHouses = 3 + Math.floor(this.rng() * 4); // 3-6 houses
+    const numHouses = 6 + Math.floor(this.rng() * 9); // 6-14 houses for larger map
     let attempts = 0;
 
     // Shuffle house defs by weight
@@ -676,13 +677,12 @@ export class SettlementGenerator {
       for (const c of validCells) {
         this.blocked[c.y][c.x] = true;
         this.terrain[c.y][c.x] = 'dirt_tile_01'; // plain soil base
-        // Random growth stage: 20% early, 30% mid, 40% mature, 10% other
+        // Random growth stage: stages 0-4 only (stage 5 is collection icon, not a plant)
         const r = this.rng();
         let stage: number;
-        if (r < 0.2) stage = Math.floor(this.rng() * 2); // 0-1
-        else if (r < 0.5) stage = 2 + Math.floor(this.rng() * 2); // 2-3
-        else if (r < 0.9) stage = 4; // mature
-        else stage = 5; // harvested
+        if (r < 0.2) stage = Math.floor(this.rng() * 2); // 0-1 early
+        else if (r < 0.5) stage = 2 + Math.floor(this.rng() * 2); // 2-3 mid
+        else stage = 4; // 4 mature (max plant stage)
 
         const cropId = `${cropBaseId}_stage_${stage}`;
         cells.push({ x: c.x, y: c.y, cropId, cropStage: stage });

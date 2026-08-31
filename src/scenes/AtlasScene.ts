@@ -32,8 +32,8 @@ export class AtlasScene extends Phaser.Scene {
 
     // 1. Load Main Tilesets
     this.load.image(
-      'tileset_sunnysideworld_16px',
-      '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png'
+      'sprite_sheet_16x_transparent',
+      '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/sprite_sheet_16x_transparent.png'
     );
     this.load.image(
       'tileset_sunnysideworld_forest_32px',
@@ -82,7 +82,7 @@ export class AtlasScene extends Phaser.Scene {
         if (itm.type === 'tileset_slice' && itm.crop) {
           const tilesetKey = (itm.sourcePath.indexOf('forest') !== -1)
             ? 'tileset_sunnysideworld_forest_32px'
-            : 'tileset_sunnysideworld_16px';
+            : 'sprite_sheet_16x_transparent';
           const frameKey = `slice_${itm.id}`;
 
           if (!this.createdFrames.has(frameKey) && this.textures.exists(tilesetKey)) {
@@ -234,8 +234,8 @@ export class AtlasScene extends Phaser.Scene {
 
     // Preview pedestal / well
     const previewWell = this.add.graphics();
-    const wellPad = 8;
-    const wellH = cardH - 34;
+    const wellPad = 4;
+    const wellH = cardH - wellPad * 2;
     previewWell.fillStyle(0x0f172a, 0.9);
     previewWell.fillRoundedRect(wellPad, wellPad, cardW - wellPad * 2, wellH, 6);
     previewWell.lineStyle(1, 0x1e293b, 0.6);
@@ -244,13 +244,13 @@ export class AtlasScene extends Phaser.Scene {
 
     // Center position for preview sprite
     const centerX = cardW / 2;
-    const centerY = wellPad + wellH / 2;
+    const centerY = cardH / 2;
 
     // Render the visual element with pixel-perfect origin & sub-textures
     if (itm.type === 'tileset_slice') {
       const tilesetKey = (itm.sourcePath.indexOf('forest') !== -1)
         ? 'tileset_sunnysideworld_forest_32px'
-        : 'tileset_sunnysideworld_16px';
+        : 'sprite_sheet_16x_transparent';
       const frameKey = `slice_${itm.id}`;
 
       if (this.textures.exists(tilesetKey) && this.textures.get(tilesetKey).has(frameKey)) {
@@ -293,34 +293,12 @@ export class AtlasScene extends Phaser.Scene {
       card.add(isoG);
     }
 
-    // Label Text at Bottom
-    const maxChars = Math.floor(cardW / 7);
-    let displayName = itm.name;
-    if (displayName.length > maxChars) {
-      displayName = displayName.substring(0, maxChars - 2) + '..';
-    }
-
-    const label = this.add.text(centerX, cardH - 16, displayName, {
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '11px',
-      color: '#e2e8f0'
-    }).setOrigin(0.5, 0.5);
-    card.add(label);
-
-    // Dimension watermark (top right)
-    const dimText = this.add.text(cardW - 12, 12, `${itm.w}×${itm.h}`, {
-      fontFamily: 'JetBrains Mono, monospace',
-      fontSize: '8px',
-      color: '#64748b'
-    }).setOrigin(1, 0);
-    card.add(dimText);
-
     // Interactive Hitbox
     card.setSize(cardW, cardH);
     card.setInteractive({ useHandCursor: true });
 
     // Hover & Click Events
-    card.on('pointerover', () => {
+    card.on('pointerover', (pointer: Phaser.Input.Pointer) => {
       if (this.hoveredCard && this.hoveredCard !== card) {
         this.resetCardStyle(this.hoveredCard);
       }
@@ -330,7 +308,9 @@ export class AtlasScene extends Phaser.Scene {
       window.dispatchEvent(new CustomEvent('asset-hover', {
         detail: {
           item: itm,
-          category: cat
+          category: cat,
+          pointerX: pointer.event ? (pointer.event as MouseEvent).clientX : undefined,
+          pointerY: pointer.event ? (pointer.event as MouseEvent).clientY : undefined
         }
       }));
     });

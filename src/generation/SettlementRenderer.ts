@@ -10,7 +10,7 @@ import { SettlementData } from './SettlementGenerator';
 // ASSET DESCRIPTORS  (from map.txt)
 // ═══════════════════════════════════════════════════════════════════
 
-const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
+const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/sprite_sheet_16x_transparent.png';
 const HOUSES_PATH  = '/houses.png';
 
 type TilesetCrop = { x: number; y: number; w: number; h: number };
@@ -543,88 +543,118 @@ export async function renderSettlement(
   }
 
 
-  // ── LAYER 2: TREES ──────────────────────────────────────────────────
 
+  // ── LAYER 2–5: Y-SORTED SPRITES (south = drawn on top of north) ─────
+  // All sprite entities are collected, sorted by "bottom Y" (footprint bottom row),
+  // then drawn in that order so southerly objects always appear above northerly ones.
+
+  interface RenderEntry {
+    sortY: number;  // row of the object's bottom edge (for painter's sort)
+    draw: () => Promise<void>;
+  }
+
+  const entries: RenderEntry[] = [];
+
+  // Trees
   for (const forest of data.forests) {
     const assetDef = SPRITE_ASSETS[forest.treeType];
     if (!assetDef) continue;
-    const treeImg = await loadImage(assetDef.path);
+    const treeImgRef = await loadImage(assetDef.path);
     for (const tree of forest.trees) {
       const { x, y } = tree;
       if (x < 0 || x >= data.width || y < 0 || y >= data.height) continue;
-      const px = x * cellSize, py = y * cellSize;
-      if (treeImg) {
-        ctx.imageSmoothingEnabled = false;
-        const sc = (cellSize / Math.max(assetDef.w, 16)) * 1.6;
-        const dw = Math.round(assetDef.w * sc), dh = Math.round(assetDef.h * sc);
-        ctx.drawImage(treeImg, 0, 0, assetDef.w, assetDef.h,
-          px + (cellSize - dw) / 2, py + cellSize - dh, dw, dh);
-      } else {
-        ctx.fillStyle = forest.treeType.includes('pine') ? '#166534' : '#15803d';
-        ctx.beginPath();
-        ctx.arc(px + cellSize / 2, py + cellSize / 2, cellSize / 2 - 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      entries.push({
+        sortY: y, // single-cell, sort by its row
+        draw: async () => {
+          const px = x * cellSize, py = y * cellSize;
+          if (treeImgRef) {
+            ctx.imageSmoothingEnabled = false;
+            const sc = (cellSize / Math.max(assetDef.w, 16)) * 1.6;
+            const dw = Math.round(assetDef.w * sc), dh = Math.round(assetDef.h * sc);
+            ctx.drawImage(treeImgRef, 0, 0, assetDef.w, assetDef.h,
+              px + (cellSize - dw) / 2, py + cellSize - dh, dw, dh);
+          } else {
+            ctx.fillStyle = forest.treeType.includes('pine') ? '#166534' : '#15803d';
+            ctx.beginPath();
+            ctx.arc(px + cellSize / 2, py + cellSize / 2, cellSize / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      });
     }
   }
 
-  // ── LAYER 4: BUILDINGS ──────────────────────────────────────────────
+  // Buildings — sort by bottom edge of footprint
   for (const b of data.buildings) {
-    const px = b.x * cellSize, py = b.y * cellSize;
-    const bw = (b.footprintW || 2) * cellSize, bh = (b.footprintH || 2) * cellSize;
-    const crop = HOUSE_CROPS[b.id];
-    if (crop && housesImg) {
-      ctx.imageSmoothingEnabled = false;
-      const [cx, cy, cw, ch] = crop;
-      const sc = Math.max(bw / cw, bh / ch) * 1.05;
-      const dw = Math.round(cw * sc), dh = Math.round(ch * sc);
-      ctx.drawImage(housesImg, cx, cy, cw, ch,
-        px + (bw - dw) / 2, py + bh - dh, dw, dh);
-    } else {
-      ctx.fillStyle = '#5d4037';
-      ctx.fillRect(px + 1, py + 1, bw - 2, bh - 2);
-      ctx.strokeStyle = '#8B7355'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(px + 1, py + 1, bw - 2, bh - 2);
-    }
-    // Door dot
-    if (b.door) {
-      const dx = b.door.x * cellSize + cellSize / 2;
-      const dy = b.door.y * cellSize + cellSize / 2;
-      ctx.fillStyle = 'rgba(56,189,248,0.7)';
-      ctx.beginPath(); ctx.arc(dx, dy, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
+    const bCapture = { ...b };
+    entries.push({
+      sortY: b.y + (b.footprintH || 2) - 1,
+      draw: async () => {
+        const px = bCapture.x * cellSize, py = bCapture.y * cellSize;
+        const bw = (bCapture.footprintW || 2) * cellSize, bh = (bCapture.footprintH || 2) * cellSize;
+        const crop = HOUSE_CROPS[bCapture.id];
+        if (crop && housesImg) {
+          ctx.imageSmoothingEnabled = false;
+          const [cx, cy, cw, ch] = crop;
+          const sc = Math.max(bw / cw, bh / ch) * 1.05;
+          const dw = Math.round(cw * sc), dh = Math.round(ch * sc);
+          ctx.drawImage(housesImg, cx, cy, cw, ch,
+            px + (bw - dw) / 2, py + bh - dh, dw, dh);
+        } else {
+          ctx.fillStyle = '#5d4037';
+          ctx.fillRect(px + 1, py + 1, bw - 2, bh - 2);
+          ctx.strokeStyle = '#8B7355'; ctx.lineWidth = 1.5;
+          ctx.strokeRect(px + 1, py + 1, bw - 2, bh - 2);
+        }
+        // Door dot
+        if (bCapture.door) {
+          const dx = bCapture.door.x * cellSize + cellSize / 2;
+          const dy = bCapture.door.y * cellSize + cellSize / 2;
+          ctx.fillStyle = 'rgba(56,189,248,0.7)';
+          ctx.beginPath(); ctx.arc(dx, dy, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    });
   }
 
-  // ── LAYER 5: DECORATIONS, WELLS, CHESTS, ANIMALS, BOATS ───────────
+  // Decorations, Wells, Chests, Animals, Boats — sort by their cell row
   const OBJECT_RENDER_TYPES = new Set(['decoration', 'well', 'chest', 'animal', 'boat', 'farm_object']);
   for (const obj of data.objects) {
     if (!OBJECT_RENDER_TYPES.has(obj.type)) continue;
     const { x, y } = obj;
     if (x < 0 || x >= data.width || y < 0 || y >= data.height) continue;
-    const px = x * cellSize, py = y * cellSize;
+    const objCapture = { ...obj };
+    entries.push({
+      sortY: y,
+      draw: async () => {
+        const px = objCapture.x * cellSize, py = objCapture.y * cellSize;
+        const assetDef = SPRITE_ASSETS[objCapture.id];
+        if (!assetDef) {
+          ctx.fillStyle = objCapture.type === 'well' ? '#6b7280' : objCapture.type === 'chest' ? '#92400e' : '#22c55e';
+          ctx.fillRect(px + 4, py + 4, cellSize - 8, cellSize - 8);
+          return;
+        }
+        const img = await loadImage(assetDef.path);
+        if (!img) {
+          ctx.fillStyle = '#555'; ctx.fillRect(px + 4, py + 4, cellSize - 8, cellSize - 8);
+          return;
+        }
+        ctx.imageSmoothingEnabled = false;
+        const aw = assetDef.w, ah = assetDef.h;
+        const maxSz = (objCapture.type === 'well') ? cellSize * 1.5 : cellSize - 2;
+        const sc = Math.min(maxSz / aw, maxSz / ah, 2.5);
+        const dw = Math.round(aw * sc), dh = Math.round(ah * sc);
+        const destX = px + (cellSize - dw) / 2;
+        const destY = (objCapture.type === 'animal') ? py + (cellSize - dh) / 2 : py + cellSize - dh;
+        ctx.drawImage(img, 0, 0, aw, ah, destX, destY, dw, dh);
+      }
+    });
+  }
 
-    const assetDef = SPRITE_ASSETS[obj.id];
-    if (!assetDef) {
-      // fallback tiny indicator
-      ctx.fillStyle = obj.type === 'well' ? '#6b7280' : obj.type === 'chest' ? '#92400e' : '#22c55e';
-      ctx.fillRect(px + 4, py + 4, cellSize - 8, cellSize - 8);
-      continue;
-    }
-
-    const img = await loadImage(assetDef.path);
-    if (!img) {
-      ctx.fillStyle = '#555'; ctx.fillRect(px + 4, py + 4, cellSize - 8, cellSize - 8);
-      continue;
-    }
-
-    ctx.imageSmoothingEnabled = false;
-    const aw = assetDef.w, ah = assetDef.h;
-    const maxSz = (obj.type === 'well') ? cellSize * 1.5 : cellSize - 2;
-    const sc = Math.min(maxSz / aw, maxSz / ah, 2.5);
-    const dw = Math.round(aw * sc), dh = Math.round(ah * sc);
-    const destX = px + (cellSize - dw) / 2;
-    const destY = (obj.type === 'animal') ? py + (cellSize - dh) / 2 : py + cellSize - dh;
-    ctx.drawImage(img, 0, 0, aw, ah, destX, destY, dw, dh);
+  // Sort: ascending by sortY so southernmost (largest Y) drawn last (on top)
+  entries.sort((a, b) => a.sortY - b.sortY);
+  for (const entry of entries) {
+    await entry.draw();
   }
 
   // ── LAYER 6: CENTER MARKER ──────────────────────────────────────────

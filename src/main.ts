@@ -247,13 +247,63 @@ copyPathBtn.addEventListener('click', () => { navigator.clipboard.writeText(insp
 jumpToItemBtn.addEventListener('click', () => { if(activeInspectedItem){(window as any).AtlasViewer?.panToItem(activeInspectedItem.item.id);inspectorModal.classList.add('hidden');} });
 
 // ═══════════════════════════════════════════════════════════════════
+// FLOATING HOVER TOOLTIP
+// ═══════════════════════════════════════════════════════════════════
+const floatingTooltip = document.createElement('div');
+floatingTooltip.className = 'atlas-floating-tooltip hidden';
+document.body.appendChild(floatingTooltip);
+
+// Update asset count badge
+const assetCountBadge = document.getElementById('asset-count-badge');
+if (assetCountBadge) {
+  assetCountBadge.innerHTML = `<span>${ASSET_ATLAS_DATA.totalItems} Assets</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // PHASER EVENTS
 // ═══════════════════════════════════════════════════════════════════
-window.addEventListener('cursor-world-move', ((e:CustomEvent)=>{coordBadge.innerHTML=`<span>X: ${e.detail.x}</span> &bull; <span>Y: ${e.detail.y}</span>`;}) as EventListener);
-window.addEventListener('asset-hover', ((e:CustomEvent)=>{const i=e.detail.item as AssetItem,c=e.detail.category as AssetCategory;hoveredAssetLabel.innerHTML=`<strong>${i.name}</strong> <span style="color:#94a3b8;">(${c.title})</span> &bull; <span style="font-family:var(--font-mono);color:#38bdf8;">${i.w}×${i.h}px</span>`;}) as EventListener);
-window.addEventListener('asset-leave', (()=>{hoveredAssetLabel.textContent='Hover any asset or scroll to explore';}) as EventListener);
-window.addEventListener('asset-select', ((e:CustomEvent)=>{openInspector(e.detail.item,e.detail.category);}) as EventListener);
-window.addEventListener('zoom-change', ((e:CustomEvent)=>{zoomLevelLabel.textContent=`${Math.round(e.detail.zoom*100)}%`;}) as EventListener);
+window.addEventListener('cursor-world-move', ((e:CustomEvent)=>{
+  coordBadge.innerHTML=`<span>X: ${e.detail.x}</span> &bull; <span>Y: ${e.detail.y}</span>`;
+}) as EventListener);
+
+window.addEventListener('asset-hover', ((e:CustomEvent)=>{
+  const i = e.detail.item as AssetItem;
+  const c = e.detail.category as AssetCategory;
+  hoveredAssetLabel.innerHTML = `<strong>${i.name}</strong> <span style="color:#94a3b8;">(${c.title})</span> &bull; <span style="font-family:var(--font-mono);color:#38bdf8;">${i.w}×${i.h}px</span>`;
+
+  // Position floating tooltip
+  const px = e.detail.pointerX ?? 0;
+  const py = e.detail.pointerY ?? 0;
+  if (px > 0 && py > 0) {
+    floatingTooltip.innerHTML = `
+      <div class="tooltip-title">${i.name}</div>
+      <div class="tooltip-meta">
+        <span class="tooltip-cat">${c.title}</span>
+        <span class="tooltip-dim">${i.w}×${i.h}px</span>
+      </div>
+      <div class="tooltip-desc">${i.desc}</div>
+    `;
+    const tooltipX = Math.min(window.innerWidth - 240, px + 15);
+    const tooltipY = Math.min(window.innerHeight - 100, py + 15);
+    floatingTooltip.style.left = `${tooltipX}px`;
+    floatingTooltip.style.top = `${tooltipY}px`;
+    floatingTooltip.classList.remove('hidden');
+  }
+}) as EventListener);
+
+window.addEventListener('asset-leave', (()=>{
+  hoveredAssetLabel.textContent = 'Hover any asset or scroll to explore';
+  floatingTooltip.classList.add('hidden');
+}) as EventListener);
+
+window.addEventListener('asset-select', ((e:CustomEvent)=>{
+  openInspector(e.detail.item, e.detail.category);
+  floatingTooltip.classList.add('hidden');
+}) as EventListener);
+
+window.addEventListener('zoom-change', ((e:CustomEvent)=>{
+  zoomLevelLabel.textContent = `${Math.round(e.detail.zoom * 100)}%`;
+}) as EventListener);
 
 // ═══════════════════════════════════════════════════════════════════
 // HOUSES TAB — display houses.png as individual 128×128 cards
@@ -420,7 +470,7 @@ function drawHouses() {
 // TERRAIN & BIOME TAB — real map-based elevation example using only tiles from map.txt
 // ═══════════════════════════════════════════════════════════════════
 
-const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
+const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/sprite_sheet_16x_transparent.png';
 
 const TERRAIN_TILE_COORDS: Record<string, { x: number; y: number; w: number; h: number }> = {
   grass: { x: 16, y: 48, w: 16, h: 16 },
