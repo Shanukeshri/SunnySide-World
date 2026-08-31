@@ -189,8 +189,23 @@ closeSidebarBtn.addEventListener('click', () => {
   categorySidebar.classList.remove('open');
 });
 
-// Inspector Drawer
+let activeInspectorAnim: number | null = null;
+
+function closeInspector() {
+  if (activeInspectorAnim !== null) {
+    cancelAnimationFrame(activeInspectorAnim);
+    activeInspectorAnim = null;
+  }
+  inspectorModal.classList.add('hidden');
+}
+
+// Inspector Drawer with Pixel-Perfect Canvas Preview
 function openInspector(item: AssetItem, category: AssetCategory) {
+  if (activeInspectorAnim !== null) {
+    cancelAnimationFrame(activeInspectorAnim);
+    activeInspectorAnim = null;
+  }
+
   activeInspectedItem = { item, category };
   inspectCategory.textContent = category.title;
   inspectName.textContent = item.name;
@@ -201,15 +216,145 @@ function openInspector(item: AssetItem, category: AssetCategory) {
   inspectDesc.textContent = item.desc;
   inspectPath.value = item.sourcePath || 'Generated Procedural Isometric Block';
 
-  // Preview Box Rendering
+  // Clear preview box
   inspectPreviewBox.innerHTML = '';
-  if (item.sourcePath && item.sourcePath.startsWith('Sunnyside') || item.sourcePath && item.sourcePath.startsWith('Assets')) {
-    const img = document.createElement('img');
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  // Determine display scale based on source size
+  function getScale(w: number, h: number): number {
+    const max = Math.max(w, h);
+    if (max <= 16) return 6;
+    if (max <= 32) return 4;
+    if (max <= 64) return 3;
+    if (max <= 96) return 2;
+    return 1;
+  }
+
+  if (item.type === 'tileset_slice' && item.crop && item.sourcePath) {
+    const [cx, cy, cw, ch] = item.crop;
+    const scale = getScale(cw, ch);
+    canvas.width = cw * scale;
+    canvas.height = ch * scale;
+    inspectPreviewBox.appendChild(canvas);
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, cx, cy, cw, ch, 0, 0, cw * scale, ch * scale);
+    };
     img.src = '/' + item.sourcePath;
-    img.alt = item.name;
-    img.style.maxHeight = '80px';
-    img.style.objectFit = 'contain';
-    inspectPreviewBox.appendChild(img);
+  } else if (item.type === 'animated_strip' && item.sourcePath) {
+    const frameW = item.w;
+    const frameH = item.h;
+    const totalFrames = item.frames || 1;
+    const fps = item.fps || 8;
+    const scale = getScale(frameW, frameH);
+
+    canvas.width = frameW * scale;
+    canvas.height = frameH * scale;
+    inspectPreviewBox.appendChild(canvas);
+
+    const img = new Image();
+    img.onload = () => {
+      let currentFrame = 0;
+      let lastTime = performance.now();
+      const interval = 1000 / fps;
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, frameW, frameH, 0, 0, frameW * scale, frameH * scale);
+
+      if (totalFrames > 1) {
+        function loop(now: number) {
+          if (inspectorModal.classList.contains('hidden')) return;
+          if (now - lastTime >= interval) {
+            currentFrame = (currentFrame + 1) % totalFrames;
+            lastTime = now;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, currentFrame * frameW, 0, frameW, frameH, 0, 0, frameW * scale, frameH * scale);
+          }
+          activeInspectorAnim = requestAnimationFrame(loop);
+        }
+        activeInspectorAnim = requestAnimationFrame(loop);
+      }
+    };
+    img.src = '/' + item.sourcePath;
+  } else if ((item.type === 'image' || item.type === 'sprite_gm') && item.sourcePath) {
+    const scale = getScale(item.w, item.h);
+    canvas.width = item.w * scale;
+    canvas.height = item.h * scale;
+    inspectPreviewBox.appendChild(canvas);
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, item.w * scale, item.h * scale);
+    };
+    img.src = '/' + item.sourcePath;
+  } else if (item.type === 'iso_block') {
+    canvas.width = 60;
+    canvas.height = 60;
+    inspectPreviewBox.appendChild(canvas);
+
+    const cx = 30;
+    const cy = 30;
+    const rX = 18;
+    const rY = 9;
+    const hRatio = item.heightRatio || 1.0;
+    const blockH = 16 * hRatio;
+
+    // Top face
+    const topHex = (item.topColor !== undefined ? item.topColor.toString(16).padStart(6, '0') : '5da845');
+    ctx.fillStyle = `#${topHex}`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - rY - blockH / 2);
+    ctx.lineTo(cx + rX, cy - blockH / 2);
+    ctx.lineTo(cx, cy + rY - blockH / 2);
+    ctx.lineTo(cx - rX, cy - blockH / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Left face
+    const sideHex = (item.sideColor !== undefined ? item.sideColor.toString(16).padStart(6, '0') : '8a5a36');
+    ctx.fillStyle = `#${sideHex}`;
+    ctx.beginPath();
+    ctx.moveTo(cx - rX, cy - blockH / 2);
+    ctx.lineTo(cx, cy + rY - blockH / 2);
+    ctx.lineTo(cx, cy + rY + blockH / 2);
+    ctx.lineTo(cx - rX, cy + blockH / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right face
+    const frontHex = (item.frontColor !== undefined ? item.frontColor.toString(16).padStart(6, '0') : '6e4526');
+    ctx.fillStyle = `#${frontHex}`;
+    ctx.beginPath();
+    ctx.moveTo(cx + rX, cy - blockH / 2);
+    ctx.lineTo(cx, cy + rY - blockH / 2);
+    ctx.lineTo(cx, cy + rY + blockH / 2);
+    ctx.lineTo(cx + rX, cy + blockH / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - rY - blockH / 2);
+    ctx.lineTo(cx + rX, cy - blockH / 2);
+    ctx.lineTo(cx + rX, cy + blockH / 2);
+    ctx.lineTo(cx, cy + rY + blockH / 2);
+    ctx.lineTo(cx - rX, cy + blockH / 2);
+    ctx.lineTo(cx - rX, cy - blockH / 2);
+    ctx.closePath();
+    ctx.stroke();
   } else {
     inspectPreviewBox.innerHTML = `<span style="color: #38bdf8; font-weight: 600;">[ ${item.name} ]</span>`;
   }
@@ -218,12 +363,12 @@ function openInspector(item: AssetItem, category: AssetCategory) {
 }
 
 closeInspectorBtn.addEventListener('click', () => {
-  inspectorModal.classList.add('hidden');
+  closeInspector();
 });
 
 inspectorModal.addEventListener('click', (e) => {
   if (e.target === inspectorModal) {
-    inspectorModal.classList.add('hidden');
+    closeInspector();
   }
 });
 

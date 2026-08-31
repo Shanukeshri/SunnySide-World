@@ -46,7 +46,7 @@ export class AtlasScene extends Phaser.Scene {
     );
 
     // 2. Load all unique asset textures and animated strips
-    const loadedUrls = new Set<string>();
+    const loadedKeys = new Set<string>();
 
     for (const cat of ASSET_ATLAS_DATA.categories) {
       for (const itm of cat.items) {
@@ -57,17 +57,14 @@ export class AtlasScene extends Phaser.Scene {
         const url = '/' + itm.sourcePath;
         const key = `asset_${itm.id}`;
 
-        if (itm.type === 'animated_strip') {
-          if (!loadedUrls.has(url)) {
-            loadedUrls.add(url);
+        if (!loadedKeys.has(key)) {
+          loadedKeys.add(key);
+          if (itm.type === 'animated_strip') {
             this.load.spritesheet(key, url, {
               frameWidth: itm.w,
               frameHeight: itm.h
             });
-          }
-        } else if (itm.type === 'image' || itm.type === 'sprite_gm') {
-          if (!loadedUrls.has(url)) {
-            loadedUrls.add(url);
+          } else if (itm.type === 'image' || itm.type === 'sprite_gm') {
             this.load.image(key, url);
           }
         }
