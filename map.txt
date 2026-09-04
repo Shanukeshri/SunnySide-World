@@ -11168,7 +11168,7 @@ fence_bridge_r21_c12                  866   2954    16x  16     1  tileset_slice
 fence_bridge_r21_c13                  928   2954    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(208,336,16,16)
 fence_bridge_r21_c14                  990   2954    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(224,336,16,16)
 farm_soil_00                         1052   2954    16x  12     1  image           soil_00.png
-farm_soil_01                         1114   2954    16x  12     1  image           soil_01.png
+farm_soil_01                         1114   2954    16x  16     1  image           tilled_soil.png
 farm_well                            1176   2954    20x  25     1  sprite_gm       c3d011a3-e1d2-4f14-83d7-d21b9f689713.png
 farm_well_covered                    1246   2954    20x  40     1  sprite_gm       28ee3935-0d63-4141-b01a-2338fa50e040.png
 farm_trough                          1324   2954    29x  16     1  sprite_gm       e83dc18e-a89c-4aae-999e-4531c1c9bb02.png

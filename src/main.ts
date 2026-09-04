@@ -895,6 +895,11 @@ function ensureSettlementLoaded() {
   if (!isSettlementInitialized) {
     initSettlementUI();
     isSettlementInitialized = true;
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramSeed = urlParams.get("seed");
+    if (paramSeed && !isNaN(parseInt(paramSeed, 10))) {
+      currentSeed = parseInt(paramSeed, 10);
+    }
     generateAndRenderSettlement(currentSeed);
   }
 }

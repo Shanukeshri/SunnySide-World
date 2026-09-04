@@ -17,7 +17,7 @@ export interface RenderOptions {
 
 const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
 const HOUSES_PATH = '/houses.png';
-const SOIL_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/soil_01.png';
+const SOIL_PATH = '/assets/tilled_soil.png';
 
 interface TilesetCrop {
   x: number;
@@ -35,7 +35,7 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
 
   // Paths
   path_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Default dirt trail
-  path_tile_02:        { x: 16,  y: 256, w: 16, h: 16 }, // Village cobblestone path
+  path_tile_02:        { x: 16,  y: 112, w: 16, h: 16 }, // Pure dirt path
   path_tile_03:        { x: 544, y: 112, w: 16, h: 16 }, // Wooden boardwalk over water
 
   // Ground types
@@ -88,6 +88,26 @@ const SPRITE_DEFS: Record<string, SpriteDef> = {
     path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_well_covered/28ee3935-0d63-4141-b01a-2338fa50e040.png',
     w: 20, h: 40,
   },
+  farm_trough: {
+    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_trough/e83dc18e-a89c-4aae-999e-4531c1c9bb02.png',
+    w: 29, h: 16,
+  },
+  farm_waterbowl: {
+    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_waterbowl/fb5f5698-0641-4a29-aad1-d97504abe0d6.png',
+    w: 8, h: 11,
+  },
+  farm_crate_01: {
+    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_crate_01/658157b4-7ff5-452e-9e1d-c4cad561928b.png',
+    w: 16, h: 21,
+  },
+  farm_crate_02: {
+    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_crate_02/d9ac3d57-03c4-4730-98eb-600ee4457ee2.png',
+    w: 16, h: 21,
+  },
+  farm_chest_closed: {
+    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_chest_01_closed/496b079e-4729-46a2-8b47-cff42b294c71.png',
+    w: 16, h: 21,
+  },
   small_rock_01: {
     path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png',
     w: 10, h: 10,
@@ -135,7 +155,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
       resolve(img);
     };
     img.onerror = () => {
-      // Fallback empty transparent image
       const fallback = new Image();
       imageCache.set(src, fallback);
       resolve(fallback);
@@ -145,7 +164,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 function getCropPath(cropId: string): string {
-  // e.g. crop_wheat_stage_2 -> /Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_02.png
   const parts = cropId.replace('crop_', '').split('_stage_');
   if (parts.length === 2) {
     const name = parts[0];
@@ -185,7 +203,7 @@ export async function renderSettlement(
     loadImage(SOIL_PATH),
   ]);
 
-  // Preload props and trees
+  // Preload props, trees, and farm objects
   const spritePromises: Promise<HTMLImageElement>[] = [];
   for (const key of Object.keys(SPRITE_DEFS)) {
     spritePromises.push(loadImage(SPRITE_DEFS[key].path));
@@ -205,17 +223,14 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      // Draw primary grass base
       const grassCrop = TILESET_CROPS[cell.terrain === 'grass_tile_02' ? 'grass_tile_02' : 'grass_tile_01'];
       ctx.drawImage(tilesetImg, grassCrop.x, grassCrop.y, grassCrop.w, grassCrop.h, dx, dy, cellSize, cellSize);
 
-      // Sand bank around water
       if (cell.terrain === 'sand_tile_01') {
         const sandCrop = TILESET_CROPS['sand_tile_01'];
         ctx.drawImage(tilesetImg, sandCrop.x, sandCrop.y, sandCrop.w, sandCrop.h, dx, dy, cellSize, cellSize);
       }
 
-      // Stone paving near buildings
       if (cell.terrain === 'stone_tile_01') {
         const stoneCrop = TILESET_CROPS['stone_tile_01'];
         ctx.drawImage(tilesetImg, stoneCrop.x, stoneCrop.y, stoneCrop.w, stoneCrop.h, dx, dy, cellSize, cellSize);
@@ -230,7 +245,7 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      if (cell.isWater) {
+      if (cell.terrain === 'water_tile_01') {
         const waterCrop = TILESET_CROPS['water_tile_01'];
         ctx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
       } else if (cell.terrain === 'shore_transition_01') {
@@ -250,7 +265,7 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 3: Road & Paths ───────────────────────────────────────
+  // ── LAYER 3: Road & Paths (Pure dirt trail & boardwalk over water)
   for (let y = 0; y < data.height; y++) {
     for (let x = 0; x < data.width; x++) {
       const cell = data.grid[y][x];
@@ -259,21 +274,20 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      const pathCropKey = cell.terrain in TILESET_CROPS ? cell.terrain : 'path_tile_01';
+      const pathCropKey = cell.terrain === 'path_tile_03' ? 'path_tile_03' : 'path_tile_01';
       const pathCrop = TILESET_CROPS[pathCropKey];
 
-      // Soft dirt road blend
       ctx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);
     }
   }
 
-  // ── LAYER 4: Farmland & Crops ───────────────────────────────────
+  // ── LAYER 4: Farmland & Crops (Using new tilled_soil.png) ───────
   for (const farm of data.farms) {
     for (const c of farm.cells) {
       const dx = c.x * cellSize;
       const dy = c.y * cellSize;
 
-      // Draw tilled furrow soil
+      // Draw new tilled soil from assets/tilled_soil.png
       if (soilImg.width > 0) {
         ctx.drawImage(soilImg, dx, dy, cellSize, cellSize);
       } else {
@@ -313,13 +327,32 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees) ────────
+  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Farm Objects)
   interface DrawableEntity {
     ySort: number;
     draw: () => void;
   }
 
   const entities: DrawableEntity[] = [];
+
+  // Farm Objects (trough, waterbowl, crates, chests around farms)
+  if (data.farmObjects) {
+    for (const obj of data.farmObjects) {
+      entities.push({
+        ySort: obj.y + 1,
+        draw: () => {
+          const def = SPRITE_DEFS[obj.id];
+          if (!def) return;
+          const img = imageCache.get(def.path);
+          if (img && img.width > 0) {
+            const dx = obj.x * cellSize + (cellSize - def.w) / 2;
+            const dy = (obj.y + 1) * cellSize - def.h;
+            ctx.drawImage(img, dx, dy, def.w, def.h);
+          }
+        },
+      });
+    }
+  }
 
   // Wells
   for (const well of data.wells) {
@@ -331,20 +364,13 @@ export async function renderSettlement(
         if (img && img.width > 0) {
           const dx = well.x * cellSize + (cellSize - def.w) / 2;
           const dy = (well.y + 1) * cellSize - def.h;
-
-          // Shadow
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.beginPath();
-          ctx.ellipse(dx + def.w / 2, (well.y + 1) * cellSize - 2, def.w * 0.45, 4, 0, 0, Math.PI * 2);
-          ctx.fill();
-
           ctx.drawImage(img, dx, dy, def.w, def.h);
         }
       },
     });
   }
 
-  // Trees
+  // Trees — NO ADDON SHADOW (tree sprite already has its own baked shadow!)
   for (const tree of data.trees) {
     entities.push({
       ySort: tree.y + 2,
@@ -352,7 +378,6 @@ export async function renderSettlement(
         const def = SPRITE_DEFS[tree.id];
         const img = imageCache.get(def.path);
         if (img && img.width > 0) {
-          // Scale tree slightly to match 2x2 grid cell footprint
           const targetW = cellSize * 2;
           const aspect = def.h / def.w;
           const targetH = targetW * aspect;
@@ -360,13 +385,7 @@ export async function renderSettlement(
           const dx = tree.x * cellSize;
           const dy = (tree.y + 2) * cellSize - targetH;
 
-          // Tree trunk shadow
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.beginPath();
-          ctx.ellipse(dx + targetW / 2, (tree.y + 2) * cellSize - 3, targetW * 0.35, 6, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Draw first frame from animated strip
+          // Draw the sprite directly — no artificial extra ellipse shadow!
           const cropW = def.cropW || def.w;
           const cropH = def.cropH || def.h;
           ctx.drawImage(img, 0, 0, cropW, cropH, dx, dy, targetW, targetH);
@@ -384,7 +403,6 @@ export async function renderSettlement(
         if (crop && housesImg.width > 0) {
           const [cx, cy, cw, ch] = crop;
 
-          // Fit house sprite proportionally over its footprint
           const footprintPixelW = house.footprintW * cellSize;
           const footprintPixelH = house.footprintH * cellSize;
 
@@ -455,7 +473,6 @@ export async function renderSettlement(
   }
 
   if (showFootprints) {
-    // Highlight house footprints
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2;
     for (const h of data.houses) {
@@ -467,7 +484,6 @@ export async function renderSettlement(
       );
     }
 
-    // Highlight farm bounds
     ctx.strokeStyle = '#10b981';
     for (const f of data.farms) {
       ctx.strokeRect(
