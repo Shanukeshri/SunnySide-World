@@ -24,19 +24,21 @@
         </div>
       </div>
 
-      <!-- Tab Navigation -->
-      <nav class="tab-nav" role="tablist">
-        <button id="tab-assets-map" class="tab-btn" role="tab" aria-selected="false" aria-controls="assets-map-view">
-          <span class="tab-icon">🗺️</span>
-          <span>Assets Map</span>
+        <button id="tab-settlement" class="tab-btn active" role="tab" aria-selected="true" aria-controls="settlement-view">
+          <span class="tab-icon">🏘️</span>
+          <span>Village Generator</span>
         </button>
-        <button id="tab-houses" class="tab-btn active" role="tab" aria-selected="true" aria-controls="houses-view">
+        <button id="tab-houses" class="tab-btn" role="tab" aria-selected="false" aria-controls="houses-view">
           <span class="tab-icon">🏠</span>
           <span>Houses</span>
         </button>
         <button id="tab-terrain" class="tab-btn" role="tab" aria-selected="false" aria-controls="terrain-view">
           <span class="tab-icon">🌍</span>
           <span>Terrain & Biome</span>
+        </button>
+        <button id="tab-assets-map" class="tab-btn" role="tab" aria-selected="false" aria-controls="assets-map-view">
+          <span class="tab-icon">🗺️</span>
+          <span>Assets Map</span>
         </button>
       </nav>
 
@@ -154,7 +156,7 @@
     <!-- ═══════════════════════════════════════════════ -->
     <!-- VIEW: HOUSES                                    -->
     <!-- ═══════════════════════════════════════════════ -->
-    <div id="houses-view" class="view-panel active">
+    <div id="houses-view" class="view-panel">
       <div class="houses-content">
         <!-- Main preview area -->
         <main class="houses-main">
@@ -203,6 +205,103 @@
         </main>
       </div>
     </div><!-- /terrain-view -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- VIEW: SETTLEMENT / VILLAGE GENERATOR            -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="settlement-view" class="view-panel active">
+      <div class="settlement-container">
+        <!-- Settlement Control Bar -->
+        <header class="settlement-toolbar">
+          <div class="settlement-toolbar-left">
+            <div class="settlement-title-box">
+              <h2>Procedural Settlement Generator</h2>
+              <p>Flat 2D plain &bull; Invisible 16×16 grid &bull; Roads generated first &bull; Distant houses &bull; Large farms &bull; Rotated shorelines</p>
+            </div>
+            <div class="settlement-action-group">
+              <button id="btn-generate-settlement" class="btn-primary-action">
+                <span class="btn-icon">🎲</span>
+                <span>Generate Village</span>
+              </button>
+              <div class="seed-input-group">
+                <span class="seed-label">Seed:</span>
+                <input type="number" id="settlement-seed-input" placeholder="Random" />
+                <button id="btn-apply-seed" class="btn-secondary-action" title="Apply Seed">Apply</button>
+                <button id="btn-random-seed" class="btn-secondary-action" title="New Random Seed">🔀</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settlement-toolbar-right">
+            <!-- View / Zoom Controls -->
+            <div class="zoom-controls">
+              <button id="settlement-zoom-out" title="Zoom Out">−</button>
+              <span id="settlement-zoom-label">150%</span>
+              <button id="settlement-zoom-in" title="Zoom In">+</button>
+              <button id="settlement-zoom-reset" title="Reset Zoom">Fit</button>
+            </div>
+            <!-- Debug Toggles -->
+            <div class="settlement-toggles">
+              <button id="toggle-grid-btn" class="toggle-btn" title="Toggle 16×16 Grid">
+                <span># Grid</span>
+              </button>
+              <button id="toggle-clearance-btn" class="toggle-btn" title="Toggle Road Clearance Buffer">
+                <span>🛡️ Clearance</span>
+              </button>
+              <button id="toggle-footprints-btn" class="toggle-btn" title="Toggle Collision Footprints">
+                <span>📐 Footprints</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Stats & Validation Badges -->
+        <div class="settlement-stats-bar">
+          <div class="settlement-stats-left">
+            <span class="settlement-badge" id="stat-seed-badge">Seed: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-houses-badge">Houses: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-farms-badge">Farms: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-wells-badge">Wells: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-trees-badge">Trees: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-water-badge">Water: <strong>No</strong></span>
+            <span class="settlement-badge" id="stat-decor-badge">Scatter: <strong>0</strong></span>
+          </div>
+          <div class="settlement-stats-right">
+            <span class="settlement-badge status-valid" id="stat-validation-badge">
+              <span class="status-dot-green"></span>
+              <span id="validation-text">Validated: 10/10 Rules Passed (0 Road Overlaps)</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Canvas Viewport with Pan & Zoom -->
+        <div class="settlement-canvas-viewport" id="settlement-viewport">
+          <div class="settlement-canvas-stage" id="settlement-stage">
+            <canvas id="settlement-canvas"></canvas>
+          </div>
+          <div class="settlement-viewport-hint">
+            <span>🖱️ Drag to Pan &bull; 🖲️ Scroll to Zoom &bull; 16×16 Logical Grid</span>
+          </div>
+        </div>
+
+        <!-- Settlement Legend -->
+        <footer class="settlement-legend-bar">
+          <div class="legend-items">
+            <span class="leg-item"><span class="leg-color leg-grass"></span>Grass (grass_tile_01)</span>
+            <span class="leg-item"><span class="leg-color leg-road"></span>Dirt Path (path_tile_01)</span>
+            <span class="leg-item"><span class="leg-color leg-cobble"></span>Cobblestone (path_tile_02)</span>
+            <span class="leg-item"><span class="leg-color leg-boardwalk"></span>Boardwalk (path_tile_03)</span>
+            <span class="leg-item"><span class="leg-color leg-water"></span>Water (water_tile_01)</span>
+            <span class="leg-item"><span class="leg-color leg-shore"></span>Shore (shore_transition_01, rotated)</span>
+            <span class="leg-item"><span class="leg-color leg-farm"></span>Farms & Crops</span>
+            <span class="leg-item"><span class="leg-color leg-house"></span>Houses (Distant)</span>
+            <span class="leg-item"><span class="leg-color leg-well"></span>Wells</span>
+            <span class="leg-item"><span class="leg-color leg-tree"></span>Trees (Sparse)</span>
+            <span class="leg-item"><span class="leg-color leg-scatter"></span>Natural Scatter</span>
+          </div>
+        </footer>
+      </div>
+    </div><!-- /settlement-view -->
 
 
   </div><!-- /app -->

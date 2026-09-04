@@ -3,6 +3,14 @@ import {
   AssetItem,
   AssetCategory,
 } from "./data/assetRegistry";
+import {
+  generateSettlement,
+  SettlementData,
+} from "./generation/SettlementGenerator";
+import {
+  renderSettlement,
+  RenderOptions,
+} from "./generation/SettlementRenderer";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -34,30 +42,34 @@ function initPhaser() {
 // ═══════════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════════
-const tabAssetsMap = document.getElementById("tab-assets-map")!;
+const tabSettlement = document.getElementById("tab-settlement")!;
 const tabHouses = document.getElementById("tab-houses")!;
 const tabTerrain = document.getElementById("tab-terrain")!;
-const viewAssetsMap = document.getElementById("assets-map-view")!;
+const tabAssetsMap = document.getElementById("tab-assets-map")!;
+
+const viewSettlement = document.getElementById("settlement-view")!;
 const viewHouses = document.getElementById("houses-view")!;
 const viewTerrain = document.getElementById("terrain-view")!;
-const atlasControls = document.getElementById("atlas-controls")!;
-const allViews = [viewAssetsMap, viewHouses, viewTerrain];
-const allTabs = [tabAssetsMap, tabHouses, tabTerrain];
+const viewAssetsMap = document.getElementById("assets-map-view")!;
 
-function switchTab(tab: "assets-map" | "houses" | "terrain") {
+const atlasControls = document.getElementById("atlas-controls")!;
+const allViews = [viewSettlement, viewHouses, viewTerrain, viewAssetsMap];
+const allTabs = [tabSettlement, tabHouses, tabTerrain, tabAssetsMap];
+
+function switchTab(tab: "settlement" | "houses" | "terrain" | "assets-map") {
   allViews.forEach((v) => v.classList.remove("active"));
   allTabs.forEach((t) => {
     t.classList.remove("active");
     t.setAttribute("aria-selected", "false");
   });
 
-  if (tab === "assets-map") {
-    viewAssetsMap.classList.add("active");
-    tabAssetsMap.classList.add("active");
-    tabAssetsMap.setAttribute("aria-selected", "true");
-    atlasControls.classList.remove("hidden");
-    initPhaser();
-    if (game) game.scene.resume("AtlasScene");
+  if (tab === "settlement") {
+    viewSettlement.classList.add("active");
+    tabSettlement.classList.add("active");
+    tabSettlement.setAttribute("aria-selected", "true");
+    atlasControls.classList.add("hidden");
+    if (game) game.scene.pause("AtlasScene");
+    ensureSettlementLoaded();
   } else if (tab === "houses") {
     viewHouses.classList.add("active");
     tabHouses.classList.add("active");
@@ -72,12 +84,20 @@ function switchTab(tab: "assets-map" | "houses" | "terrain") {
     atlasControls.classList.add("hidden");
     if (game) game.scene.pause("AtlasScene");
     drawTerrainChunks();
+  } else if (tab === "assets-map") {
+    viewAssetsMap.classList.add("active");
+    tabAssetsMap.classList.add("active");
+    tabAssetsMap.setAttribute("aria-selected", "true");
+    atlasControls.classList.remove("hidden");
+    initPhaser();
+    if (game) game.scene.resume("AtlasScene");
   }
 }
 
-tabAssetsMap.addEventListener("click", () => switchTab("assets-map"));
+tabSettlement.addEventListener("click", () => switchTab("settlement"));
 tabHouses.addEventListener("click", () => switchTab("houses"));
 tabTerrain.addEventListener("click", () => switchTab("terrain"));
+tabAssetsMap.addEventListener("click", () => switchTab("assets-map"));
 
 // ═══════════════════════════════════════════════════════════════════
 // ATLAS DOM
@@ -848,4 +868,223 @@ function drawTerrainChunks() {
 
   img.src = TILESET_PATH;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// PROCEDURAL SETTLEMENT MODULE
+// ═══════════════════════════════════════════════════════════════════
+
+const settlementCanvas = document.getElementById("settlement-canvas") as HTMLCanvasElement;
+const settlementViewport = document.getElementById("settlement-viewport") as HTMLElement;
+
+let currentSettlementData: SettlementData | null = null;
+let currentSeed = Math.floor(Math.random() * 1000000);
+let currentZoomLevel = 1.5;
+let optShowGrid = false;
+let optShowClearance = false;
+let optShowFootprints = false;
+let isSettlementInitialized = false;
+
+// Pan state
+let isPanning = false;
+let startPanX = 0;
+let startPanY = 0;
+let scrollStartX = 0;
+let scrollStartY = 0;
+
+function ensureSettlementLoaded() {
+  if (!isSettlementInitialized) {
+    initSettlementUI();
+    isSettlementInitialized = true;
+    generateAndRenderSettlement(currentSeed);
+  }
+}
+
+function updateSettlementBadges(data: SettlementData) {
+  const seedBadge = document.getElementById("stat-seed-badge");
+  const housesBadge = document.getElementById("stat-houses-badge");
+  const farmsBadge = document.getElementById("stat-farms-badge");
+  const wellsBadge = document.getElementById("stat-wells-badge");
+  const treesBadge = document.getElementById("stat-trees-badge");
+  const waterBadge = document.getElementById("stat-water-badge");
+  const decorBadge = document.getElementById("stat-decor-badge");
+  const validationText = document.getElementById("validation-text");
+  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+
+  if (seedBadge) seedBadge.innerHTML = `Seed: <strong>${data.seed}</strong>`;
+  if (housesBadge) housesBadge.innerHTML = `Houses: <strong>${data.houses.length}</strong>`;
+  if (farmsBadge) farmsBadge.innerHTML = `Farms: <strong>${data.farms.length}</strong>`;
+  if (wellsBadge) wellsBadge.innerHTML = `Wells: <strong>${data.wells.length}</strong>`;
+  if (treesBadge) treesBadge.innerHTML = `Trees: <strong>${data.trees.length}</strong>`;
+  if (waterBadge) waterBadge.innerHTML = `Water: <strong>${data.waterBodies.length > 0 ? `${data.waterBodies.length} Ponds` : "None"}</strong>`;
+  if (decorBadge) decorBadge.innerHTML = `Scatter: <strong>${data.decorations.length}</strong>`;
+  if (seedInput) seedInput.value = String(data.seed);
+
+  if (validationText) {
+    if (data.validation.valid) {
+      validationText.textContent = "✓ Validated: All 10 Rules Passed (0 Road Overlaps)";
+    } else {
+      validationText.textContent = `⚠ ${data.validation.violations.length} Violations`;
+    }
+  }
+}
+
+async function renderCurrentSettlement() {
+  if (!currentSettlementData || !settlementCanvas) return;
+  const cellSize = Math.round(16 * currentZoomLevel);
+  await renderSettlement(settlementCanvas, currentSettlementData, {
+    cellSize,
+    showGrid: optShowGrid,
+    showClearance: optShowClearance,
+    showFootprints: optShowFootprints,
+  });
+}
+
+function generateAndRenderSettlement(seed?: number) {
+  currentSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
+  currentSettlementData = generateSettlement(currentSeed, 48, 36);
+  updateSettlementBadges(currentSettlementData);
+  renderCurrentSettlement();
+}
+
+function updateZoomDisplay() {
+  const label = document.getElementById("settlement-zoom-label");
+  if (label) label.textContent = `${Math.round(currentZoomLevel * 100)}%`;
+  renderCurrentSettlement();
+}
+
+function initSettlementUI() {
+  const btnGenerate = document.getElementById("btn-generate-settlement");
+  const btnApplySeed = document.getElementById("btn-apply-seed");
+  const btnRandomSeed = document.getElementById("btn-random-seed");
+  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+
+  const btnZoomIn = document.getElementById("settlement-zoom-in");
+  const btnZoomOut = document.getElementById("settlement-zoom-out");
+  const btnZoomReset = document.getElementById("settlement-zoom-reset");
+
+  const toggleGrid = document.getElementById("toggle-grid-btn");
+  const toggleClearance = document.getElementById("toggle-clearance-btn");
+  const toggleFootprints = document.getElementById("toggle-footprints-btn");
+
+  if (btnGenerate) {
+    btnGenerate.addEventListener("click", () => {
+      generateAndRenderSettlement();
+    });
+  }
+
+  if (btnApplySeed) {
+    btnApplySeed.addEventListener("click", () => {
+      const val = parseInt(seedInput.value, 10);
+      if (!isNaN(val)) {
+        generateAndRenderSettlement(val);
+      }
+    });
+  }
+
+  if (seedInput) {
+    seedInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const val = parseInt(seedInput.value, 10);
+        if (!isNaN(val)) generateAndRenderSettlement(val);
+      }
+    });
+  }
+
+  if (btnRandomSeed) {
+    btnRandomSeed.addEventListener("click", () => {
+      generateAndRenderSettlement();
+    });
+  }
+
+  if (btnZoomIn) {
+    btnZoomIn.addEventListener("click", () => {
+      currentZoomLevel = Math.min(3.0, currentZoomLevel + 0.25);
+      updateZoomDisplay();
+    });
+  }
+
+  if (btnZoomOut) {
+    btnZoomOut.addEventListener("click", () => {
+      currentZoomLevel = Math.max(0.75, currentZoomLevel - 0.25);
+      updateZoomDisplay();
+    });
+  }
+
+  if (btnZoomReset) {
+    btnZoomReset.addEventListener("click", () => {
+      currentZoomLevel = 1.5;
+      updateZoomDisplay();
+      if (settlementViewport) {
+        settlementViewport.scrollLeft = (settlementViewport.scrollWidth - settlementViewport.clientWidth) / 2;
+        settlementViewport.scrollTop = (settlementViewport.scrollHeight - settlementViewport.clientHeight) / 2;
+      }
+    });
+  }
+
+  if (toggleGrid) {
+    toggleGrid.addEventListener("click", () => {
+      optShowGrid = !optShowGrid;
+      toggleGrid.classList.toggle("active", optShowGrid);
+      renderCurrentSettlement();
+    });
+  }
+
+  if (toggleClearance) {
+    toggleClearance.addEventListener("click", () => {
+      optShowClearance = !optShowClearance;
+      toggleClearance.classList.toggle("active", optShowClearance);
+      renderCurrentSettlement();
+    });
+  }
+
+  if (toggleFootprints) {
+    toggleFootprints.addEventListener("click", () => {
+      optShowFootprints = !optShowFootprints;
+      toggleFootprints.classList.toggle("active", optShowFootprints);
+      renderCurrentSettlement();
+    });
+  }
+
+  // Pan & Drag on viewport
+  if (settlementViewport) {
+    settlementViewport.addEventListener("mousedown", (e) => {
+      isPanning = true;
+      startPanX = e.clientX;
+      startPanY = e.clientY;
+      scrollStartX = settlementViewport.scrollLeft;
+      scrollStartY = settlementViewport.scrollTop;
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isPanning) return;
+      const dx = e.clientX - startPanX;
+      const dy = e.clientY - startPanY;
+      settlementViewport.scrollLeft = scrollStartX - dx;
+      settlementViewport.scrollTop = scrollStartY - dy;
+    });
+
+    window.addEventListener("mouseup", () => {
+      isPanning = false;
+    });
+
+    settlementViewport.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          if (e.deltaY < 0) {
+            currentZoomLevel = Math.min(3.0, currentZoomLevel + 0.15);
+          } else {
+            currentZoomLevel = Math.max(0.75, currentZoomLevel - 0.15);
+          }
+          updateZoomDisplay();
+        }
+      },
+      { passive: false }
+    );
+  }
+}
+
+// Initial auto-start on page load
+switchTab("settlement");
 
