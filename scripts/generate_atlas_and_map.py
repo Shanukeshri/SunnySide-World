@@ -38,22 +38,6 @@ def get_strip_frames(filename, w, h):
         return count, frame_w, frame_h
     return 1, w, h
 
-REMOVED_TILE_COORDS = {
-    (1, 14), (1, 18),
-    (2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12),
-    (4, 14),
-    (7, 6), (7, 8), (7, 18), (7, 19), (7, 35), (7, 36),
-    (8, 2), (8, 3), (8, 4), (8, 5),
-    (8, 13), (8, 14), (8, 15), (8, 16),
-    (8, 34), (8, 35), (8, 36),
-    (9, 1), (9, 2), (9, 3), (9, 4), (9, 5), (9, 6), (9, 7), (9, 8), (9, 9), (9, 10),
-    (9, 11), (9, 12), (9, 13), (9, 14), (9, 15), (9, 16), (9, 17), (9, 18), (9, 19), (9, 20),
-    (9, 21), (9, 22), (9, 23), (9, 24), (9, 25), (9, 26), (9, 27), (9, 28),
-    (17, 15),
-    (29, 37), (29, 38), (29, 39), (29, 40),
-    (31, 36), (31, 37), (31, 38), (31, 39)
-}
-
 def extract_all_transparent_tiles():
     full_path = os.path.join(WORKSPACE, NEW_TILESET_16)
     img = Image.open(full_path).convert("RGBA")
@@ -63,8 +47,6 @@ def extract_all_transparent_tiles():
     # 64x64 grid of 16x16 tiles
     for r in range(64):
         for c in range(64):
-            if (r, c) in REMOVED_TILE_COORDS:
-                continue
             tile = arr[r*16:(r+1)*16, c*16:(c+1)*16]
             if np.any(tile[:, :, 3] > 0):
                 x = c * 16
@@ -313,7 +295,7 @@ def build_catalog():
         ("beetroot", "Beetroot"),
         ("sunflower", "Sunflower")
     ]
-    stage_labels = ["00: Seed", "01: Sprout", "02: Small Plant", "03: Growing", "04: Mature"]
+    stage_labels = ["00: Seed", "01: Sprout", "02: Small Plant", "03: Growing", "04: Mature", "05: Harvested"]
 
     farming_items = list(tiles_by_cat.get("farming_crops", []))
     farming_items.append({"id": "crop_seeds_generic", "name": "Generic Crop Seeds Pouch", "type": "image", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png", "desc": "Seed bag for planting farm crops"})
@@ -331,7 +313,7 @@ def build_catalog():
                 "desc": f"{crop_title} growth stage {stage_idx} ({stage_lbl})"
             })
 
-    categories.append({"id": "farming_crops", "title": "Farming & Crops (Furrows & Growing Stages)", "desc": "Farmland soil furrows, irrigation channels, and growing sequence stages (00–04) for all 11 crops (Wheat, Carrot, Potato, Pumpkin, etc.)", "items": farming_items})
+    categories.append({"id": "farming_crops", "title": "Farming & Crops (Furrows & Growth Stages)", "desc": "Farmland soil furrows, irrigation channels, and complete growth sequences for all 11 crops (Wheat, Carrot, Potato, Pumpkin, etc.)", "items": farming_items})
 
     # 9. Farm Objects & Storage
     farm_obj_items = list(tiles_by_cat.get("farm_objects", []))

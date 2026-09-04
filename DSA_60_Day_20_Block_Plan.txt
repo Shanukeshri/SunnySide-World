@@ -1,0 +1,585 @@
+DSA + C++ — 60 DAY PLAN
+20 blocks, 3 days per block
+
+RULES
+- Treat every topic as first-time learning, even if already completed before.
+- Known topics: move faster, but still review theory + implementation + representative problems.
+- New topics: learn theory, implement from scratch, then solve problems.
+- Target: ~400 LeetCode questions over 60 days.
+- For every problem: understand brute force -> optimize -> identify pattern -> code in C++ -> state time/space complexity.
+- Keep a mistake log and revisit failed problems during revision.
+- Do not count a problem as "done" if you only copied a solution.
+
+BLOCK 1 — DAYS 1-3
+C++ REBUILD + DSA FOUNDATIONS
+Day 1:
+- C++ syntax from scratch: variables, data types, operators, I/O
+- if/else, switch, loops
+- arrays and strings
+- functions, pass by value/reference
+- Big-O basics
+- Write small programs without templates
+Day 2:
+- Pointers, references, const
+- structs/classes basics
+- recursion syntax and call stack intuition
+- vector, string, pair, array
+- sort, reverse, min/max, accumulate
+- Iterators and range-based loops
+Day 3:
+- map, unordered_map, set, unordered_set
+- stack, queue, deque, priority_queue
+- lower_bound, upper_bound
+- custom comparators/lambdas
+- STL complexity
+- 8-10 easy C++/array warm-up problems
+
+BLOCK 2 — DAYS 4-6
+ARRAYS + HASHING + SORTING
+Day 4:
+- Array traversal and frequency counting
+- largest/second largest
+- sorted check
+- remove duplicates
+- rotations
+- move zeros
+- linear search
+Day 5:
+- Hashing
+- frequency maps
+- missing number
+- single number
+- consecutive ones
+- longest subarray with sum K
+- prefix-sum + hashmap
+Day 6:
+- Selection, Bubble, Insertion sort
+- Merge sort
+- Quick sort
+- recursive Bubble/Insertion
+- stability, in-place, complexity
+- 8-10 array/sorting LeetCode problems
+
+BLOCK 3 — DAYS 7-9
+ARRAY PATTERNS + BINARY SEARCH
+Day 7:
+- Two Sum
+- Dutch National Flag
+- Majority Element
+- Kadane's Algorithm
+- maximum subarray + printing subarray
+- stock buy/sell
+- rearrange by sign
+Day 8:
+- Next permutation
+- leaders
+- longest consecutive sequence
+- matrix zeroes
+- rotate matrix
+- spiral matrix
+- Pascal triangle
+Day 9:
+- Binary search fundamentals
+- lower/upper bound
+- search insert position
+- floor/ceil
+- first/last occurrence
+- count occurrences
+- 8-10 problems
+
+BLOCK 4 — DAYS 10-12
+BINARY SEARCH PATTERNS + STRINGS
+Day 10:
+- Rotated sorted array I/II
+- minimum in rotated array
+- rotation count
+- single element
+- peak element
+- square root / nth root
+Day 11:
+- Binary search on answer
+- Koko eating bananas
+- bouquets
+- smallest divisor
+- shipping packages
+- Kth missing positive
+Day 12:
+- Aggressive cows
+- book allocation
+- split array largest sum
+- painter's partition
+- gas station
+- median/kth element of two sorted arrays
+- 8-10 binary-search problems
+
+BLOCK 5 — DAYS 13-15
+STRINGS + LINKED LIST FUNDAMENTALS
+Day 13:
+- Strings: character frequency, hashing
+- anagram
+- isomorphic strings
+- rotate string
+- longest common prefix
+- reverse words
+- palindrome
+Day 14:
+- String parsing
+- Roman to Integer
+- atoi
+- nesting depth
+- largest odd number
+- substring basics
+- longest palindromic substring
+Day 15:
+- Singly linked list from scratch
+- node structure
+- insert/delete/search
+- length
+- doubly linked list
+- insertion/deletion/reversal
+- 8-10 linked-list problems
+
+BLOCK 6 — DAYS 16-18
+LINKED LIST PATTERNS
+Day 16:
+- Middle of linked list
+- fast/slow pointers
+- reverse linked list
+- palindrome linked list
+- cycle detection
+- cycle entry
+- cycle length
+Day 17:
+- odd/even linked list
+- remove Nth from back
+- delete middle
+- sort linked list
+- sort 0/1/2
+- intersection of Y-shaped lists
+Day 18:
+- add one
+- add two numbers
+- delete duplicates in DLL
+- pairs with given sum
+- reverse in K groups
+- rotate linked list
+- flatten linked list
+- clone random-pointer list
+
+BLOCK 7 — DAYS 19-21
+RECURSION FUNDAMENTALS + BACKTRACKING
+Day 19:
+- Recursion base case/state/return
+- recursion tree
+- print N times
+- 1 to N
+- N to 1
+- sum/factorial/Fibonacci
+- recursive reverse/palindrome
+- recursive atoi/pow
+Day 20:
+- Backtracking framework: choose -> explore -> undo
+- subsequences
+- subset generation
+- subsequence sum exists
+- count subsequences with sum K
+- Power Set
+- Subsets I/II
+Day 21:
+- Combination Sum
+- Combination Sum II
+- Combination Sum III
+- permutations
+- phone letter combinations
+- 10-12 recursion/backtracking problems
+
+BLOCK 8 — DAYS 22-24
+ADVANCED BACKTRACKING + BITS
+Day 22:
+- Generate parentheses
+- binary strings without consecutive 1s
+- palindrome partitioning
+- Word Search
+- Word Break
+Day 23:
+- N Queens
+- Rat in a Maze
+- M Coloring
+- Sudoku Solver
+- Expression Add Operators
+- review recursion complexity
+Day 24:
+- Bit representation
+- AND/OR/XOR/NOT
+- shifts
+- check/set/unset/toggle bits
+- odd/even
+- power of 2
+- count set bits
+- rightmost set/unset bit
+- 8-10 bit problems
+
+BLOCK 9 — DAYS 25-27
+STACKS + QUEUES
+Day 25:
+- Stack/queue implementation using arrays
+- stack using queue
+- queue using stack
+- linked-list implementations
+- balanced parentheses
+- Min Stack
+Day 26:
+- Infix/postfix/prefix conversions
+- expression evaluation
+- Next Greater Element
+- Next Greater Element II
+- Next Smaller Element
+- previous greater/smaller
+Day 27:
+- monotonic stack
+- stock span
+- trapping rain water
+- subarray minimums
+- subarray ranges
+- asteroid collision
+- remove K digits
+- histogram
+- maximum rectangle
+
+BLOCK 10 — DAYS 28-30
+SLIDING WINDOW + TWO POINTERS + HEAPS
+Day 28:
+- Fixed vs variable sliding window
+- longest substring without repeating
+- max consecutive ones III
+- fruit into baskets
+- longest repeating character replacement
+- frequency-window technique
+Day 29:
+- Binary subarrays with sum
+- nice subarrays
+- substrings containing all three characters
+- at most K distinct
+- exactly K distinct
+- minimum window substring
+- minimum window subsequence
+- card points
+Day 30:
+- Heap theory
+- min heap/max heap
+- heapify/build heap
+- priority_queue in C++
+- kth largest/smallest
+- top K pattern
+- 8-10 heap problems
+
+BLOCK 11 — DAYS 31-33
+HEAPS + GREEDY
+Day 31:
+- K sorted array
+- merge K sorted lists
+- rank elements
+- task scheduler
+- hand of straights
+- connect sticks
+- kth largest in stream
+- maximum sum combination
+Day 32:
+- Two heaps
+- median from data stream
+- Top K frequent
+- heap + frequency
+- heap + scheduling
+- heap + greedy
+- design Twitter
+Day 33:
+- Greedy fundamentals
+- proof intuition
+- Assign Cookies
+- Fractional Knapsack
+- Lemonade Change
+- Valid Parenthesis Checker
+- N Meetings in One Room
+- Jump Game I/II
+
+BLOCK 12 — DAYS 34-36
+GREEDY + TREES FUNDAMENTALS
+Day 34:
+- Minimum platforms
+- Job sequencing
+- Candy
+- Shortest Job First
+- LRU/page replacement greedy intuition
+- Insert Interval
+- Merge Intervals
+- Non-overlapping Intervals
+Day 35:
+- Binary tree representation
+- recursive/iterative traversal
+- preorder/inorder/postorder
+- level order
+- one traversal producing all three
+- maximum depth
+Day 36:
+- balanced tree
+- diameter
+- maximum path sum
+- identical trees
+- zigzag traversal
+- boundary traversal
+- 8-10 tree problems
+
+BLOCK 13 — DAYS 37-39
+TREE VIEWS + PATHS + CONSTRUCTION
+Day 37:
+- Vertical order traversal
+- top view
+- bottom view
+- right/left view
+- symmetric tree
+- root-to-leaf paths
+Day 38:
+- LCA in binary tree
+- maximum width
+- children sum property
+- nodes at distance K
+- burn tree
+- count nodes in complete binary tree
+Day 39:
+- Unique tree construction concepts
+- preorder + inorder
+- postorder + inorder
+- serialize/deserialize
+- Morris preorder
+- Morris inorder
+- flatten binary tree
+- 8-10 tree problems
+
+BLOCK 14 — DAYS 40-42
+BST + GRAPH FUNDAMENTALS
+Day 40:
+- BST invariant
+- search
+- min/max
+- floor/ceil
+- insert
+- delete
+- kth smallest/largest
+- validate BST
+Day 41:
+- LCA in BST
+- preorder -> BST
+- successor/predecessor
+- merge two BSTs
+- two sum in BST
+- recover BST
+- largest BST subtree
+- 8-10 BST problems
+Day 42:
+- Graph terminology
+- directed/undirected
+- weighted/unweighted
+- adjacency list/matrix/edge list
+- BFS
+- DFS
+- connected components
+- C++ graph implementation
+
+BLOCK 15 — DAYS 43-45
+GRAPH BFS/DFS + CYCLES + BIPARTITE
+Day 43:
+- Number of Provinces
+- connected components in matrix
+- Number of Islands
+- Flood Fill
+- Rotten Oranges
+- nearest 1 distance
+- Number of Enclaves
+Day 44:
+- Surrounded Regions
+- Word Ladder I/II
+- cycle detection undirected BFS
+- cycle detection undirected DFS
+- bipartite BFS
+- bipartite DFS
+Day 45:
+- Directed cycle detection DFS
+- recursion-stack technique
+- topological sort DFS
+- Kahn's algorithm
+- indegree
+- Course Schedule I/II
+- eventual safe states
+- Alien Dictionary
+
+BLOCK 16 — DAYS 46-48
+GRAPH SHORTEST PATHS + MST
+Day 46:
+- shortest path in unweighted graph
+- shortest path in DAG
+- Dijkstra
+- priority queue reasoning
+- binary maze
+- minimum effort path
+Day 47:
+- Cheapest flight within K stops
+- Network Delay Time
+- number of ways to arrive
+- minimum multiplications
+- Bellman-Ford
+- Floyd-Warshall
+- smallest-neighbor city
+Day 48:
+- MST theory
+- Prim's algorithm
+- Kruskal concept
+- DSU fundamentals
+- parent/rank/size
+- path compression
+- union by rank/size
+- MST weight
+
+BLOCK 17 — DAYS 49-51
+GRAPH DSU + ADVANCED GRAPH
+Day 49:
+- Network connected operations
+- Most Stones Removed
+- Accounts Merge
+- Number of Islands II
+- Making a Large Island
+- DSU grid problems
+Day 50:
+- Swim in Rising Water
+- graph problem pattern recognition
+- shortest path vs BFS vs Dijkstra vs DSU
+- mixed graph practice
+Day 51:
+- Bridges
+- articulation points
+- Kosaraju SCC
+- strongly connected components
+- advanced graph revision
+- 10-12 mixed graph problems
+
+BLOCK 18 — DAYS 52-54
+DYNAMIC PROGRAMMING FUNDAMENTALS + KNAPSACK
+Day 52:
+- What is DP?
+- recursion -> memoization -> tabulation
+- state/transition/base case
+- Climbing Stairs
+- Frog Jump
+- Frog K distances
+- max non-adjacent sum
+- House Robber
+Day 53:
+- Grid DP
+- Unique Paths
+- Unique Paths II
+- Minimum Falling Path Sum
+- Triangle
+- Ninja's Training
+- Ninja and Friends
+Day 54:
+- Subset Sum
+- Partition Equal Subset Sum
+- minimum subset difference
+- Count subsets with sum K
+- count partitions with difference
+- Target Sum
+- Minimum Coins
+- Coin Change II
+- Unbounded Knapsack
+- Rod Cutting
+
+BLOCK 19 — DAYS 55-57
+DP STRINGS + LIS + INTERVAL DP
+Day 55:
+- LCS
+- print LCS
+- longest common substring
+- longest palindromic subsequence
+- minimum insertions for palindrome
+- convert A to B
+Day 56:
+- shortest common supersequence
+- distinct subsequences
+- edit distance
+- wildcard matching
+- stock DP I/II/III/IV
+- cooldown
+- transaction fee
+Day 57:
+- LIS
+- print LIS
+- LIS variants
+- largest divisible subset
+- longest string chain
+- bitonic subsequence
+- number of LIS
+- Matrix Chain Multiplication
+- minimum cost cut stick
+- Burst Balloons
+
+BLOCK 20 — DAYS 58-60
+DP ADVANCED + TRIES + ADVANCED STRINGS + FINAL REVISION
+Day 58:
+- Boolean expression evaluation
+- Palindrome Partitioning II
+- Partition Array for Maximum Sum
+- Maximum Rectangle of 1s
+- Count Square Submatrices
+- stock/DP mixed practice
+Day 59:
+- Trie implementation
+- insert/search/prefix/erase
+- longest word with all prefixes
+- distinct substrings
+- binary trie
+- maximum XOR
+- maximum XOR under constraint
+- advanced strings: hashing, Rabin-Karp, Z-function, KMP/LPS
+Day 60:
+- Shortest palindrome
+- Longest happy prefix
+- bracket reversals
+- Count and Say
+- palindromic subsequences
+- 15-20 mixed LeetCode problems with NO topic labels
+- review mistake log
+- identify 10 weakest patterns
+- re-solve the most important failed problems
+- final complexity/template review
+
+400-PROBLEM TARGET
+Approximate distribution:
+Arrays: 40
+Binary Search: 25
+Strings: 15
+Linked Lists: 20
+Recursion/Backtracking: 30
+Bit Manipulation: 10
+Stack/Queue: 25
+Sliding Window/Two Pointers: 20
+Heap: 20
+Greedy: 20
+Binary Trees: 35
+BST: 15
+Graphs: 50
+Dynamic Programming: 55
+Tries: 10
+Advanced Strings: 10
+Mixed/Revision: 10
+TOTAL: ~400
+
+DAILY WORK METHOD
+1. Learn/revise theory.
+2. Implement the core algorithm in C++ without copying.
+3. Solve 2-3 guided problems.
+4. Solve the remaining assigned problems independently.
+5. Record pattern + key insight + complexity.
+6. Re-solve failed problems after 24-72 hours.
+7. Every 3rd day: spend the final part of the session revising the previous two days.
+8. From Day 30 onward, include at least one problem where the topic is not disclosed.
+9. From Day 45 onward, increasingly practice mixed problems.
+10. The final measure is pattern recognition and independent implementation, not checklist completion.
