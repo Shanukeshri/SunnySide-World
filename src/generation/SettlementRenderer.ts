@@ -446,7 +446,7 @@ export async function renderSettlement(
   }
 
   // Bushes — Exclusively from trees_and_bushes.png (last 4 sprites)
-  // Rendered at 0.5x previous size: bushW = cellSize * 0.5, centred in the cell
+  // Rendered at actual size: bushW = cellSize, centred in the cell
   if (data.bushes) {
     for (const bush of data.bushes) {
       entities.push({
@@ -454,7 +454,7 @@ export async function renderSettlement(
         draw: () => {
           const crop = TREE_BUSH_CROPS[bush.id] || TREE_BUSH_CROPS['bush_01'];
           if (treeBushImg && treeBushImg.width > 0) {
-            const bushW = cellSize * 0.5;  // 0.5x the old cellSize
+            const bushW = cellSize;  // Actual cell footprint size (1.0x)
             const aspect = crop.h / crop.w;
             const bushH = bushW * aspect;
             const dx = bush.x * cellSize + (cellSize - bushW) / 2;

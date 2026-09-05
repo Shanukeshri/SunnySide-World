@@ -1509,7 +1509,7 @@ export class SettlementGenerator {
   // ─────────────────────────────────────────────────────────────────
   private generateBushes() {
     this.bushes = [];
-    const clusterCount = 6 + Math.floor(this.rng() * 4); // 6 to 9 bush clusters
+    const clusterCount = 16 + Math.floor(this.rng() * 6); // 16 to 21 bush clusters spread across the village
 
     const canPlaceBushAt = (bx: number, by: number): boolean => {
       if (bx < 1 || bx >= this.width - 1 || by < 1 || by >= this.height - 1) return false;
@@ -1520,9 +1520,9 @@ export class SettlementGenerator {
     for (let c = 0; c < clusterCount; c++) {
       let cx = -1;
       let cy = -1;
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const tx = Math.floor(2 + this.rng() * (this.width - 4));
-        const ty = Math.floor(2 + this.rng() * (this.height - 4));
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const tx = Math.floor(1 + this.rng() * (this.width - 2));
+        const ty = Math.floor(1 + this.rng() * (this.height - 2));
         if (canPlaceBushAt(tx, ty)) {
           cx = tx;
           cy = ty;
@@ -1531,17 +1531,17 @@ export class SettlementGenerator {
       }
       if (cx === -1) continue;
 
-      const clusterTarget = 2 + Math.floor(this.rng() * 4); // 2 to 5 bushes
+      const clusterTarget = 3 + Math.floor(this.rng() * 4); // 3 to 6 bushes
       const clusterBushes: GridCoord[] = [{ x: cx, y: cy }];
 
-      // Grow cluster by picking cells directly adjacent to existing cluster bushes
-      for (let step = 0; step < 25 && clusterBushes.length < clusterTarget; step++) {
+      // Grow cluster by picking cells directly adjacent (strictly 4-way orthogonal for tight clusters)
+      for (let step = 0; step < 30 && clusterBushes.length < clusterTarget; step++) {
         const base = clusterBushes[Math.floor(this.rng() * clusterBushes.length)];
         const dirs = [
-          { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-          { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-          { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
-          { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+          { dx: 1, dy: 0 },
+          { dx: -1, dy: 0 },
+          { dx: 0, dy: 1 },
+          { dx: 0, dy: -1 },
         ];
         const dir = dirs[Math.floor(this.rng() * dirs.length)];
         const nx = base.x + dir.dx;
