@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><style>body{background:#333;color:#fff;} .cell{display:inline-block;margin:4px;text-align:center;} canvas{image-rendering:pixelated;}</style></head>
+<body>
+<h2>Fence Tiles (18..21, 11..14)</h2>
+<div id='grid'></div>
+<script>
+const img = new Image();
+img.src = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
+img.onload = () => {
+  const container = document.getElementById('grid');
+  function showSection(title, startR, endR, startC, endC) {
+    const h3 = document.createElement('h3');
+    h3.innerText = title;
+    container.appendChild(h3);
+    for (let r = startR; r <= endR; r++) {
+      const row = document.createElement('div');
+      for (let c = startC; c <= endC; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const cv = document.createElement('canvas');
+        cv.width = 32; cv.height = 32;
+        const ctx = cv.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, c*16, r*16, 16, 16, 0, 0, 32, 32);
+        cell.appendChild(cv);
+        const lbl = document.createElement('div');
+        lbl.innerText = c*16 + ',' + r*16;
+        cell.appendChild(lbl);
+        row.appendChild(cell);
+      }
+      container.appendChild(row);
+    }
+  }
+
+  showSection('Cols 32..44, Rows 4..9 (Wood/Pots/Fences)', 4, 9, 32, 44);
+  showSection('Cols 0..16, Rows 16..22 (Props/Fences)', 16, 22, 0, 16);
+  showSection('Cols 16..32, Rows 16..22 (Props/Fences)', 16, 22, 16, 32);
+  showSection('Cols 0..16, Rows 10..15 (Trails/Props)', 10, 15, 0, 16);
+};
+</script>
+</body>
+</html>

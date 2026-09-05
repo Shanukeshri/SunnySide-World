@@ -27,25 +27,50 @@ interface TilesetCrop {
 }
 
 const TILESET_CROPS: Record<string, TilesetCrop> = {
-  // Base grass
+  // Base grass variants (same group row y=48)
   grass_tile_01:       { x: 16,  y: 48,  w: 16, h: 16 }, // Primary flat grass
   grass_tile_02:       { x: 32,  y: 48,  w: 16, h: 16 }, // Subtle natural grass edge
-  grass_tuft_01:       { x: 48,  y: 48,  w: 16, h: 16 }, // Wild grass tuft overlay
-  stump_deco_01:       { x: 32,  y: 448, w: 16, h: 16 }, // Wild flora / tree root stump
+  grass_tile_03:       { x: 48,  y: 48,  w: 16, h: 16 }, // Grass with yellow blossom
+  grass_tile_04:       { x: 64,  y: 48,  w: 16, h: 16 }, // Grass with white blossom
+  grass_tile_05:       { x: 80,  y: 48,  w: 16, h: 16 }, // Grass with subtle blade cluster
+  grass_tile_06:       { x: 96,  y: 48,  w: 16, h: 16 }, // Grass with textured edge blades
 
-  // Paths
-  path_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Default dirt trail
-  path_tile_02:        { x: 16,  y: 112, w: 16, h: 16 }, // Pure dirt path
+  // Path variants (same dirt trail group row y=112)
+  path_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Primary dirt trail
+  path_tile_02:        { x: 144, y: 112, w: 16, h: 16 }, // Dirt trail with fine pebbles
   path_tile_03:        { x: 544, y: 112, w: 16, h: 16 }, // Wooden boardwalk over water
+  path_tile_04:        { x: 160, y: 112, w: 16, h: 16 }, // Dirt trail with light stones
+  path_tile_05:        { x: 176, y: 112, w: 16, h: 16 }, // Dirt trail with earth grain
 
   // Ground types
   dirt_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Rich brown soil
   sand_tile_01:        { x: 208, y: 48,  w: 16, h: 16 }, // Water-side beach sand
   stone_tile_01:       { x: 80,  y: 256, w: 16, h: 16 }, // Paved building apron stone
 
-  // Water & Shoreline (directional)
-  water_tile_01:       { x: 352, y: 112, w: 16, h: 16 }, // Blue water
-  shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Directional shore transition (water to SE)
+  // Water variants (same water group)
+  water_tile_01:       { x: 352, y: 112, w: 16, h: 16 }, // Calm cyan water
+  water_tile_02:       { x: 640, y: 32,  w: 16, h: 16 }, // Rippling water
+  water_tile_03:       { x: 640, y: 48,  w: 16, h: 16 }, // Shimmering water
+  water_tile_04:       { x: 624, y: 32,  w: 16, h: 16 }, // Deep rippling water
+  water_tile_05:       { x: 656, y: 32,  w: 16, h: 16 }, // Sun-glint ripple
+  shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Directional shore transition
+
+  // Wooden Fences (from tileset)
+  fence_wood_h:        { x: 608, y: 80,  w: 16, h: 16 }, // Horizontal wooden fence
+  fence_wood_v:        { x: 240, y: 288, w: 16, h: 16 }, // Vertical wooden fence
+  fence_wood_post:     { x: 624, y: 80,  w: 16, h: 16 }, // Wooden fence post / corner
+  fence_wood_gate:     { x: 640, y: 80,  w: 16, h: 16 }, // Wooden fence gate
+
+  // Bushes & Grass clusters (from tileset)
+  bush_round_01:       { x: 816, y: 64,  w: 16, h: 16 }, // Round green bush
+  bush_round_02:       { x: 832, y: 64,  w: 16, h: 16 }, // Bush foliage
+  bush_berry_01:       { x: 832, y: 80,  w: 16, h: 16 }, // Berry bush
+  bush_flower_01:      { x: 288, y: 288, w: 16, h: 16 }, // Flower bush
+  grass_tuft_01:       { x: 48,  y: 48,  w: 16, h: 16 }, // Wild grass tuft
+  grass_tuft_02:       { x: 16,  y: 448, w: 16, h: 16 }, // Green grass tuft
+  grass_tuft_03:       { x: 48,  y: 464, w: 16, h: 16 }, // Tall wild grass
+  wild_flora_01:       { x: 16,  y: 464, w: 16, h: 16 }, // Wild greenery
+  stump_deco_01:       { x: 32,  y: 448, w: 16, h: 16 }, // Root stump
 };
 
 // Standalone house sprite crops from houses.png (native dimensions from map.txt / main.ts)
@@ -223,7 +248,10 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      const grassCrop = TILESET_CROPS[cell.terrain === 'grass_tile_02' ? 'grass_tile_02' : 'grass_tile_01'];
+      const grassCropKey = (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('grass_tile_'))
+        ? cell.terrain
+        : 'grass_tile_01';
+      const grassCrop = TILESET_CROPS[grassCropKey] || TILESET_CROPS['grass_tile_01'];
       ctx.drawImage(tilesetImg, grassCrop.x, grassCrop.y, grassCrop.w, grassCrop.h, dx, dy, cellSize, cellSize);
 
       if (cell.terrain === 'sand_tile_01') {
@@ -245,8 +273,9 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      if (cell.terrain === 'water_tile_01') {
-        const waterCrop = TILESET_CROPS['water_tile_01'];
+      if (cell.terrain.startsWith('water_tile_')) {
+        const waterCropKey = (cell.terrain in TILESET_CROPS) ? cell.terrain : 'water_tile_01';
+        const waterCrop = TILESET_CROPS[waterCropKey] || TILESET_CROPS['water_tile_01'];
         ctx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
       } else if (cell.terrain === 'shore_transition_01') {
         const shoreCrop = TILESET_CROPS['shore_transition_01'];
@@ -265,7 +294,7 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 3: Road & Paths (Pure dirt trail & boardwalk over water)
+  // ── LAYER 3: Road & Paths (Dirt trail variants & boardwalk over water)
   for (let y = 0; y < data.height; y++) {
     for (let x = 0; x < data.width; x++) {
       const cell = data.grid[y][x];
@@ -274,8 +303,10 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      const pathCropKey = cell.terrain === 'path_tile_03' ? 'path_tile_03' : 'path_tile_01';
-      const pathCrop = TILESET_CROPS[pathCropKey];
+      const pathCropKey = cell.terrain === 'path_tile_03'
+        ? 'path_tile_03'
+        : (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('path_tile_') ? cell.terrain : 'path_tile_01');
+      const pathCrop = TILESET_CROPS[pathCropKey] || TILESET_CROPS['path_tile_01'];
 
       ctx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);
     }
@@ -308,26 +339,30 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 5: Ground Scatter & Natural Decorations ──────────────
+  // ── LAYER 5: Ground Scatter, Bushes & Natural Decorations ───────
   for (const deco of data.decorations) {
     const dx = deco.x * cellSize;
     const dy = deco.y * cellSize;
 
-    if (deco.id === 'grass_tuft_01' || deco.id === 'stump_deco_01') {
+    if (deco.id in TILESET_CROPS) {
       const crop = TILESET_CROPS[deco.id];
       ctx.drawImage(tilesetImg, crop.x, crop.y, crop.w, crop.h, dx, dy, cellSize, cellSize);
     } else if (deco.id in SPRITE_DEFS) {
       const def = SPRITE_DEFS[deco.id];
       const img = imageCache.get(def.path);
       if (img && img.width > 0) {
-        const sx = dx + (cellSize - def.w) / 2;
-        const sy = dy + (cellSize - def.h) / 2;
-        ctx.drawImage(img, sx, sy, def.w, def.h);
+        // Scale proportionally to fill the cell, preserving aspect ratio
+        const scale = cellSize / Math.max(def.w, def.h);
+        const dw = def.w * scale;
+        const dh = def.h * scale;
+        const sx = dx + (cellSize - dw) / 2;
+        const sy = dy + (cellSize - dh) / 2;
+        ctx.drawImage(img, sx, sy, dw, dh);
       }
     }
   }
 
-  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Farm Objects)
+  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Farm Objects & Fences)
   interface DrawableEntity {
     ySort: number;
     draw: () => void;
@@ -335,19 +370,32 @@ export async function renderSettlement(
 
   const entities: DrawableEntity[] = [];
 
-  // Farm Objects (trough, waterbowl, crates, chests around farms)
+  // Farm Objects & Continuous Fences
   if (data.farmObjects) {
     for (const obj of data.farmObjects) {
       entities.push({
         ySort: obj.y + 1,
         draw: () => {
-          const def = SPRITE_DEFS[obj.id];
-          if (!def) return;
-          const img = imageCache.get(def.path);
-          if (img && img.width > 0) {
-            const dx = obj.x * cellSize + (cellSize - def.w) / 2;
-            const dy = (obj.y + 1) * cellSize - def.h;
-            ctx.drawImage(img, dx, dy, def.w, def.h);
+          if (obj.id in TILESET_CROPS) {
+            const crop = TILESET_CROPS[obj.id];
+            ctx.drawImage(
+              tilesetImg,
+              crop.x, crop.y, crop.w, crop.h,
+              obj.x * cellSize, obj.y * cellSize, cellSize, cellSize
+            );
+          } else if (obj.id in SPRITE_DEFS) {
+            const def = SPRITE_DEFS[obj.id];
+            const img = imageCache.get(def.path);
+            if (img && img.width > 0) {
+              // Scale proportionally with cellSize so objects grow/shrink with zoom
+              const scale = cellSize / Math.max(def.w, def.h);
+              const dw = def.w * scale;
+              const dh = def.h * scale;
+              // Bottom-align within the grid cell for proper depth perspective
+              const ddx = obj.x * cellSize + (cellSize - dw) / 2;
+              const ddy = (obj.y + 1) * cellSize - dh;
+              ctx.drawImage(img, ddx, ddy, dw, dh);
+            }
           }
         },
       });
@@ -362,9 +410,13 @@ export async function renderSettlement(
         const def = SPRITE_DEFS[well.id];
         const img = imageCache.get(def.path);
         if (img && img.width > 0) {
-          const dx = well.x * cellSize + (cellSize - def.w) / 2;
-          const dy = (well.y + 1) * cellSize - def.h;
-          ctx.drawImage(img, dx, dy, def.w, def.h);
+          // Scale proportionally with cellSize
+          const scale = cellSize / Math.max(def.w, def.h);
+          const dw = def.w * scale;
+          const dh = def.h * scale;
+          const dx = well.x * cellSize + (cellSize - dw) / 2;
+          const dy = (well.y + 1) * cellSize - dh;
+          ctx.drawImage(img, dx, dy, dw, dh);
         }
       },
     });
