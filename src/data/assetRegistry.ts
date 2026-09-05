@@ -11540,9 +11540,9 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_corner",
-        "name": "Wooden Fence Corner Post (2,38)",
-        "desc": "Wooden fence corner post joint connecting perimeter fences at [608,32]",
+        "id": "fence_timber_post",
+        "name": "Wooden Fence Standalone Post (2,38)",
+        "desc": "Standalone wooden fence post segment at [608,32]",
         "crop": [
           608,
           32,
@@ -11584,9 +11584,9 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_cross",
-        "name": "Wooden Fence 4-Way Cross Joint (2,40)",
-        "desc": "4-way intersection post connecting vertical and horizontal rails at [640,32]",
+        "id": "fence_timber_corner",
+        "name": "Wooden Fence Corner Post (2,40)",
+        "desc": "Wooden fence corner post joint connecting perimeter fences at [640,32]",
         "crop": [
           640,
           32,

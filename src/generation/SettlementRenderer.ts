@@ -50,11 +50,16 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   water_tile_01:       { x: 352, y: 112, w: 16, h: 16 }, // Calm cyan water
   shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Unidirectional diagonal shore corner transition
 
-  // Wooden Fences (from tileset block 0,38 to 4,40)
-  fence_wood_h:        { x: 624, y: 32,  w: 16, h: 16 }, // Horizontal scaling wooden fence rail (2,39)
-  fence_wood_v:        { x: 640, y: 48,  w: 16, h: 16 }, // Vertical wooden fence rail (North-South, 3,40)
-  fence_wood_post:     { x: 608, y: 32,  w: 16, h: 16 }, // Wooden fence corner post (2,38)
-  fence_wood_gate:     { x: 624, y: 0,   w: 16, h: 16 }, // Wooden fence gate / top rail (0,39)
+  // Wooden Fences (from tileset block 0,38 to 4,42)
+  fence_wood_h:         { x: 624, y: 32,  w: 16, h: 16 }, // Horizontal scaling wooden fence rail (2,39)
+  fence_wood_v:         { x: 640, y: 48,  w: 16, h: 16 }, // Vertical wooden fence rail (North-South, 3,40)
+  fence_wood_corner:    { x: 640, y: 32,  w: 16, h: 16 }, // Wooden fence corner tile (2,40)
+  fence_wood_corner_tl: { x: 640, y: 32,  w: 16, h: 16 }, // Top-Left corner (2,40)
+  fence_wood_corner_tr: { x: 640, y: 32,  w: 16, h: 16 }, // Top-Right corner (2,40)
+  fence_wood_corner_bl: { x: 640, y: 32,  w: 16, h: 16 }, // Bottom-Left corner (2,40)
+  fence_wood_corner_br: { x: 640, y: 32,  w: 16, h: 16 }, // Bottom-Right corner (2,40)
+  fence_wood_post:      { x: 640, y: 32,  w: 16, h: 16 }, // Wooden fence corner post (2,40)
+  fence_wood_gate:      { x: 624, y: 0,   w: 16, h: 16 }, // Wooden fence gate / top rail (0,39)
 
   // Bushes & Grass clusters (from tileset)
   bush_round_01:       { x: 816, y: 64,  w: 16, h: 16 }, // Round green bush

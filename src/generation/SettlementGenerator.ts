@@ -168,6 +168,7 @@ export const GRASS_TUFT_IDS = [
 export const FENCE_ASSET_IDS = {
   h: 'fence_wood_h',
   v: 'fence_wood_v',
+  corner: 'fence_wood_corner',
   post: 'fence_wood_post',
   gate: 'fence_wood_gate',
 };
@@ -737,7 +738,7 @@ export class SettlementGenerator {
 
     let fenceId: AssetId;
     if (isCorner) {
-      fenceId = 'fence_wood_post';
+      fenceId = 'fence_wood_corner';
     } else if (isHorizontal) {
       fenceId = 'fence_wood_h';
     } else {
