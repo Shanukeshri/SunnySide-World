@@ -268,15 +268,15 @@ export class SettlementGenerator {
     for (let y = 0; y < this.height; y++) {
       const row: SettlementCell[] = [];
       for (let x = 0; x < this.width; x++) {
-        // Natural distribution across same grass group (row y=48)
+        // Authentic textured grass distribution (row 2, columns 1-6, y=32)
         const r = this.rng();
-        let terrain: AssetId = 'grass_tile_01';
-        if (r < 0.65) terrain = 'grass_tile_01';
-        else if (r < 0.75) terrain = 'grass_tile_02';
-        else if (r < 0.83) terrain = 'grass_tile_03';
-        else if (r < 0.90) terrain = 'grass_tile_04';
-        else if (r < 0.95) terrain = 'grass_tile_05';
-        else terrain = 'grass_tile_06';
+        let terrain: AssetId = 'grass_textured_01';
+        if (r < 0.50) terrain = 'grass_textured_01';
+        else if (r < 0.65) terrain = 'grass_textured_02';
+        else if (r < 0.76) terrain = 'grass_textured_03';
+        else if (r < 0.85) terrain = 'grass_textured_04';
+        else if (r < 0.93) terrain = 'grass_textured_05';
+        else terrain = 'grass_textured_06';
 
         row.push({
           terrain,
@@ -489,14 +489,17 @@ export class SettlementGenerator {
 
       const pondCells: GridCoord[] = [];
 
-      // Apply tiles: inner cells are water_tile_01, and outer corners are diagonal shore transitions!
+      // Apply tiles: inner cells are water_tile_01, and outer corners are rotated diagonal shore transitions
       for (const key of waterMask) {
         const [gxStr, gyStr] = key.split(',');
         const gx = parseInt(gxStr, 10);
         const gy = parseInt(gyStr, 10);
 
+        // Water overwrites road and breaks the path
         this.grid[gy][gx].isWater = true;
         this.grid[gy][gx].blocked = true;
+        this.grid[gy][gx].isRoad = false;
+        this.grid[gy][gx].isRoadReserved = false;
         pondCells.push({ x: gx, y: gy });
 
         // Check 4 cardinal neighbors to identify outer corners of the joined squares
@@ -523,25 +526,17 @@ export class SettlementGenerator {
           this.grid[gy][gx].terrain = 'shore_transition_01';
           this.grid[gy][gx].rotation = -Math.PI / 2;
         } else {
-          // Interior or straight border: textured water tile variants
-          this.grid[gy][gx].terrain = this.getRandomWaterTile();
+          // Interior or straight border: pure calm cyan water
+          this.grid[gy][gx].terrain = 'water_tile_01';
+          this.grid[gy][gx].rotation = undefined;
         }
       }
 
+      // Break path: completely overwrite and remove any road cells that overlap with waterMask!
+      this.roadCells = this.roadCells.filter(c => !waterMask.has(`${c.x},${c.y}`));
+
       this.waterBodies.push({ cells: pondCells });
     }
-  }
-
-  /**
-   * Return a textured water tile from the water group
-   */
-  private getRandomWaterTile(): AssetId {
-    const r = this.rng();
-    if (r < 0.60) return 'water_tile_01'; // Calm cyan water
-    if (r < 0.72) return 'water_tile_02'; // Rippling water
-    if (r < 0.82) return 'water_tile_03'; // Shimmering water
-    if (r < 0.92) return 'water_tile_04'; // Deep ripple
-    return 'water_tile_05';               // Sun-glint ripple
   }
 
   // ─────────────────────────────────────────────────────────────────

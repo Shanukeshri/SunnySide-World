@@ -27,13 +27,13 @@ interface TilesetCrop {
 }
 
 const TILESET_CROPS: Record<string, TilesetCrop> = {
-  // Base grass variants (same group row y=48)
-  grass_tile_01:       { x: 16,  y: 48,  w: 16, h: 16 }, // Primary flat grass
-  grass_tile_02:       { x: 32,  y: 48,  w: 16, h: 16 }, // Subtle natural grass edge
-  grass_tile_03:       { x: 48,  y: 48,  w: 16, h: 16 }, // Grass with yellow blossom
-  grass_tile_04:       { x: 64,  y: 48,  w: 16, h: 16 }, // Grass with white blossom
-  grass_tile_05:       { x: 80,  y: 48,  w: 16, h: 16 }, // Grass with subtle blade cluster
-  grass_tile_06:       { x: 96,  y: 48,  w: 16, h: 16 }, // Grass with textured edge blades
+  // Authentic textured grass variants (row 2, columns 1-6, y=32)
+  grass_textured_01:   { x: 16,  y: 32,  w: 16, h: 16 }, // Textured grass with circle patterns (2,1)
+  grass_textured_02:   { x: 32,  y: 32,  w: 16, h: 16 }, // Textured grass with cross speckles (2,2)
+  grass_textured_03:   { x: 48,  y: 32,  w: 16, h: 16 }, // Textured grass with round motif (2,3)
+  grass_textured_04:   { x: 64,  y: 32,  w: 16, h: 16 }, // Textured grass with dark circular patch (2,4)
+  grass_textured_05:   { x: 80,  y: 32,  w: 16, h: 16 }, // Textured grass with clover accent (2,5)
+  grass_textured_06:   { x: 96,  y: 32,  w: 16, h: 16 }, // Textured grass with blossom accent (2,6)
 
   // Path variants (same dirt trail group row y=112)
   path_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Primary dirt trail
@@ -47,19 +47,15 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   sand_tile_01:        { x: 208, y: 48,  w: 16, h: 16 }, // Water-side beach sand
   stone_tile_01:       { x: 80,  y: 256, w: 16, h: 16 }, // Paved building apron stone
 
-  // Water variants (same water group)
+  // Clean Water (pure calm cyan water & diagonal shore corner transition)
   water_tile_01:       { x: 352, y: 112, w: 16, h: 16 }, // Calm cyan water
-  water_tile_02:       { x: 640, y: 32,  w: 16, h: 16 }, // Rippling water
-  water_tile_03:       { x: 640, y: 48,  w: 16, h: 16 }, // Shimmering water
-  water_tile_04:       { x: 624, y: 32,  w: 16, h: 16 }, // Deep rippling water
-  water_tile_05:       { x: 656, y: 32,  w: 16, h: 16 }, // Sun-glint ripple
-  shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Directional shore transition
+  shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Unidirectional diagonal shore corner transition
 
-  // Wooden Fences (from tileset)
-  fence_wood_h:        { x: 608, y: 80,  w: 16, h: 16 }, // Horizontal wooden fence
-  fence_wood_v:        { x: 240, y: 288, w: 16, h: 16 }, // Vertical wooden fence
-  fence_wood_post:     { x: 624, y: 80,  w: 16, h: 16 }, // Wooden fence post / corner
-  fence_wood_gate:     { x: 640, y: 80,  w: 16, h: 16 }, // Wooden fence gate
+  // Wooden Fences (from tileset block 0,38 to 4,40)
+  fence_wood_h:        { x: 624, y: 16,  w: 16, h: 16 }, // Horizontal wooden fence rail (1,39)
+  fence_wood_v:        { x: 640, y: 48,  w: 16, h: 16 }, // Vertical wooden fence rail (North-South, 3,40)
+  fence_wood_post:     { x: 640, y: 32,  w: 16, h: 16 }, // Wooden fence 4-way post / corner joint (2,40)
+  fence_wood_gate:     { x: 624, y: 0,   w: 16, h: 16 }, // Wooden fence gate / top rail (0,39)
 
   // Bushes & Grass clusters (from tileset)
   bush_round_01:       { x: 816, y: 64,  w: 16, h: 16 }, // Round green bush
@@ -248,10 +244,10 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      const grassCropKey = (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('grass_tile_'))
+      const grassCropKey = (cell.terrain in TILESET_CROPS && (cell.terrain.startsWith('grass_textured_') || cell.terrain.startsWith('grass_tile_')))
         ? cell.terrain
-        : 'grass_tile_01';
-      const grassCrop = TILESET_CROPS[grassCropKey] || TILESET_CROPS['grass_tile_01'];
+        : 'grass_textured_01';
+      const grassCrop = TILESET_CROPS[grassCropKey] || TILESET_CROPS['grass_textured_01'];
       ctx.drawImage(tilesetImg, grassCrop.x, grassCrop.y, grassCrop.w, grassCrop.h, dx, dy, cellSize, cellSize);
 
       if (cell.terrain === 'sand_tile_01') {
@@ -266,18 +262,16 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 2: Water & Rotated Shore Transitions ──────────────────
+  // ── LAYER 2: Water Bodies & Rotated Diagonal Corner Transitions ──
   for (let y = 0; y < data.height; y++) {
     for (let x = 0; x < data.width; x++) {
       const cell = data.grid[y][x];
+      if (!cell.isWater && !cell.terrain.startsWith('water_tile_') && cell.terrain !== 'shore_transition_01') continue;
+
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      if (cell.terrain.startsWith('water_tile_')) {
-        const waterCropKey = (cell.terrain in TILESET_CROPS) ? cell.terrain : 'water_tile_01';
-        const waterCrop = TILESET_CROPS[waterCropKey] || TILESET_CROPS['water_tile_01'];
-        ctx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
-      } else if (cell.terrain === 'shore_transition_01') {
+      if (cell.terrain === 'shore_transition_01') {
         const shoreCrop = TILESET_CROPS['shore_transition_01'];
         const rot = cell.rotation || 0;
 
@@ -290,15 +284,18 @@ export async function renderSettlement(
           -cellSize / 2, -cellSize / 2, cellSize, cellSize
         );
         ctx.restore();
+      } else {
+        const waterCrop = TILESET_CROPS['water_tile_01'];
+        ctx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
       }
     }
   }
 
-  // ── LAYER 3: Road & Paths (Dirt trail variants & boardwalk over water)
+  // ── LAYER 3: Road & Paths (Broken / overwritten by ponds!) ───────
   for (let y = 0; y < data.height; y++) {
     for (let x = 0; x < data.width; x++) {
       const cell = data.grid[y][x];
-      if (!cell.isRoad) continue;
+      if (!cell.isRoad || cell.isWater) continue;
 
       const dx = x * cellSize;
       const dy = y * cellSize;

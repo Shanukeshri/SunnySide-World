@@ -81,6 +81,23 @@ def classify_tile(r, c, x, y):
             elif 27 <= c <= 36:
                 return "world_terrain", f"stone_cobble_r{r:02d}_c{c:02d}", f"Stone & Cobble Path ({r},{c})", f"Cobblestone walkway, natural stone flagstone, and paved path edge at [{x},{y}]"
         elif 37 <= c <= 43:
+            if 0 <= r <= 4 and 38 <= c <= 40:
+                fence_names = {
+                    (0, 38): ("fence_timber_post_top", "Wooden Fence Post Top (0,38)", "Top cap of timber fence post"),
+                    (0, 39): ("fence_timber_rail_top", "Wooden Fence Rail Top (0,39)", "Top horizontal rail of wooden fence"),
+                    (1, 38): ("fence_timber_post_mid", "Wooden Fence Post (1,38)", "Vertical wooden post segment"),
+                    (1, 39): ("fence_timber_rail_h", "Wooden Fence Horizontal Rail (1,39)", "Standard horizontal wooden fence rail"),
+                    (1, 40): ("fence_timber_rail_v_top", "Wooden Fence North-South Rail Top (1,40)", "Vertical north-south extending fence segment connecting upward"),
+                    (2, 38): ("fence_timber_rail_l", "Wooden Fence Rail Left (2,38)", "Horizontal wooden fence rail extending left with post"),
+                    (2, 39): ("fence_timber_rail_r", "Wooden Fence Rail Right (2,39)", "Horizontal wooden fence rail extending right with post"),
+                    (2, 40): ("fence_timber_post_cross", "Wooden Fence 4-Way Cross Joint (2,40)", "4-way intersection post connecting vertical and horizontal rails"),
+                    (3, 39): ("fence_timber_stub", "Wooden Fence Post Stubs (3,39)", "Twin timber post stubs"),
+                    (3, 40): ("fence_timber_rail_v_bot", "Wooden Fence North-South Rail (3,40)", "Vertical north-south extending fence rail segment"),
+                    (4, 38): ("fence_timber_tip", "Wooden Fence Post Tip (4,38)", "Pointed timber post stake"),
+                    (4, 40): ("fence_timber_rail_v_cap", "Wooden Fence North-South Rail Bottom (4,40)", "Bottom termination of vertical north-south fence rail"),
+                }
+                fid, fname, fdesc = fence_names.get((r, c), (f"fence_timber_r{r:02d}_c{c:02d}", f"Wooden Fence ({r},{c})", "Modular timber fence segment"))
+                return "buildings", fid, fname, f"{fdesc} at [{x},{y}]"
             return "water_aquatic", f"water_shoreline_r{r:02d}_c{c:02d}", f"Water & Shore Bank ({r},{c})", f"Flowing river water, shore corner transition, and coastline bank at [{x},{y}]"
         elif 44 <= c <= 63:
             if r in [0, 1, 2, 3]:
