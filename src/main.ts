@@ -921,7 +921,7 @@ function updateSettlementBadges(data: SettlementData) {
   if (wellsBadge) wellsBadge.innerHTML = `Wells: <strong>${data.wells.length}</strong>`;
   if (treesBadge) treesBadge.innerHTML = `Trees: <strong>${data.trees.length}</strong>`;
   if (waterBadge) waterBadge.innerHTML = `Water: <strong>${data.waterBodies.length > 0 ? `${data.waterBodies.length} Ponds` : "None"}</strong>`;
-  if (decorBadge) decorBadge.innerHTML = `Scatter: <strong>${data.decorations.length}</strong>`;
+  if (decorBadge) decorBadge.innerHTML = `Scatter: <strong>${data.decorations.length}</strong> (${data.bushes?.length || 0} Bushes)`;
   if (seedInput) seedInput.value = String(data.seed);
 
   if (validationText) {

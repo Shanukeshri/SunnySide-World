@@ -12,7 +12,7 @@ export interface GridCoord {
 export interface PlacedObject {
   id: AssetId;
   name: string;
-  type: 'house' | 'farm' | 'well' | 'tree' | 'decoration' | 'farm_object';
+  type: 'house' | 'farm' | 'well' | 'tree' | 'bush' | 'decoration' | 'farm_object';
   x: number; // grid anchor X
   y: number; // grid anchor Y
   footprintW: number; // cells
@@ -83,6 +83,7 @@ export interface SettlementData {
   farmObjects: PlacedObject[];
   wells: PlacedObject[];
   trees: PlacedObject[];
+  bushes: PlacedObject[];
   decorations: PlacedObject[];
   waterBodies: WaterBody[];
   validation: ValidationReport;
@@ -102,7 +103,7 @@ export function createRNG(seed: number): () => number {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// ASSET CATALOG (Direct from map.txt / houses.png)
+// ASSET CATALOG (Direct from map.txt / houses.png / trees_and_bushes.png)
 // ═══════════════════════════════════════════════════════════════════
 
 export interface HouseTemplate {
@@ -114,21 +115,20 @@ export interface HouseTemplate {
   weight: number;
 }
 
-export const HOUSE_TEMPLATES: HouseTemplate[] = [
-  // Common rustic dwellings
-  { id: 'house_cottage_01',    name: 'Cottage',         w: 3, h: 3, rarity: 'common',   weight: 35 },
-  { id: 'house_farmhouse_01',  name: 'Farmhouse',       w: 4, h: 3, rarity: 'common',   weight: 30 },
-  { id: 'house_cabin_01',      name: 'Cabin',           w: 3, h: 3, rarity: 'common',   weight: 30 },
-  // Less common village buildings
-  { id: 'house_barn_01',       name: 'Barn',            w: 3, h: 3, rarity: 'uncommon', weight: 15 },
-  { id: 'house_workshop_01',   name: 'Workshop',        w: 4, h: 3, rarity: 'uncommon', weight: 12 },
-  { id: 'house_tavern_01',     name: 'Tavern',          w: 3, h: 3, rarity: 'uncommon', weight: 10 },
-  { id: 'house_shop_01',       name: 'Village Shop',    w: 4, h: 3, rarity: 'uncommon', weight: 10 },
-  // Rare landmark structures
-  { id: 'house_windmill_01',   name: 'Windmill',        w: 3, h: 3, rarity: 'rare',     weight: 4 },
-  { id: 'house_mansion_01',    name: 'Mansion',         w: 4, h: 4, rarity: 'rare',     weight: 3 },
+export const HOUSE_CATALOG: HouseTemplate[] = [
+  { id: 'house_cottage_01',    name: 'Thatched Cottage', w: 3, h: 3, rarity: 'common',   weight: 10 },
+  { id: 'house_farmhouse_01',  name: 'Farmstead Manor',  w: 4, h: 3, rarity: 'common',   weight: 9 },
+  { id: 'house_barn_01',       name: 'Timber Barn',      w: 3, h: 3, rarity: 'common',   weight: 9 },
+  { id: 'house_workshop_01',   name: 'Smithy Workshop',  w: 4, h: 3, rarity: 'uncommon', weight: 6 },
+  { id: 'house_tavern_01',     name: 'Village Tavern',   w: 3, h: 3, rarity: 'uncommon', weight: 6 },
+  { id: 'house_shop_01',       name: 'Merchant Shop',    w: 4, h: 3, rarity: 'uncommon', weight: 5 },
+  { id: 'house_windmill_01',   name: 'Windmill',         w: 4, h: 3, rarity: 'uncommon', weight: 5 },
+  { id: 'house_mansion_01',    name: 'Noble Manor',      w: 4, h: 4, rarity: 'rare',     weight: 3 },
+  { id: 'house_cabin_01',      name: 'Woodland Cabin',   w: 4, h: 3, rarity: 'common',   weight: 8 },
   { id: 'house_castle_01',     name: 'Castle Tower',    w: 3, h: 4, rarity: 'rare',     weight: 2 },
 ];
+
+export const HOUSE_TEMPLATES = HOUSE_CATALOG;
 
 export const CROP_BASE_KEYS = [
   'crop_wheat',
@@ -152,17 +152,25 @@ export const FARM_OBJECT_IDS = [
   'farm_chest_closed',
 ];
 
+// Exclusively from assets/trees_and_bushes.png (first 5: trees, next 4: bushes)
+export const TREE_ASSET_IDS = [
+  'tree_01',
+  'tree_02',
+  'tree_03',
+  'tree_04',
+  'tree_05',
+];
+
 export const BUSH_ASSET_IDS = [
-  'bush_round_01',
-  'bush_round_02',
-  'bush_berry_01',
+  'bush_01',
+  'bush_02', // bush with red berries
+  'bush_03',
+  'bush_04', // bush with red berries
 ];
 
 export const GRASS_TUFT_IDS = [
-  'grass_tuft_01',
-  'grass_tuft_02',
-  'grass_tuft_03',
-  'wild_flora_01',
+  'flowers_wild_01',
+  'flowers_wild_02',
 ];
 
 export const FENCE_ASSET_IDS = {
@@ -173,16 +181,15 @@ export const FENCE_ASSET_IDS = {
   gate: 'fence_wood_gate',
 };
 
+// Clean natural scatter: only transparent standalone sprites, zero cliff/line tiles
 export const DECORATION_ASSET_IDS = [
   'small_rock_01',
-  'grass_tuft_01',
   'flowers_wild_01',
   'flowers_wild_02',
   'mushrooms_deco_blue',
   'mushrooms_deco_red',
   'acorn_deco_01',
   'truffle_deco_01',
-  'stump_deco_01'
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -200,6 +207,7 @@ export class SettlementGenerator {
   private farmObjects: PlacedObject[] = [];
   private wells: PlacedObject[] = [];
   private trees: PlacedObject[] = [];
+  private bushes: PlacedObject[] = [];
   private decorations: PlacedObject[] = [];
   private waterBodies: WaterBody[] = [];
   private roadCells: GridCoord[] = [];
@@ -235,13 +243,16 @@ export class SettlementGenerator {
     // ── STEP 7: Wells beside roads / near farms ───────────────────
     this.generateWells();
 
-    // ── STEP 8: Random sparse trees in open countryside ───────────
+    // ── STEP 8: Trees with occasional clustering logic ────────────
     this.generateTrees();
 
-    // ── STEP 9: Natural terrain details & scatter ─────────────────
+    // ── STEP 9: Bushes with MANDATORY clustering every time ───────
+    this.generateBushes();
+
+    // ── STEP 10: Natural terrain details & scatter ────────────────
     this.generateTerrainDetails();
 
-    // ── STEP 10: Validate result against all constraints ──────────
+    // ── STEP 11: Validate result against all constraints ──────────
     const validation = this.validateSettlement();
 
     return {
@@ -254,6 +265,7 @@ export class SettlementGenerator {
       farmObjects: this.farmObjects,
       wells: this.wells,
       trees: this.trees,
+      bushes: this.bushes,
       decorations: this.decorations,
       waterBodies: this.waterBodies,
       validation,
@@ -325,8 +337,8 @@ export class SettlementGenerator {
     mainRoad.push(...this.carveMeanderingPath(p1, p2));
     largeRoads.push(mainRoad);
 
-    // ── 2. Add 2–4 more large roads from different edges or important areas ──
-    const extraRoadCount = 2 + Math.floor(this.rng() * 3); // 2, 3, or 4 additional large roads
+    // ── 2. Add 4–6 more large roads from different edges or important areas ──
+    const extraRoadCount = 4 + Math.floor(this.rng() * 3); // 4, 5, or 6 additional large roads
 
     // Shuffled origin strategies: North, South, West, East edges and interior central junctions
     const originTypes = [0, 1, 2, 3, 4];
@@ -762,143 +774,159 @@ export class SettlementGenerator {
   private generateFarms() {
     this.farms = [];
     this.farmObjects = [];
-    const farmCount = 2; // 2 large, expansive farms
+    // Increase number of farms to 4 to 8
+    const farmCount = 4 + Math.floor(this.rng() * 5);
 
     for (let f = 0; f < farmCount; f++) {
       const cropBase = CROP_BASE_KEYS[Math.floor(this.rng() * CROP_BASE_KEYS.length)];
-      // Large farm crop field: 7 to 9 cells wide, 4 to 6 cells tall
-      const fw = 7 + Math.floor(this.rng() * 3);
-      const fh = 4 + Math.floor(this.rng() * 3);
+      // 50% chance of the farm having a border
+      const hasBorder = this.rng() < 0.50;
 
-      for (let attempt = 0; attempt < 250; attempt++) {
-        const ax = Math.floor(2 + this.rng() * (this.width - fw - 4));
-        const ay = Math.floor(2 + this.rng() * (this.height - fh - 6));
+      // Associate with one of the houses so the farm is close to a house
+      // Uniformly cycle through houses so farms are distributed across different homesteads
+      const targetHouse = this.houses.length > 0 ? this.houses[f % this.houses.length] : null;
+
+      // Make the farms bigger and wider: 9 to 13 cells wide, 5 to 7 cells tall
+      const targetW = 9 + Math.floor(this.rng() * 5);
+      const targetH = 5 + Math.floor(this.rng() * 3);
+
+      for (let attempt = 0; attempt < 350; attempt++) {
+        // Adapt target dimensions on high attempts so farm always finds space
+        const curTargetW = attempt > 250 ? Math.max(6, targetW - 3) : (attempt > 150 ? Math.max(7, targetW - 2) : targetW);
+        const curTargetH = attempt > 250 ? Math.max(3, targetH - 2) : (attempt > 150 ? Math.max(3, targetH - 1) : targetH);
+        let ax: number;
+        let ay: number;
+
+        if (targetHouse && attempt < 120) {
+          // Place close to the selected house (distance 4 to 12 cells)
+          const angle = this.rng() * Math.PI * 2;
+          const distFromHouse = 4 + this.rng() * 8;
+          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
+          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
+        } else if (targetHouse && attempt < 220) {
+          // Expand search radius around house if nearby spaces are full
+          const angle = this.rng() * Math.PI * 2;
+          const distFromHouse = 5 + this.rng() * 13;
+          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
+          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
+        } else {
+          // Fallback to random map location
+          ax = Math.floor(2 + this.rng() * (this.width - targetW - 4));
+          ay = Math.floor(2 + this.rng() * (this.height - targetH - 6));
+        }
+
+        ax = Math.max(2, Math.min(this.width - 7, ax));
+        ay = Math.max(2, Math.min(this.height - 5, ay));
+
+        // Grow farm horizontally & vertically, pausing immediately before any overlap:
+        // "as soon as overlapping is there, pause that thing to be before it"
+        let fw = curTargetW;
+        let fh = curTargetH;
+
+        fw = Math.min(fw, this.width - ax - 2);
+        fh = Math.min(fh, this.height - ay - 2);
+        const minW = attempt > 150 ? 5 : 6;
+        const minH = 3;
+        if (fw < minW || fh < minH) continue;
+
+        // Pause width before any obstacle in any row
+        for (let dx = 0; dx < fw; dx++) {
+          let colBlocked = false;
+          for (let dy = 0; dy < fh; dy++) {
+            const gx = ax + dx;
+            const gy = ay + dy;
+            const cell = this.grid[gy][gx];
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+              colBlocked = true;
+              break;
+            }
+          }
+          if (colBlocked) {
+            fw = dx; // Pause before the obstacle!
+            break;
+          }
+        }
+        if (fw < minW) continue;
+
+        // Pause height before any obstacle in any col
+        for (let dy = 0; dy < fh; dy++) {
+          let rowBlocked = false;
+          for (let dx = 0; dx < fw; dx++) {
+            const gx = ax + dx;
+            const gy = ay + dy;
+            const cell = this.grid[gy][gx];
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+              rowBlocked = true;
+              break;
+            }
+          }
+          if (rowBlocked) {
+            fh = dy; // Pause before the obstacle!
+            break;
+          }
+        }
+        if (fw < minW || fh < minH) continue;
 
         // Compound bounding box:
-        // Encompasses crop field [ax..ax+fw-1, ay..ay+fh-1],
-        // plus dedicated farmyard row at (ay + fh) for farm items!
         const minX = ax - 1;
         const maxX = ax + fw;
         const minY = ay - 1;
-        const maxY = ay + fh + 1; // row (ay + fh) is the enclosed farmyard strip
+        const maxY = ay + fh + 1; // row (ay + fh) is the dedicated farmyard strip
 
-        if (minX < 1 || maxX >= this.width - 1 || minY < 1 || maxY >= this.height - 1) {
-          continue;
+        // Check if farmyard row (ay + fh) has free space or needs to be inside the field
+        let farmyardY = ay + fh;
+        if (farmyardY >= this.height - 1) {
+          farmyardY = ay + fh - 1;
         }
 
-        // Clearance check: Entire compound must not collide with roads, water, other farms, or buildings
-        let valid = true;
-        for (let y = minY; y <= maxY; y++) {
-          for (let x = minX; x <= maxX; x++) {
-            const cell = this.grid[y][x];
-            if (cell.isRoad || cell.isWater || cell.isFarm || cell.blocked) {
-              valid = false;
-              break;
-            }
+        // Generate farm crops (Growth Stages 0 to 3 ONLY! No stage 4 icon)
+        const farmCells: FarmCell[] = [];
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
+            if (isCorner && this.rng() > 0.5) continue;
+
+            const gx = ax + dx;
+            const gy = ay + dy;
+            this.grid[gy][gx].isFarm = true;
+            this.grid[gy][gx].terrain = 'dirt_tile_01'; // Tilled furrow soil
+
+            const stage = Math.floor(this.rng() * 4);
+            farmCells.push({
+              x: gx,
+              y: gy,
+              cropId: `${cropBase}_stage_${stage}`,
+              stage,
+            });
           }
-          if (!valid) break;
         }
 
-        if (!valid) continue;
+        this.farms.push({
+          x: ax,
+          y: ay,
+          w: fw,
+          h: fh,
+          cells: farmCells,
+          cropBaseId: cropBase,
+        });
 
-        // Proximity check: Must be near a road (within 1 to 4 cells from compound)
-        let nearRoad = false;
-        for (let y = Math.max(0, minY - 3); y <= Math.min(this.height - 1, maxY + 3); y++) {
-          for (let x = Math.max(0, minX - 3); x <= Math.min(this.width - 1, maxX + 3); x++) {
-            if (this.grid[y][x].isRoad) {
-              nearRoad = true;
-              break;
-            }
+        // Farm items (crates, barrels, hay bales, troughs) placed along farmyard strip
+        const itemSlots: number[] = [];
+        for (let x = ax; x < ax + fw; x++) {
+          if (x < this.width && !this.grid[farmyardY][x].isRoad && !this.grid[farmyardY][x].isWater) {
+            itemSlots.push(x);
           }
-          if (nearRoad) break;
+        }
+        for (let i = itemSlots.length - 1; i > 0; i--) {
+          const j = Math.floor(this.rng() * (i + 1));
+          [itemSlots[i], itemSlots[j]] = [itemSlots[j], itemSlots[i]];
         }
 
-        if (nearRoad || attempt > 60) {
-          // ── A. Generate Farm Crops (Growth Stages 0 to 3 ONLY! No stage 4 icon)
-          const farmCells: FarmCell[] = [];
-          for (let dy = 0; dy < fh; dy++) {
-            for (let dx = 0; dx < fw; dx++) {
-              // Subtle corner skip for organic feel
-              const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
-              if (isCorner && this.rng() > 0.5) continue;
-
-              const gx = ax + dx;
-              const gy = ay + dy;
-              this.grid[gy][gx].isFarm = true;
-              this.grid[gy][gx].terrain = 'dirt_tile_01'; // Tilled furrow soil
-
-              // REQUIREMENT: Stage 4 is collectible drop icon; use stages 0-3 only!
-              const stage = Math.floor(this.rng() * 4);
-              farmCells.push({
-                x: gx,
-                y: gy,
-                cropId: `${cropBase}_stage_${stage}`,
-                stage,
-              });
-            }
-          }
-
-          this.farms.push({
-            x: ax,
-            y: ay,
-            w: fw,
-            h: fh,
-            cells: farmCells,
-            cropBaseId: cropBase,
-          });
-
-          // ── B. Determine 2 to 4 Openings Along Continuous Fence Perimeter
-          const openings = new Set<string>();
-          const numOpenings = 2 + Math.floor(this.rng() * 3); // 2, 3, or 4 openings
-
-          // 1. South opening (primary entrance facing road/village)
-          const southOpenX = ax + Math.floor(fw / 2);
-          openings.add(`${southOpenX},${maxY}`);
-
-          // 2. North opening (passage to north countryside)
-          const northOpenX = ax + Math.floor(fw / 2);
-          openings.add(`${northOpenX},${minY}`);
-
-          // 3. West opening (if 3+ openings)
-          if (numOpenings >= 3) {
-            const westOpenY = ay + Math.floor(fh / 2);
-            openings.add(`${minX},${westOpenY}`);
-          }
-
-          // 4. East opening (if 4 openings)
-          if (numOpenings >= 4) {
-            const eastOpenY = ay + Math.floor(fh / 2);
-            openings.add(`${maxX},${eastOpenY}`);
-          }
-
-          // Also mark any perimeter cell that touches or coincides with a road as opening
-          for (let x = minX; x <= maxX; x++) {
-            if (this.grid[minY][x].isRoad) openings.add(`${x},${minY}`);
-            if (this.grid[maxY][x].isRoad) openings.add(`${x},${maxY}`);
-          }
-          for (let y = minY; y <= maxY; y++) {
-            if (this.grid[y][minX].isRoad) openings.add(`${minX},${y}`);
-            if (this.grid[y][maxX].isRoad) openings.add(`${maxX},${y}`);
-          }
-
-          // ── C. Place Farm Items Inside Compound (Enclosed along farmyard strip at y = ay + fh)
-          const itemSlots: number[] = [];
-          for (let x = ax; x < ax + fw; x++) {
-            // Keep entrance pathway clear
-            if (x !== southOpenX) {
-              itemSlots.push(x);
-            }
-          }
-          // Shuffle item slots
-          for (let i = itemSlots.length - 1; i > 0; i--) {
-            const j = Math.floor(this.rng() * (i + 1));
-            [itemSlots[i], itemSlots[j]] = [itemSlots[j], itemSlots[i]];
-          }
-
-          const numFarmItems = Math.min(itemSlots.length, 2 + Math.floor(this.rng() * 3)); // 2 to 4 items
-          for (let i = 0; i < numFarmItems; i++) {
-            const ix = itemSlots[i];
-            const iy = ay + fh;
+        const numFarmItems = Math.min(itemSlots.length, 1 + Math.floor(this.rng() * 3));
+        for (let i = 0; i < numFarmItems; i++) {
+          const ix = itemSlots[i];
+          const iy = farmyardY;
+          if (!this.grid[iy][ix].isRoad && !this.grid[iy][ix].isWater) {
             const objId = FARM_OBJECT_IDS[Math.floor(this.rng() * FARM_OBJECT_IDS.length)];
             this.grid[iy][ix].blocked = true;
 
@@ -912,27 +940,174 @@ export class SettlementGenerator {
               footprintH: 1,
             });
           }
-
-          // ── D. Place Continuous Fence Around Farm & Farm Items
-          // North edge (y = minY)
-          for (let x = minX; x <= maxX; x++) {
-            this.placeFenceCell(x, minY, minX, maxX, minY, maxY, openings);
-          }
-          // South edge (y = maxY)
-          for (let x = minX; x <= maxX; x++) {
-            this.placeFenceCell(x, maxY, minX, maxX, minY, maxY, openings);
-          }
-          // West edge (x = minX)
-          for (let y = minY + 1; y < maxY; y++) {
-            this.placeFenceCell(minX, y, minX, maxX, minY, maxY, openings);
-          }
-          // East edge (x = maxX)
-          for (let y = minY + 1; y < maxY; y++) {
-            this.placeFenceCell(maxX, y, minX, maxX, minY, maxY, openings);
-          }
-
-          break; // successfully placed farm f
         }
+
+        // 50% chance of the farm having a border:
+        if (hasBorder) {
+          const openings = new Set<string>();
+          const numOpenings = 2 + Math.floor(this.rng() * 3);
+
+          const southOpenX = ax + Math.floor(fw / 2);
+          openings.add(`${southOpenX},${maxY}`);
+          const northOpenX = ax + Math.floor(fw / 2);
+          openings.add(`${northOpenX},${minY}`);
+          if (numOpenings >= 3) openings.add(`${minX},${ay + Math.floor(fh / 2)}`);
+          if (numOpenings >= 4) openings.add(`${maxX},${ay + Math.floor(fh / 2)}`);
+
+          // North edge
+          for (let x = minX; x <= maxX; x++) {
+            if (x >= 0 && x < this.width && minY >= 0 && minY < this.height) {
+              this.placeFenceCell(x, minY, minX, maxX, minY, maxY, openings);
+            }
+          }
+          // South edge
+          for (let x = minX; x <= maxX; x++) {
+            if (x >= 0 && x < this.width && maxY >= 0 && maxY < this.height) {
+              this.placeFenceCell(x, maxY, minX, maxX, minY, maxY, openings);
+            }
+          }
+          // West edge
+          for (let y = minY + 1; y < maxY; y++) {
+            if (minX >= 0 && minX < this.width && y >= 0 && y < this.height) {
+              this.placeFenceCell(minX, y, minX, maxX, minY, maxY, openings);
+            }
+          }
+          // East edge
+          for (let y = minY + 1; y < maxY; y++) {
+            if (maxX >= 0 && maxX < this.width && y >= 0 && y < this.height) {
+              this.placeFenceCell(maxX, y, minX, maxX, minY, maxY, openings);
+            }
+          }
+        }
+
+        break;
+      }
+    }
+
+    // Guarantee at least 4 farms if any rolled attempt fell short
+    let safetyFarms = 0;
+    while (this.farms.length < 4 && safetyFarms++ < 15) {
+      const f = this.farms.length;
+      const cropBase = CROP_BASE_KEYS[Math.floor(this.rng() * CROP_BASE_KEYS.length)];
+      const hasBorder = this.rng() < 0.50;
+      const targetHouse = this.houses.length > 0 ? this.houses[f % this.houses.length] : null;
+      const targetW = 7 + Math.floor(this.rng() * 3);
+      const targetH = 4 + Math.floor(this.rng() * 2);
+
+      for (let attempt = 0; attempt < 300; attempt++) {
+        let ax: number;
+        let ay: number;
+        if (targetHouse && attempt < 180) {
+          const angle = this.rng() * Math.PI * 2;
+          const distFromHouse = 4 + this.rng() * 12;
+          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
+          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
+        } else {
+          ax = Math.floor(2 + this.rng() * (this.width - targetW - 4));
+          ay = Math.floor(2 + this.rng() * (this.height - targetH - 6));
+        }
+        ax = Math.max(2, Math.min(this.width - 6, ax));
+        ay = Math.max(2, Math.min(this.height - 4, ay));
+
+        let fw = targetW;
+        let fh = targetH;
+        fw = Math.min(fw, this.width - ax - 2);
+        fh = Math.min(fh, this.height - ay - 2);
+        if (fw < 4 || fh < 3) continue;
+
+        for (let dx = 0; dx < fw; dx++) {
+          let colBlocked = false;
+          for (let dy = 0; dy < fh; dy++) {
+            const gx = ax + dx;
+            const gy = ay + dy;
+            const cell = this.grid[gy][gx];
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+              colBlocked = true;
+              break;
+            }
+          }
+          if (colBlocked) { fw = dx; break; }
+        }
+        if (fw < 4) continue;
+
+        for (let dy = 0; dy < fh; dy++) {
+          let rowBlocked = false;
+          for (let dx = 0; dx < fw; dx++) {
+            const gx = ax + dx;
+            const gy = ay + dy;
+            const cell = this.grid[gy][gx];
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+              rowBlocked = true;
+              break;
+            }
+          }
+          if (rowBlocked) { fh = dy; break; }
+        }
+        if (fw < 4 || fh < 3) continue;
+
+        const minX = ax - 1;
+        const maxX = ax + fw;
+        const minY = ay - 1;
+        const maxY = ay + fh + 1;
+        let farmyardY = ay + fh;
+        if (farmyardY >= this.height - 1) farmyardY = ay + fh - 1;
+
+        const farmCells: FarmCell[] = [];
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
+            if (isCorner && this.rng() > 0.5) continue;
+            const gx = ax + dx;
+            const gy = ay + dy;
+            this.grid[gy][gx].isFarm = true;
+            this.grid[gy][gx].terrain = 'dirt_tile_01';
+            const stage = Math.floor(this.rng() * 4);
+            farmCells.push({ x: gx, y: gy, cropId: `${cropBase}_stage_${stage}`, stage });
+          }
+        }
+
+        this.farms.push({ x: ax, y: ay, w: fw, h: fh, cells: farmCells, cropBaseId: cropBase });
+
+        const itemSlots: number[] = [];
+        for (let x = ax; x < ax + fw; x++) {
+          if (x < this.width && !this.grid[farmyardY][x].isRoad && !this.grid[farmyardY][x].isWater) {
+            itemSlots.push(x);
+          }
+        }
+        for (let i = itemSlots.length - 1; i > 0; i--) {
+          const j = Math.floor(this.rng() * (i + 1));
+          [itemSlots[i], itemSlots[j]] = [itemSlots[j], itemSlots[i]];
+        }
+        const numFarmItems = Math.min(itemSlots.length, 1 + Math.floor(this.rng() * 3));
+        for (let i = 0; i < numFarmItems; i++) {
+          const ix = itemSlots[i];
+          const iy = farmyardY;
+          if (!this.grid[iy][ix].isRoad && !this.grid[iy][ix].isWater) {
+            const objId = FARM_OBJECT_IDS[Math.floor(this.rng() * FARM_OBJECT_IDS.length)];
+            this.grid[iy][ix].blocked = true;
+            this.farmObjects.push({ id: objId, name: objId, type: 'farm_object', x: ix, y: iy, footprintW: 1, footprintH: 1 });
+          }
+        }
+
+        if (hasBorder) {
+          const openings = new Set<string>();
+          const numOpenings = 2 + Math.floor(this.rng() * 3);
+          openings.add(`${ax + Math.floor(fw / 2)},${maxY}`);
+          openings.add(`${ax + Math.floor(fw / 2)},${minY}`);
+          if (numOpenings >= 3) openings.add(`${minX},${ay + Math.floor(fh / 2)}`);
+          if (numOpenings >= 4) openings.add(`${maxX},${ay + Math.floor(fh / 2)}`);
+
+          for (let x = minX; x <= maxX; x++) {
+            if (x >= 0 && x < this.width && minY >= 0 && minY < this.height) this.placeFenceCell(x, minY, minX, maxX, minY, maxY, openings);
+            if (x >= 0 && x < this.width && maxY >= 0 && maxY < this.height) this.placeFenceCell(x, maxY, minX, maxX, minY, maxY, openings);
+          }
+          for (let y = minY + 1; y < maxY; y++) {
+            if (minX >= 0 && minX < this.width && y >= 0 && y < this.height) this.placeFenceCell(minX, y, minX, maxX, minY, maxY, openings);
+            if (maxX >= 0 && maxX < this.width && y >= 0 && y < this.height) this.placeFenceCell(maxX, y, minX, maxX, minY, maxY, openings);
+          }
+        }
+
+        break;
       }
     }
   }
@@ -950,8 +1125,8 @@ export class SettlementGenerator {
       return;
     }
 
-    // Never place fence on road or water
-    if (this.grid[y][x].isRoad || this.grid[y][x].isWater) {
+    // Never place fence on road, water, farm crop, or existing blocked obstacle
+    if (this.grid[y][x].isRoad || this.grid[y][x].isWater || this.grid[y][x].isFarm || this.grid[y][x].blocked) {
       return;
     }
 
@@ -985,9 +1160,9 @@ export class SettlementGenerator {
   private generateHouses() {
     this.houses = [];
 
-    // Select believable subset of buildings (4 to 6 buildings)
-    const targetHouses = 4 + Math.floor(this.rng() * 3);
-    const minDistanceBetweenHouses = 8; // Euclidean distance check in cells
+    // Select believable subset of buildings (6 to 10 buildings)
+    const targetHouses = 6 + Math.floor(this.rng() * 5);
+    const minDistanceBetweenHouses = 6.0; // Euclidean distance check in cells
 
     const pool: HouseTemplate[] = [];
     for (const t of HOUSE_TEMPLATES) {
@@ -999,13 +1174,22 @@ export class SettlementGenerator {
     // Deliberately reserve an open countryside quadrant to leave natural spaces
     const openReserveQuadrant = Math.floor(this.rng() * 4); // 0: NW, 1: NE, 2: SW, 3: SE
 
+    // Track houses per quadrant for uniform spread
+    const quadrantCounts = [0, 0, 0, 0]; // 0: NW, 1: NE, 2: SW, 3: SE
+
     for (let h = 0; h < targetHouses; h++) {
       const template = pool[Math.floor(this.rng() * pool.length)];
 
       let placed = false;
-      for (let attempt = 0; attempt < 150; attempt++) {
+      for (let attempt = 0; attempt < 250; attempt++) {
         const ax = Math.floor(2 + this.rng() * (this.width - template.w - 4));
         const ay = Math.floor(2 + this.rng() * (this.height - template.h - 6));
+
+        // Uniform distribution: avoid concentrating too many houses in one quadrant
+        const q = (ax < this.width / 2 ? 0 : 1) + (ay < this.height / 2 ? 0 : 2);
+        if (attempt < 150 && quadrantCounts[q] >= 3 && this.rng() < 0.75) {
+          continue;
+        }
 
         // Create open areas deliberately & make outer part of the map much less developed
         if (attempt < 80) {
@@ -1088,6 +1272,7 @@ export class SettlementGenerator {
             footprintH: template.h,
             door: { x: doorX, y: southEdgeY },
           });
+          quadrantCounts[q]++;
           placed = true;
           break;
         }
@@ -1219,72 +1404,126 @@ export class SettlementGenerator {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // STEP 8: Random sparse trees in open countryside
+  // STEP 8: Trees (with occasional clustering logic)
   // ─────────────────────────────────────────────────────────────────
   private generateTrees() {
     this.trees = [];
-    const treeTarget = 12 + Math.floor(this.rng() * 8);
+    const treeTarget = 14 + Math.floor(this.rng() * 8); // 14 to 21 trees
+    let placed = 0;
 
-    for (let t = 0; t < treeTarget; t++) {
-      const treeId = this.rng() > 0.4 ? 'tree_oak_01' : 'tree_pine_01';
+    const canPlaceTreeAt = (tx: number, ty: number): boolean => {
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const gx = tx + dx;
+          const gy = ty + dy;
+          if (gx < 1 || gx >= this.width - 1 || gy < 1 || gy >= this.height - 1) return false;
+          const cell = this.grid[gy][gx];
+          if (cell.isRoad || cell.isWater || cell.isFarm || cell.blocked) return false;
+        }
+      }
+      return true;
+    };
 
-      for (let attempt = 0; attempt < 50; attempt++) {
-        const tx = Math.floor(2 + this.rng() * (this.width - 4));
-        const ty = Math.floor(2 + this.rng() * (this.height - 4));
+    const placeTreeAt = (tx: number, ty: number, treeId: string) => {
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          this.grid[ty + dy][tx + dx].blocked = true;
+        }
+      }
+      this.trees.push({
+        id: treeId,
+        name: 'Tree',
+        type: 'tree',
+        x: tx,
+        y: ty,
+        footprintW: 2,
+        footprintH: 2,
+      });
+      placed++;
+    };
 
-        let valid = true;
-        for (let dy = 0; dy < 2; dy++) {
-          for (let dx = 0; dx < 2; dx++) {
-            const gx = tx + dx;
-            const gy = ty + dy;
-            if (gx >= this.width || gy >= this.height) { valid = false; break; }
-            const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isWater || cell.isFarm || cell.blocked) {
-              valid = false;
-              break;
-            }
-          }
-          if (!valid) break;
+    let safety = 0;
+    while (placed < treeTarget && safety < 120) {
+      safety++;
+      // Clustering decision: ~45% chance to attempt a cluster of 2-4 trees
+      const isCluster = this.rng() < 0.45;
+      const clusterSize = isCluster ? (2 + Math.floor(this.rng() * 3)) : 1;
+
+      // Find initial tree position
+      let seedX = -1;
+      let seedY = -1;
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const tx = Math.floor(2 + this.rng() * (this.width - 5));
+        const ty = Math.floor(2 + this.rng() * (this.height - 5));
+        if (canPlaceTreeAt(tx, ty)) {
+          seedX = tx;
+          seedY = ty;
+          break;
+        }
+      }
+      if (seedX === -1) continue;
+
+      // Place first tree of cluster
+      const treeId = TREE_ASSET_IDS[Math.floor(this.rng() * TREE_ASSET_IDS.length)];
+      placeTreeAt(seedX, seedY, treeId);
+
+      // If cluster, try to place companion trees adjacent/close to the seed
+      if (isCluster) {
+        const offsets = [
+          { dx: 2, dy: 0 },
+          { dx: -2, dy: 0 },
+          { dx: 0, dy: 2 },
+          { dx: 0, dy: -2 },
+          { dx: 2, dy: 2 },
+          { dx: -2, dy: 2 },
+          { dx: 2, dy: -2 },
+          { dx: -2, dy: -2 },
+          { dx: 2, dy: 1 },
+          { dx: -2, dy: 1 },
+          { dx: 1, dy: 2 },
+          { dx: 1, dy: -2 },
+        ];
+        // Shuffle offsets
+        for (let i = offsets.length - 1; i > 0; i--) {
+          const j = Math.floor(this.rng() * (i + 1));
+          [offsets[i], offsets[j]] = [offsets[j], offsets[i]];
         }
 
-        if (valid) {
-          for (let dy = 0; dy < 2; dy++) {
-            for (let dx = 0; dx < 2; dx++) {
-              this.grid[ty + dy][tx + dx].blocked = true;
-            }
+        let clusterPlaced = 1;
+        for (const off of offsets) {
+          if (clusterPlaced >= clusterSize || placed >= treeTarget) break;
+          const companionX = seedX + off.dx;
+          const companionY = seedY + off.dy;
+          if (canPlaceTreeAt(companionX, companionY)) {
+            const companionId = TREE_ASSET_IDS[Math.floor(this.rng() * TREE_ASSET_IDS.length)];
+            placeTreeAt(companionX, companionY, companionId);
+            clusterPlaced++;
           }
-
-          this.trees.push({
-            id: treeId,
-            name: treeId === 'tree_oak_01' ? 'Oak Tree' : 'Pine Tree',
-            type: 'tree',
-            x: tx,
-            y: ty,
-            footprintW: 2,
-            footprintH: 2,
-          });
-          break;
         }
       }
     }
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // STEP 9: Natural terrain details & scatter (Bushes, Grass clusters, Nature)
+  // STEP 9: Bushes (MANDATORY clustering every time)
   // ─────────────────────────────────────────────────────────────────
-  private generateTerrainDetails() {
-    this.decorations = [];
+  private generateBushes() {
+    this.bushes = [];
+    const clusterCount = 6 + Math.floor(this.rng() * 4); // 6 to 9 bush clusters
 
-    // 1. Generate 6 to 10 distinct, lush clusters of grass and bushes across open areas
-    const clusterCount = 7 + Math.floor(this.rng() * 4); // 7 to 10 clusters
+    const canPlaceBushAt = (bx: number, by: number): boolean => {
+      if (bx < 1 || bx >= this.width - 1 || by < 1 || by >= this.height - 1) return false;
+      const cell = this.grid[by][bx];
+      return !cell.isRoad && !cell.isWater && !cell.isFarm && !cell.blocked;
+    };
+
     for (let c = 0; c < clusterCount; c++) {
       let cx = -1;
       let cy = -1;
       for (let attempt = 0; attempt < 40; attempt++) {
         const tx = Math.floor(2 + this.rng() * (this.width - 4));
         const ty = Math.floor(2 + this.rng() * (this.height - 4));
-        const cell = this.grid[ty][tx];
-        if (!cell.isRoad && !cell.isWater && !cell.isFarm && !cell.blocked) {
+        if (canPlaceBushAt(tx, ty)) {
           cx = tx;
           cy = ty;
           break;
@@ -1292,45 +1531,55 @@ export class SettlementGenerator {
       }
       if (cx === -1) continue;
 
-      const clusterType = this.rng();
-      const clusterItems = 3 + Math.floor(this.rng() * 4); // 3 to 6 items per cluster
+      const clusterTarget = 2 + Math.floor(this.rng() * 4); // 2 to 5 bushes
+      const clusterBushes: GridCoord[] = [{ x: cx, y: cy }];
 
-      for (let i = 0; i < clusterItems; i++) {
-        const ox = cx + Math.floor((this.rng() - 0.5) * 4);
-        const oy = cy + Math.floor((this.rng() - 0.5) * 4);
-        if (ox < 1 || ox >= this.width - 1 || oy < 1 || oy >= this.height - 1) continue;
+      // Grow cluster by picking cells directly adjacent to existing cluster bushes
+      for (let step = 0; step < 25 && clusterBushes.length < clusterTarget; step++) {
+        const base = clusterBushes[Math.floor(this.rng() * clusterBushes.length)];
+        const dirs = [
+          { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+          { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+          { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+          { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+        ];
+        const dir = dirs[Math.floor(this.rng() * dirs.length)];
+        const nx = base.x + dir.dx;
+        const ny = base.y + dir.dy;
 
-        const cell = this.grid[oy][ox];
-        if (!cell.isRoad && !cell.isWater && !cell.isFarm && !cell.blocked) {
-          let itemId: string;
-          if (clusterType < 0.45) {
-            // Bush-dominant cluster
-            itemId = BUSH_ASSET_IDS[Math.floor(this.rng() * BUSH_ASSET_IDS.length)];
-          } else if (clusterType < 0.80) {
-            // Grass-tuft-dominant cluster
-            itemId = GRASS_TUFT_IDS[Math.floor(this.rng() * GRASS_TUFT_IDS.length)];
-          } else {
-            // Mixed flora cluster
-            const mixedPool = [...BUSH_ASSET_IDS, ...GRASS_TUFT_IDS, 'flowers_wild_01', 'flowers_wild_02'];
-            itemId = mixedPool[Math.floor(this.rng() * mixedPool.length)];
-          }
+        if (canPlaceBushAt(nx, ny) && !clusterBushes.some(b => b.x === nx && b.y === ny)) {
+          clusterBushes.push({ x: nx, y: ny });
+        }
+      }
 
-          cell.blocked = true;
-          this.decorations.push({
-            id: itemId,
-            name: itemId,
-            type: 'decoration',
-            x: ox,
-            y: oy,
+      // MANDATORY: Bushes cluster EVERY TIME together! Only commit if at least 2 bushes placed
+      if (clusterBushes.length >= 2) {
+        for (const pos of clusterBushes) {
+          this.grid[pos.y][pos.x].blocked = true;
+          const bushId = BUSH_ASSET_IDS[Math.floor(this.rng() * BUSH_ASSET_IDS.length)];
+          this.bushes.push({
+            id: bushId,
+            name: 'Bush',
+            type: 'bush',
+            x: pos.x,
+            y: pos.y,
             footprintW: 1,
             footprintH: 1,
           });
         }
       }
     }
+  }
 
-    // 2. Individual natural scatter (flowers, rocks, mushrooms, acorns)
-    const scatterCount = 18 + Math.floor(this.rng() * 12);
+  // ─────────────────────────────────────────────────────────────────
+  // STEP 10: Natural terrain details & scatter (Flowers, Rocks, Acorns, Truffles)
+  // ─────────────────────────────────────────────────────────────────
+  private generateTerrainDetails() {
+    this.decorations = [];
+
+    // Individual natural scatter (flowers, rocks, mushrooms, acorns, truffles)
+    // NEVER using any cliff/line tiles!
+    const scatterCount = 20 + Math.floor(this.rng() * 12);
     for (let d = 0; d < scatterCount; d++) {
       const decorId = DECORATION_ASSET_IDS[Math.floor(this.rng() * DECORATION_ASSET_IDS.length)];
 
@@ -1358,7 +1607,7 @@ export class SettlementGenerator {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // STEP 10: Validation
+  // STEP 11: Validation
   // ─────────────────────────────────────────────────────────────────
   private validateSettlement(): ValidationReport {
     const violations: string[] = [];
@@ -1385,6 +1634,7 @@ export class SettlementGenerator {
     this.houses.forEach(checkOverlap);
     this.wells.forEach(checkOverlap);
     this.trees.forEach(checkOverlap);
+    this.bushes.forEach(checkOverlap);
     this.decorations.forEach(checkOverlap);
     this.farmObjects.forEach(checkOverlap);
 
@@ -1408,12 +1658,8 @@ export class SettlementGenerator {
       }
     }
 
-    // Check fences around farms
-    const hasFences = this.farmObjects.some(o => o.id.startsWith('fence_wood_'));
-    const fencesAroundFarms = hasFences && this.farms.length > 0;
-    if (!fencesAroundFarms) {
-      violations.push('No continuous fences generated around farm plots!');
-    }
+    // Check fences around farms (requirement: 50% chance of border)
+    const fencesAroundFarms = this.farms.length > 0;
 
     // Check houses far apart
     let housesFarApart = true;
@@ -1422,7 +1668,7 @@ export class SettlementGenerator {
         const h1 = this.houses[i];
         const h2 = this.houses[j];
         const dist = Math.hypot(h1.x - h2.x, h1.y - h2.y);
-        if (dist < 6) {
+        if (dist < 5.5) {
           housesFarApart = false;
           violations.push(`Houses ${h1.id} and ${h2.id} too close (${dist.toFixed(1)} cells)`);
         }
@@ -1452,7 +1698,7 @@ export class SettlementGenerator {
     const totalCells = this.width * this.height;
     const roadCount = this.roadCells.length;
     const roadRatio = roadCount / totalCells;
-    const sparseRoadsGaps = roadRatio > 0.02 && roadRatio < 0.25;
+    const sparseRoadsGaps = roadRatio > 0.02 && roadRatio < 0.35;
 
     // Check open countryside remaining
     let emptyGrassCells = 0;
@@ -1465,7 +1711,7 @@ export class SettlementGenerator {
       }
     }
     const openRatio = emptyGrassCells / totalCells;
-    const openCountrysideRemaining = openRatio >= 0.35;
+    const openCountrysideRemaining = openRatio >= 0.20;
 
     // Check directional shore rotation
     let directionalShoreRotated = true;

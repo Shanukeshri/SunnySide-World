@@ -276,15 +276,21 @@ def build_catalog():
     ]
     categories.append({"id": "animals", "title": "Animals & Wildlife", "desc": "Chicken, Cow, Duck, Pig, Sheep, Bird, Fish, and Blinking Wildlife", "items": animal_items})
 
-    # 6. Trees & Species Progression
+    # 6. Trees & Bushes
     tree_items = [
-        {"id": "tree_oak_01", "name": "Oak Tree (Deciduous)", "type": "sprite_gm", "sprite": "spr_deco_tree_01", "desc": "Full green foliage deciduous oak tree (32x34)"},
-        {"id": "tree_pine_01", "name": "Pine / Evergreen Tree", "type": "sprite_gm", "sprite": "spr_deco_tree_02", "desc": "Slender evergreen pine tree (28x43)"},
-        {"id": "tree_sway_strip", "name": "Swaying Canopy Tree", "type": "animated_strip", "source": "Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Plants/spr_deco_tree_02_strip4.png", "frames": 4, "fps": 4, "desc": "Wind blowing gentle tree animation (28x43, 4 frames)"},
+        {"id": "tree_01", "name": "Tree 01 (Round Deciduous Oak)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [10, 10, 50, 57], "desc": "Lush round green canopy tree with trunk and ground shadow (50x57)"},
+        {"id": "tree_02", "name": "Tree 02 (Pointed Leaf Maple)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [73, 10, 48, 57], "desc": "Star-shaped leaf deciduous oak / maple tree with trunk and ground shadow (48x57)"},
+        {"id": "tree_03", "name": "Tree 03 (Weeping Willow)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [131, 11, 51, 56], "desc": "Weeping willow tree with trailing vines, trunk, and ground shadow (51x56)"},
+        {"id": "tree_04", "name": "Tree 04 (Red Blossom Tree)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [10, 75, 49, 52], "desc": "Flowering deciduous tree with vibrant red blossoms and ground shadow (49x52)"},
+        {"id": "tree_05", "name": "Tree 05 (Tiered Cloud Canopy)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [73, 75, 49, 52], "desc": "Tiered compact cloud / pine canopy tree with trunk and ground shadow (49x52)"},
+        {"id": "bush_01", "name": "Bush 01 (White Blossom)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [133, 84, 46, 42], "desc": "Dense green bush with white floral blossoms and ground shadow (46x42)"},
+        {"id": "bush_02", "name": "Bush 02 (Red Berry / Flower)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [12, 139, 46, 42], "desc": "Vibrant garden bush with red flowers / berries and ground shadow (46x42)"},
+        {"id": "bush_03", "name": "Bush 03 (Green Fern Foliage)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [72, 138, 48, 44], "desc": "Dense fern and grass cluster foliage bush with ground shadow (48x44)"},
+        {"id": "bush_04", "name": "Bush 04 (Tropical Croton)", "type": "tileset_slice", "source": "assets/trees_and_bushes.png", "crop": [133, 135, 48, 46], "desc": "Tropical red and green pointed leaf shrub with ground shadow (48x46)"},
         {"id": "tree_prog_small", "name": "Tree Sapling Sprout", "type": "tileset_slice", "source": TILESET_FOREST_32, "crop": [32, 32, 32, 32], "desc": "Growing young tree sapling"},
         {"id": "tree_prog_stump", "name": "Chopped Forest Stump", "type": "tileset_slice", "source": TILESET_FOREST_32, "crop": [256, 96, 32, 32], "desc": "Harvested tree stump with rings"}
     ]
-    categories.append({"id": "trees", "title": "Trees & Species Progression", "desc": "Oak trees, Pine trees, Animated swaying trees, and tree stumps", "items": tree_items})
+    categories.append({"id": "trees", "title": "Trees & Bushes", "desc": "5 Trees and 4 Bushes cropped from assets/trees_and_bushes.png, plus growth stages", "items": tree_items})
 
     # 7. Plants & Foliage
     plant_items = list(tiles_by_cat.get("plants", []))

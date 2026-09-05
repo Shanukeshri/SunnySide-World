@@ -39,6 +39,10 @@ export class AtlasScene extends Phaser.Scene {
       'tileset_sunnysideworld_forest_32px',
       '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_forest_32px.png'
     );
+    this.load.image(
+      'trees_and_bushes',
+      '/assets/trees_and_bushes.png'
+    );
 
     // 2. Load all unique asset textures and animated strips
     const loadedKeys = new Set<string>();
@@ -82,6 +86,8 @@ export class AtlasScene extends Phaser.Scene {
         if (itm.type === 'tileset_slice' && itm.crop) {
           const tilesetKey = (itm.sourcePath.indexOf('forest') !== -1)
             ? 'tileset_sunnysideworld_forest_32px'
+            : (itm.sourcePath.indexOf('trees_and_bushes') !== -1)
+            ? 'trees_and_bushes'
             : 'sprite_sheet_16x_transparent';
           const frameKey = `slice_${itm.id}`;
 
@@ -250,6 +256,8 @@ export class AtlasScene extends Phaser.Scene {
     if (itm.type === 'tileset_slice') {
       const tilesetKey = (itm.sourcePath.indexOf('forest') !== -1)
         ? 'tileset_sunnysideworld_forest_32px'
+        : (itm.sourcePath.indexOf('trees_and_bushes') !== -1)
+        ? 'trees_and_bushes'
         : 'sprite_sheet_16x_transparent';
       const frameKey = `slice_${itm.id}`;
 

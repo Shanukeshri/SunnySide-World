@@ -18,6 +18,7 @@ export interface RenderOptions {
 const TILESET_PATH = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
 const HOUSES_PATH = '/houses.png';
 const SOIL_PATH = '/assets/tilled_soil.png';
+const TREES_AND_BUSHES_PATH = '/trees_and_bushes.png';
 
 interface TilesetCrop {
   x: number;
@@ -25,6 +26,23 @@ interface TilesetCrop {
   w: number;
   h: number;
 }
+
+// Pixel-perfect sprite boundaries from assets/trees_and_bushes.png (192x192 image, 3x3 grid with padding)
+// Trees: row 0 (indices 0-2), row 1 (indices 3-4)
+// Bushes: row 1 col 2 (index 5), row 2 (indices 6-8)
+const TREE_BUSH_CROPS: Record<string, TilesetCrop> = {
+  // Trees (first 5 sprites from assets/trees_and_bushes.png)
+  tree_01: { x: 10,  y: 10,  w: 50, h: 57 }, // Round Deciduous Tree (canopy + trunk + shadow)
+  tree_02: { x: 73,  y: 10,  w: 48, h: 57 }, // Pointed-Leaf Oak / Maple Tree (canopy + trunk + shadow)
+  tree_03: { x: 131, y: 11,  w: 51, h: 56 }, // Weeping Willow Tree with trailing vines + shadow
+  tree_04: { x: 10,  y: 75,  w: 49, h: 52 }, // Flowering Tree with vibrant red blossoms + shadow
+  tree_05: { x: 73,  y: 75,  w: 49, h: 52 }, // Tiered Cloud / Pine Canopy Tree + shadow
+  // Bushes (last 4 sprites from assets/trees_and_bushes.png)
+  bush_01: { x: 133, y: 84,  w: 46, h: 42 }, // White Blossom Bush + shadow
+  bush_02: { x: 12,  y: 139, w: 46, h: 42 }, // Red Flower / Berry Bush + shadow
+  bush_03: { x: 72,  y: 138, w: 48, h: 44 }, // Fern / Broadleaf Green Bush + shadow
+  bush_04: { x: 133, y: 135, w: 48, h: 46 }, // Tropical Croton / Red Spike Bush + shadow
+};
 
 const TILESET_CROPS: Record<string, TilesetCrop> = {
   // Authentic textured grass variants (row 2, columns 1-6, y=32)
@@ -60,16 +78,6 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   fence_wood_corner_br: { x: 640, y: 32,  w: 16, h: 16 }, // Bottom-Right corner (2,40)
   fence_wood_post:      { x: 640, y: 32,  w: 16, h: 16 }, // Wooden fence corner post (2,40)
   fence_wood_gate:      { x: 624, y: 0,   w: 16, h: 16 }, // Wooden fence gate / top rail (0,39)
-
-  // Bushes & Grass clusters (from tileset)
-  bush_round_01:       { x: 816, y: 64,  w: 16, h: 16 }, // Round green bush
-  bush_round_02:       { x: 832, y: 64,  w: 16, h: 16 }, // Bush foliage
-  bush_berry_01:       { x: 832, y: 80,  w: 16, h: 16 }, // Berry bush
-  grass_tuft_01:       { x: 48,  y: 48,  w: 16, h: 16 }, // Wild grass tuft
-  grass_tuft_02:       { x: 16,  y: 448, w: 16, h: 16 }, // Green grass tuft
-  grass_tuft_03:       { x: 48,  y: 464, w: 16, h: 16 }, // Tall wild grass
-  wild_flora_01:       { x: 16,  y: 464, w: 16, h: 16 }, // Wild greenery
-  stump_deco_01:       { x: 32,  y: 448, w: 16, h: 16 }, // Root stump
 };
 
 // Standalone house sprite crops from houses.png (native dimensions from map.txt / main.ts)
@@ -96,14 +104,6 @@ interface SpriteDef {
 }
 
 const SPRITE_DEFS: Record<string, SpriteDef> = {
-  tree_oak_01: {
-    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Plants/spr_deco_tree_01_strip4.png',
-    w: 32, h: 34, cropW: 32, cropH: 34,
-  },
-  tree_pine_01: {
-    path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Plants/spr_deco_tree_02_strip4.png',
-    w: 28, h: 43, cropW: 28, cropH: 43,
-  },
   farm_well: {
     path: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_well/c3d011a3-e1d2-4f14-83d7-d21b9f689713.png',
     w: 20, h: 25,
@@ -221,10 +221,11 @@ export async function renderSettlement(
   ctx.imageSmoothingEnabled = false;
 
   // Preload primary assets
-  const [tilesetImg, housesImg, soilImg] = await Promise.all([
+  const [tilesetImg, housesImg, soilImg, treeBushImg] = await Promise.all([
     loadImage(TILESET_PATH),
     loadImage(HOUSES_PATH),
     loadImage(SOIL_PATH),
+    loadImage(TREES_AND_BUSHES_PATH),
   ]);
 
   // Preload props, trees, and farm objects
@@ -339,7 +340,7 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 5: Ground Scatter, Bushes & Natural Decorations ───────
+  // ── LAYER 5: Ground Scatter & Natural Decorations ──────────────
   for (const deco of data.decorations) {
     const dx = deco.x * cellSize;
     const dy = deco.y * cellSize;
@@ -351,8 +352,10 @@ export async function renderSettlement(
       const def = SPRITE_DEFS[deco.id];
       const img = imageCache.get(def.path);
       if (img && img.width > 0) {
-        // Scale proportionally to fill the cell, preserving aspect ratio
-        const scale = cellSize / Math.max(def.w, def.h);
+        // Lying-around items (acorns, truffles, berries) are rendered noticeably smaller
+        const isLyingSmall = (deco.id === 'acorn_deco_01' || deco.id === 'truffle_deco_01' || deco.id.includes('berry'));
+        const targetDim = isLyingSmall ? (cellSize * 0.45) : (cellSize * 0.85);
+        const scale = targetDim / Math.max(def.w, def.h);
         const dw = def.w * scale;
         const dh = def.h * scale;
         const sx = dx + (cellSize - dw) / 2;
@@ -362,7 +365,7 @@ export async function renderSettlement(
     }
   }
 
-  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Farm Objects & Fences)
+  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Bushes, Farm Objects & Fences)
   interface DrawableEntity {
     ySort: number;
     draw: () => void;
@@ -422,28 +425,45 @@ export async function renderSettlement(
     });
   }
 
-  // Trees — NO ADDON SHADOW (tree sprite already has its own baked shadow!)
+  // Trees — Exclusively from trees_and_bushes.png (first 5 sprites)
+  // Rendered at 1.5x previous size: targetW = cellSize * 3, centred on 2-cell footprint
   for (const tree of data.trees) {
     entities.push({
       ySort: tree.y + 2,
       draw: () => {
-        const def = SPRITE_DEFS[tree.id];
-        const img = imageCache.get(def.path);
-        if (img && img.width > 0) {
-          const targetW = cellSize * 2;
-          const aspect = def.h / def.w;
+        const crop = TREE_BUSH_CROPS[tree.id] || TREE_BUSH_CROPS['tree_01'];
+        if (treeBushImg && treeBushImg.width > 0) {
+          const targetW = cellSize * 3;  // 1.5x the old cellSize*2
+          const aspect = crop.h / crop.w;
           const targetH = targetW * aspect;
-
-          const dx = tree.x * cellSize;
+          // Centre horizontally over the 2-cell footprint, ground at bottom of row y+2
+          const dx = tree.x * cellSize - (targetW - cellSize * 2) / 2;
           const dy = (tree.y + 2) * cellSize - targetH;
-
-          // Draw the sprite directly — no artificial extra ellipse shadow!
-          const cropW = def.cropW || def.w;
-          const cropH = def.cropH || def.h;
-          ctx.drawImage(img, 0, 0, cropW, cropH, dx, dy, targetW, targetH);
+          ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, targetW, targetH);
         }
       },
     });
+  }
+
+  // Bushes — Exclusively from trees_and_bushes.png (last 4 sprites)
+  // Rendered at 0.5x previous size: bushW = cellSize * 0.5, centred in the cell
+  if (data.bushes) {
+    for (const bush of data.bushes) {
+      entities.push({
+        ySort: bush.y + 1,
+        draw: () => {
+          const crop = TREE_BUSH_CROPS[bush.id] || TREE_BUSH_CROPS['bush_01'];
+          if (treeBushImg && treeBushImg.width > 0) {
+            const bushW = cellSize * 0.5;  // 0.5x the old cellSize
+            const aspect = crop.h / crop.w;
+            const bushH = bushW * aspect;
+            const dx = bush.x * cellSize + (cellSize - bushW) / 2;
+            const dy = (bush.y + 1) * cellSize - bushH;
+            ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, bushW, bushH);
+          }
+        },
+      });
+    }
   }
 
   // Houses
