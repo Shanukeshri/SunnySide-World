@@ -307,10 +307,11 @@ export class SettlementGenerator {
   // ─────────────────────────────────────────────────────────────────
   private generateRoadNetwork() {
     this.roadCells = [];
+    const largeRoads: GridCoord[][] = [];
 
-    // Main road crosses the settlement horizontally with natural meanders
-    const startY = Math.floor(this.height * 0.45 + this.rng() * (this.height * 0.25));
-    const endY = Math.floor(this.height * 0.45 + this.rng() * (this.height * 0.25));
+    // ── 1. Main road (first large road through the city) ────────────
+    const startY = Math.floor(this.height * 0.42 + this.rng() * (this.height * 0.16));
+    const endY = Math.floor(this.height * 0.42 + this.rng() * (this.height * 0.16));
 
     const p0: GridCoord = { x: 2, y: startY };
     const p1: GridCoord = {
@@ -319,51 +320,270 @@ export class SettlementGenerator {
     };
     const p2: GridCoord = { x: this.width - 3, y: endY };
 
-    // Carve main spine
-    this.carveMeanderingPath(p0, p1);
-    this.carveMeanderingPath(p1, p2);
+    const mainRoad: GridCoord[] = [];
+    mainRoad.push(...this.carveMeanderingPath(p0, p1));
+    mainRoad.push(...this.carveMeanderingPath(p1, p2));
+    largeRoads.push(mainRoad);
 
-    // 1 to 2 branching trails (sparse, not a grid)
-    const branchCount = 1 + (this.rng() > 0.4 ? 1 : 0);
-    for (let b = 0; b < branchCount; b++) {
+    // ── 2. Add 2–4 more large roads from different edges or important areas ──
+    const extraRoadCount = 2 + Math.floor(this.rng() * 3); // 2, 3, or 4 additional large roads
+
+    // Shuffled origin strategies: North, South, West, East edges and interior central junctions
+    const originTypes = [0, 1, 2, 3, 4];
+    for (let i = originTypes.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [originTypes[i], originTypes[j]] = [originTypes[j], originTypes[i]];
+    }
+
+    for (let r = 0; r < extraRoadCount; r++) {
+      const originType = originTypes[r % originTypes.length];
+      let startPt: GridCoord;
+      let endPt: GridCoord;
+      const endInside = this.rng() > 0.4; // Let some end inside the city instead of always crossing
+
+      if (originType === 0) {
+        // North edge coming south
+        startPt = { x: Math.floor(this.width * 0.25 + this.rng() * (this.width * 0.5)), y: 2 };
+        if (endInside) {
+          endPt = {
+            x: Math.floor(this.width * 0.35 + this.rng() * (this.width * 0.3)),
+            y: Math.floor(this.height * 0.4 + this.rng() * (this.height * 0.25)),
+          };
+        } else {
+          endPt = {
+            x: Math.floor(this.width * 0.25 + this.rng() * (this.width * 0.5)),
+            y: this.height - 3,
+          };
+        }
+      } else if (originType === 1) {
+        // South edge coming north
+        startPt = { x: Math.floor(this.width * 0.25 + this.rng() * (this.width * 0.5)), y: this.height - 3 };
+        if (endInside) {
+          endPt = {
+            x: Math.floor(this.width * 0.35 + this.rng() * (this.width * 0.3)),
+            y: Math.floor(this.height * 0.35 + this.rng() * (this.height * 0.25)),
+          };
+        } else {
+          endPt = {
+            x: Math.floor(this.width * 0.25 + this.rng() * (this.width * 0.5)),
+            y: 2,
+          };
+        }
+      } else if (originType === 2) {
+        // West edge
+        const sy = Math.floor(this.rng() > 0.5 ? 4 + this.rng() * 8 : this.height - 12 + this.rng() * 8);
+        startPt = { x: 2, y: sy };
+        if (endInside) {
+          endPt = {
+            x: Math.floor(this.width * 0.4 + this.rng() * (this.width * 0.25)),
+            y: Math.floor(this.height * 0.3 + this.rng() * (this.height * 0.4)),
+          };
+        } else {
+          endPt = {
+            x: this.width - 3,
+            y: Math.floor(this.height * 0.3 + this.rng() * (this.height * 0.4)),
+          };
+        }
+      } else if (originType === 3) {
+        // East edge
+        const sy = Math.floor(this.rng() > 0.5 ? 4 + this.rng() * 8 : this.height - 12 + this.rng() * 8);
+        startPt = { x: this.width - 3, y: sy };
+        if (endInside) {
+          endPt = {
+            x: Math.floor(this.width * 0.35 + this.rng() * (this.width * 0.25)),
+            y: Math.floor(this.height * 0.3 + this.rng() * (this.height * 0.4)),
+          };
+        } else {
+          endPt = {
+            x: 2,
+            y: Math.floor(this.height * 0.3 + this.rng() * (this.height * 0.4)),
+          };
+        }
+      } else {
+        // Important central hub / junction on an existing road
+        const parentRoad = largeRoads[Math.floor(this.rng() * largeRoads.length)];
+        const junction = parentRoad[Math.floor(parentRoad.length * (0.2 + this.rng() * 0.6))];
+        startPt = { ...junction };
+        const goNorth = this.rng() > 0.5;
+        if (endInside) {
+          endPt = {
+            x: Math.max(4, Math.min(this.width - 5, junction.x + Math.floor((this.rng() - 0.5) * 16))),
+            y: Math.max(4, Math.min(this.height - 5, junction.y + Math.floor((this.rng() - 0.5) * 14))),
+          };
+        } else {
+          endPt = {
+            x: Math.max(4, Math.min(this.width - 5, junction.x + Math.floor((this.rng() - 0.5) * 20))),
+            y: goNorth ? 2 : this.height - 3,
+          };
+        }
+      }
+
+      // Give each 2–4 randomly shifted points so they curve naturally
+      const numMid = 1 + (this.rng() > 0.5 ? 1 : 0); // 1 or 2 midpoints -> 3 or 4 total waypoints
+      const waypoints: GridCoord[] = [startPt];
+
+      for (let m = 1; m <= numMid; m++) {
+        const t = m / (numMid + 1);
+        const lx = startPt.x + (endPt.x - startPt.x) * t;
+        const ly = startPt.y + (endPt.y - startPt.y) * t;
+
+        const shiftX = (this.rng() - 0.5) * 8;
+        const shiftY = (this.rng() - 0.5) * 6;
+
+        waypoints.push({
+          x: Math.max(2, Math.min(this.width - 3, Math.round(lx + shiftX))),
+          y: Math.max(2, Math.min(this.height - 3, Math.round(ly + shiftY))),
+        });
+      }
+      waypoints.push(endPt);
+
+      // Carve sequentially through waypoints
+      const thisRoadCells: GridCoord[] = [];
+      for (let w = 0; w < waypoints.length - 1; w++) {
+        thisRoadCells.push(...this.carveMeanderingPath(waypoints[w], waypoints[w + 1]));
+      }
+      largeRoads.push(thisRoadCells);
+    }
+
+    // ── 3. Connect nearby large roads ──────────────────────────────
+    // Look for roads that come reasonably close to each other and connect some pairs
+    const connectionsToMake = 1 + Math.floor(this.rng() * 2); // 1 or 2 curved connectors
+    let madeConnections = 0;
+
+    for (let i = 0; i < largeRoads.length && madeConnections < connectionsToMake; i++) {
+      for (let j = i + 1; j < largeRoads.length && madeConnections < connectionsToMake; j++) {
+        const roadA = largeRoads[i];
+        const roadB = largeRoads[j];
+
+        const candidates: { a: GridCoord; b: GridCoord; dist: number }[] = [];
+        const stepA = Math.max(1, Math.floor(roadA.length / 10));
+        const stepB = Math.max(1, Math.floor(roadB.length / 10));
+
+        for (let aIdx = 0; aIdx < roadA.length; aIdx += stepA) {
+          const ptA = roadA[aIdx];
+          if (ptA.x < 5 || ptA.x > this.width - 6 || ptA.y < 5 || ptA.y > this.height - 6) continue;
+
+          for (let bIdx = 0; bIdx < roadB.length; bIdx += stepB) {
+            const ptB = roadB[bIdx];
+            if (ptB.x < 5 || ptB.x > this.width - 6 || ptB.y < 5 || ptB.y > this.height - 6) continue;
+
+            const dist = Math.abs(ptA.x - ptB.x) + Math.abs(ptA.y - ptB.y);
+            if (dist >= 4 && dist <= 9) {
+              candidates.push({ a: ptA, b: ptB, dist });
+            }
+          }
+        }
+
+        if (candidates.length > 0) {
+          const choice = candidates[Math.floor(this.rng() * candidates.length)];
+          const midPt: GridCoord = {
+            x: Math.max(3, Math.min(this.width - 4, Math.round((choice.a.x + choice.b.x) / 2 + (this.rng() - 0.5) * 4))),
+            y: Math.max(3, Math.min(this.height - 4, Math.round((choice.a.y + choice.b.y) / 2 + (this.rng() - 0.5) * 4))),
+          };
+
+          this.carveMeanderingPath(choice.a, midPt);
+          this.carveMeanderingPath(midPt, choice.b);
+          madeConnections++;
+        }
+      }
+    }
+
+    // ── 4. Add smaller roads inside the spaces ─────────────────────
+    // Pick random points on existing roads and grow shorter roads toward open areas
+    const spurCount = 2 + Math.floor(this.rng() * 3); // 2 to 4 smaller roads
+    for (let s = 0; s < spurCount; s++) {
       if (this.roadCells.length === 0) break;
-      const junctionIdx = Math.floor(this.roadCells.length * (0.3 + this.rng() * 0.4));
-      const junction = this.roadCells[junctionIdx];
+      const origin = this.roadCells[Math.floor(this.rng() * this.roadCells.length)];
+      if (origin.x < 4 || origin.x > this.width - 5 || origin.y < 4 || origin.y > this.height - 5) {
+        continue;
+      }
 
-      // Branch outward toward South or North-South
-      const goNorth = b === 0 ? false : (this.rng() > 0.6);
-      const targetY = goNorth ? Math.floor(4 + this.rng() * 4) : Math.floor(this.height - 4 - this.rng() * 5);
-      const targetX = Math.max(4, Math.min(this.width - 5, junction.x + Math.floor((this.rng() - 0.5) * 16)));
+      const dirs = [
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 },
+      ];
+      for (let d = dirs.length - 1; d > 0; d--) {
+        const sw = Math.floor(this.rng() * (d + 1));
+        [dirs[d], dirs[sw]] = [dirs[sw], dirs[d]];
+      }
 
-      this.carveMeanderingPath(junction, { x: targetX, y: targetY });
+      let chosenDir = dirs[0];
+      for (const d of dirs) {
+        const testX = origin.x + d.dx * 3;
+        const testY = origin.y + d.dy * 3;
+        if (testX >= 3 && testX < this.width - 3 && testY >= 3 && testY < this.height - 3) {
+          if (!this.grid[testY][testX].isRoad) {
+            chosenDir = d;
+            break;
+          }
+        }
+      }
+
+      const spurLength = 4 + Math.floor(this.rng() * 4);
+      let cx = origin.x;
+      let cy = origin.y;
+      for (let step = 0; step < spurLength; step++) {
+        if (this.rng() < 0.25) {
+          if (chosenDir.dx !== 0) {
+            cy += this.rng() > 0.5 ? 1 : -1;
+          } else {
+            cx += this.rng() > 0.5 ? 1 : -1;
+          }
+        } else {
+          cx += chosenDir.dx;
+          cy += chosenDir.dy;
+        }
+
+        if (cx < 2 || cx >= this.width - 2 || cy < 2 || cy >= this.height - 2) break;
+
+        // If step > 2 and hits another road, connect and stop
+        if (step > 2 && this.grid[cy][cx].isRoad) {
+          break;
+        }
+
+        if (!this.grid[cy][cx].isRoad) {
+          this.grid[cy][cx].isRoad = true;
+          this.grid[cy][cx].blocked = true;
+          this.grid[cy][cx].terrain = this.getRandomPathTile();
+          this.roadCells.push({ x: cx, y: cy });
+        }
+      }
     }
 
     // Assign dirt path surface with natural texture variety from dirt trail group
     for (let i = 0; i < this.roadCells.length; i++) {
       const cell = this.roadCells[i];
-      this.grid[cell.y][cell.x].terrain = this.getRandomPathTile();
+      if (!this.grid[cell.y][cell.x].terrain.startsWith('path_tile_')) {
+        this.grid[cell.y][cell.x].terrain = this.getRandomPathTile();
+      }
       this.grid[cell.y][cell.x].isRoad = true;
       this.grid[cell.y][cell.x].blocked = true;
     }
   }
 
-  private carveMeanderingPath(from: GridCoord, to: GridCoord) {
+  private carveMeanderingPath(from: GridCoord, to: GridCoord): GridCoord[] {
     let currX = from.x;
     let currY = from.y;
+    const path: GridCoord[] = [];
 
     const addCell = (x: number, y: number) => {
       if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
         if (!this.grid[y][x].isRoad) {
           this.grid[y][x].isRoad = true;
+          this.grid[y][x].blocked = true;
+          this.grid[y][x].terrain = this.getRandomPathTile();
           this.roadCells.push({ x, y });
         }
+        path.push({ x, y });
       }
     };
 
     addCell(currX, currY);
 
     let safety = 0;
-    while ((currX !== to.x || currY !== to.y) && safety++ < 200) {
+    while ((currX !== to.x || currY !== to.y) && safety++ < 250) {
       const dx = to.x - currX;
       const dy = to.y - currY;
 
@@ -383,6 +603,8 @@ export class SettlementGenerator {
       }
       addCell(currX, currY);
     }
+
+    return path;
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -774,6 +996,9 @@ export class SettlementGenerator {
       }
     }
 
+    // Deliberately reserve an open countryside quadrant to leave natural spaces
+    const openReserveQuadrant = Math.floor(this.rng() * 4); // 0: NW, 1: NE, 2: SW, 3: SE
+
     for (let h = 0; h < targetHouses; h++) {
       const template = pool[Math.floor(this.rng() * pool.length)];
 
@@ -781,6 +1006,19 @@ export class SettlementGenerator {
       for (let attempt = 0; attempt < 150; attempt++) {
         const ax = Math.floor(2 + this.rng() * (this.width - template.w - 4));
         const ay = Math.floor(2 + this.rng() * (this.height - template.h - 6));
+
+        // Create open areas deliberately & make outer part of the map much less developed
+        if (attempt < 80) {
+          const isOuter = ax < 5 || ax > this.width - template.w - 5 || ay < 4 || ay > this.height - template.h - 5;
+          if (isOuter && this.rng() < 0.75) continue;
+
+          const inOpenReserve =
+            (openReserveQuadrant === 0 && ax < this.width / 2 && ay < this.height / 2) ||
+            (openReserveQuadrant === 1 && ax >= this.width / 2 && ay < this.height / 2) ||
+            (openReserveQuadrant === 2 && ax < this.width / 2 && ay >= this.height / 2) ||
+            (openReserveQuadrant === 3 && ax >= this.width / 2 && ay >= this.height / 2);
+          if (inOpenReserve && this.rng() < 0.7) continue;
+        }
 
         // 1. Distance check from other houses
         let tooClose = false;
