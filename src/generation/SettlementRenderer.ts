@@ -38,7 +38,6 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   // Path variants (same dirt trail group row y=112)
   path_tile_01:        { x: 16,  y: 112, w: 16, h: 16 }, // Primary dirt trail
   path_tile_02:        { x: 144, y: 112, w: 16, h: 16 }, // Dirt trail with fine pebbles
-  path_tile_03:        { x: 544, y: 112, w: 16, h: 16 }, // Wooden boardwalk over water
   path_tile_04:        { x: 160, y: 112, w: 16, h: 16 }, // Dirt trail with light stones
   path_tile_05:        { x: 176, y: 112, w: 16, h: 16 }, // Dirt trail with earth grain
 
@@ -52,16 +51,15 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Unidirectional diagonal shore corner transition
 
   // Wooden Fences (from tileset block 0,38 to 4,40)
-  fence_wood_h:        { x: 624, y: 16,  w: 16, h: 16 }, // Horizontal wooden fence rail (1,39)
+  fence_wood_h:        { x: 624, y: 32,  w: 16, h: 16 }, // Horizontal scaling wooden fence rail (2,39)
   fence_wood_v:        { x: 640, y: 48,  w: 16, h: 16 }, // Vertical wooden fence rail (North-South, 3,40)
-  fence_wood_post:     { x: 640, y: 32,  w: 16, h: 16 }, // Wooden fence 4-way post / corner joint (2,40)
+  fence_wood_post:     { x: 608, y: 32,  w: 16, h: 16 }, // Wooden fence corner post (2,38)
   fence_wood_gate:     { x: 624, y: 0,   w: 16, h: 16 }, // Wooden fence gate / top rail (0,39)
 
   // Bushes & Grass clusters (from tileset)
   bush_round_01:       { x: 816, y: 64,  w: 16, h: 16 }, // Round green bush
   bush_round_02:       { x: 832, y: 64,  w: 16, h: 16 }, // Bush foliage
   bush_berry_01:       { x: 832, y: 80,  w: 16, h: 16 }, // Berry bush
-  bush_flower_01:      { x: 288, y: 288, w: 16, h: 16 }, // Flower bush
   grass_tuft_01:       { x: 48,  y: 48,  w: 16, h: 16 }, // Wild grass tuft
   grass_tuft_02:       { x: 16,  y: 448, w: 16, h: 16 }, // Green grass tuft
   grass_tuft_03:       { x: 48,  y: 464, w: 16, h: 16 }, // Tall wild grass
@@ -300,9 +298,9 @@ export async function renderSettlement(
       const dx = x * cellSize;
       const dy = y * cellSize;
 
-      const pathCropKey = cell.terrain === 'path_tile_03'
-        ? 'path_tile_03'
-        : (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('path_tile_') ? cell.terrain : 'path_tile_01');
+      const pathCropKey = (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('path_tile_'))
+        ? cell.terrain
+        : 'path_tile_01';
       const pathCrop = TILESET_CROPS[pathCropKey] || TILESET_CROPS['path_tile_01'];
 
       ctx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);

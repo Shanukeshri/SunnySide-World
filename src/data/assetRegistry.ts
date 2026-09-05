@@ -11232,9 +11232,9 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_rail_h",
-        "name": "Wooden Fence Horizontal Rail (1,39)",
-        "desc": "Standard horizontal wooden fence rail at [624,16]",
+        "id": "fence_timber_corner_ne",
+        "name": "Wooden Fence Corner North-East (1,39)",
+        "desc": "Corner fence segment extending north and east at [624,16]",
         "crop": [
           624,
           16,
@@ -11540,9 +11540,9 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_rail_l",
-        "name": "Wooden Fence Rail Left (2,38)",
-        "desc": "Horizontal wooden fence rail extending left with post at [608,32]",
+        "id": "fence_timber_corner",
+        "name": "Wooden Fence Corner Post (2,38)",
+        "desc": "Wooden fence corner post joint connecting perimeter fences at [608,32]",
         "crop": [
           608,
           32,
@@ -11562,9 +11562,9 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_rail_r",
-        "name": "Wooden Fence Rail Right (2,39)",
-        "desc": "Horizontal wooden fence rail extending right with post at [624,32]",
+        "id": "fence_timber_rail_h",
+        "name": "Wooden Fence Horizontal Rail (2,39)",
+        "desc": "Horizontal continuous wooden fence rail extending left and right with post at [624,32]",
         "crop": [
           624,
           32,
@@ -11584,7 +11584,7 @@ export const ASSET_ATLAS_DATA: AssetAtlasData = {
         "fps": 8
       },
       {
-        "id": "fence_timber_post_cross",
+        "id": "fence_timber_cross",
         "name": "Wooden Fence 4-Way Cross Joint (2,40)",
         "desc": "4-way intersection post connecting vertical and horizontal rails at [640,32]",
         "crop": [

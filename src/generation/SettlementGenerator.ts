@@ -156,7 +156,6 @@ export const BUSH_ASSET_IDS = [
   'bush_round_01',
   'bush_round_02',
   'bush_berry_01',
-  'bush_flower_01',
 ];
 
 export const GRASS_TUFT_IDS = [
@@ -470,12 +469,7 @@ export class SettlementGenerator {
             const wx = sx + dx;
             const wy = sy + dy;
             if (wx >= 1 && wx < this.width - 1 && wy >= 1 && wy < this.height - 1) {
-              if (!this.grid[wy][wx].isRoad) {
-                waterMask.add(`${wx},${wy}`);
-              } else {
-                // Wooden boardwalk where road touches/crosses water
-                this.grid[wy][wx].terrain = 'path_tile_03';
-              }
+              waterMask.add(`${wx},${wy}`);
             }
           }
         }

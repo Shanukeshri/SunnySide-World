@@ -9,7 +9,7 @@
   Total categories : 18
   Total assets     : 944
   Canvas size      : 2400px wide × 6138px tall
-  Generated at     : 2026-09-05T04:01:21.425Z
+  Generated at     : 2026-09-05T07:10:01.001Z
 
 ══════════════════════════════════════════════════════════════════════════════════════════
 
@@ -6567,10 +6567,10 @@ CATEGORY: Buildings & Modular Construction Pieces
        Crop Rect   : x=608, y=16, w=16, h=16  (pixels in the source PNG)
        Crop Region : (608,16) → (624,32)
 
-  [004] fence_timber_rail_h
-       Name        : Wooden Fence Horizontal Rail (1,39)
+  [004] fence_timber_corner_ne
+       Name        : Wooden Fence Corner North-East (1,39)
        Type        : TILESET SLICE  (crop from mega-tileset PNG)
-       Description : Standard horizontal wooden fence rail at [624,16]
+       Description : Corner fence segment extending north and east at [624,16]
        Canvas Pos  : X=246px, Y=3280px
        Frame Size  : 16px wide × 16px tall
        Card Size   : 48px wide × 48px tall
@@ -6735,10 +6735,10 @@ CATEGORY: Buildings & Modular Construction Pieces
        Crop Rect   : x=928, y=16, w=16, h=16  (pixels in the source PNG)
        Crop Region : (928,16) → (944,32)
 
-  [018] fence_timber_rail_l
-       Name        : Wooden Fence Rail Left (2,38)
+  [018] fence_timber_corner
+       Name        : Wooden Fence Corner Post (2,38)
        Type        : TILESET SLICE  (crop from mega-tileset PNG)
-       Description : Horizontal wooden fence rail extending left with post at [608,32]
+       Description : Wooden fence corner post joint connecting perimeter fences at [608,32]
        Canvas Pos  : X=1114px, Y=3280px
        Frame Size  : 16px wide × 16px tall
        Card Size   : 48px wide × 48px tall
@@ -6747,10 +6747,10 @@ CATEGORY: Buildings & Modular Construction Pieces
        Crop Rect   : x=608, y=32, w=16, h=16  (pixels in the source PNG)
        Crop Region : (608,32) → (624,48)
 
-  [019] fence_timber_rail_r
-       Name        : Wooden Fence Rail Right (2,39)
+  [019] fence_timber_rail_h
+       Name        : Wooden Fence Horizontal Rail (2,39)
        Type        : TILESET SLICE  (crop from mega-tileset PNG)
-       Description : Horizontal wooden fence rail extending right with post at [624,32]
+       Description : Horizontal continuous wooden fence rail extending left and right with post at [624,32]
        Canvas Pos  : X=1176px, Y=3280px
        Frame Size  : 16px wide × 16px tall
        Card Size   : 48px wide × 48px tall
@@ -6759,7 +6759,7 @@ CATEGORY: Buildings & Modular Construction Pieces
        Crop Rect   : x=624, y=32, w=16, h=16  (pixels in the source PNG)
        Crop Region : (624,32) → (640,48)
 
-  [020] fence_timber_post_cross
+  [020] fence_timber_cross
        Name        : Wooden Fence 4-Way Cross Joint (2,40)
        Type        : TILESET SLICE  (crop from mega-tileset PNG)
        Description : 4-way intersection post connecting vertical and horizontal rails at [640,32]
@@ -12004,7 +12004,7 @@ farm_chest2_closed                   1736   3016    16x  21     1  sprite_gm    
 fence_timber_post_top                  60   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(608,0,16,16)
 fence_timber_rail_top                 122   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(624,0,16,16)
 fence_timber_post_mid                 184   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(608,16,16,16)
-fence_timber_rail_h                   246   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(624,16,16,16)
+fence_timber_corner_ne                246   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(624,16,16,16)
 fence_timber_rail_v_top               308   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(640,16,16,16)
 roof_shingle_r01_c44                  370   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(704,16,16,16)
 roof_shingle_r01_c45                  432   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(720,16,16,16)
@@ -12018,9 +12018,9 @@ roof_shingle_r01_c55                  866   3280    16x  16     1  tileset_slice
 roof_shingle_r01_c56                  928   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(896,16,16,16)
 roof_shingle_r01_c57                  990   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(912,16,16,16)
 roof_shingle_r01_c58                 1052   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(928,16,16,16)
-fence_timber_rail_l                  1114   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(608,32,16,16)
-fence_timber_rail_r                  1176   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(624,32,16,16)
-fence_timber_post_cross              1238   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(640,32,16,16)
+fence_timber_corner                  1114   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(608,32,16,16)
+fence_timber_rail_h                  1176   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(624,32,16,16)
+fence_timber_cross                   1238   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(640,32,16,16)
 roof_shingle_r02_c44                 1300   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(704,32,16,16)
 roof_shingle_r02_c45                 1362   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(720,32,16,16)
 roof_shingle_r02_c46                 1424   3280    16x  16     1  tileset_slice   sprite_sheet_16x_transparent.png crop(736,32,16,16)
