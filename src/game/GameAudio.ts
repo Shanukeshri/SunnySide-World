@@ -277,6 +277,29 @@ class SoundSynthesizer {
     osc.start(now);
     osc.stop(now + 0.1);
   }
+
+  // 11. Jump Hop Sound
+  public playJump() {
+    if (!this.enabled) return;
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(240, now);
+    osc.frequency.exponentialRampToValueAtTime(480, now + 0.12);
+
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
 }
 
 export const GameAudio = new SoundSynthesizer();

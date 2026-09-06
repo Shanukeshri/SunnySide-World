@@ -697,12 +697,15 @@ export class SurvivalRenderer {
           );
 
           // Name Tag & Role (cleanly above head)
-          ctx.fillStyle = "rgba(0,0,0,0.65)";
-          ctx.fillRect(screen.sx + cellSize / 2 - 24, screen.sy - 38, 48, 14);
-          ctx.fillStyle = "#fef08a";
+          const title = npc.customTitle || "Villager";
           ctx.font = "bold 9px sans-serif";
+          const tw = ctx.measureText(title).width;
+          const boxW = Math.max(48, tw + 10);
+          ctx.fillStyle = "rgba(0,0,0,0.65)";
+          ctx.fillRect(screen.sx + cellSize / 2 - boxW / 2, screen.sy - 38, boxW, 14);
+          ctx.fillStyle = "#fef08a";
           ctx.textAlign = "center";
-          ctx.fillText("Villager", screen.sx + cellSize / 2, screen.sy - 27);
+          ctx.fillText(title, screen.sx + cellSize / 2, screen.sy - 27);
         },
       });
     }
@@ -717,12 +720,14 @@ export class SurvivalRenderer {
           this.lifeformRenderer.renderEnemy(ctx, enemy, cellSize, screen.sx + cellSize / 2, screen.sy + cellSize / 2);
 
           // Enemy Health Bar
-          const barW = cellSize * 0.9;
-          const barH = 3;
-          ctx.fillStyle = "rgba(0,0,0,0.6)";
-          ctx.fillRect(screen.sx + cellSize / 2 - barW / 2, screen.sy - 8, barW, barH);
-          ctx.fillStyle = "#ef4444";
-          ctx.fillRect(screen.sx + cellSize / 2 - barW / 2, screen.sy - 8, barW * (enemy.health / enemy.maxHealth), barH);
+          if (enemy.health < enemy.maxHealth && enemy.health > 0) {
+            const barW = cellSize * 0.9;
+            const barH = 3;
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.fillRect(screen.sx + cellSize / 2 - barW / 2, screen.sy - 8, barW, barH);
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(screen.sx + cellSize / 2 - barW / 2, screen.sy - 8, barW * (enemy.health / enemy.maxHealth), barH);
+          }
         },
       });
     }
@@ -749,27 +754,47 @@ export class SurvivalRenderer {
         } else if (p.hurtTimer && p.hurtTimer > 0) {
           action = "HURT";
           frameIndex = Math.floor(Date.now() / 90) % 8;
+        } else if (p.fishingState && p.fishingState !== "NONE") {
+          if (p.fishingState === "CASTING") {
+            action = "CASTING";
+            frameIndex = Math.floor(Date.now() / 90) % 15;
+          } else if (p.fishingState === "REELING") {
+            action = "REELING";
+            frameIndex = Math.floor(Date.now() / 90) % 13;
+          } else if (p.fishingState === "CAUGHT") {
+            action = "CAUGHT";
+            frameIndex = Math.floor(Date.now() / 90) % 10;
+          }
+        } else if (p.doingTimer && p.doingTimer > 0) {
+          action = "DOING";
+          frameIndex = Math.floor(Date.now() / 110) % 8;
         } else if (p.swingTimer > 0) {
-          const activeItem = activeSlot?.item;
-          if (activeItem?.includes("axe")) {
+          const activeItem = activeSlot?.item || "";
+          if (activeItem.includes("axe")) {
             action = "AXE";
-          } else if (activeItem?.includes("pickaxe")) {
+          } else if (activeItem.includes("pickaxe")) {
             action = "MINING";
-          } else if (activeItem?.includes("hoe") || activeItem?.includes("shovel")) {
+          } else if (activeItem.includes("hoe") || activeItem.includes("shovel")) {
             action = "DIG";
-          } else if (activeItem?.includes("water")) {
+          } else if (activeItem.includes("water")) {
             action = "WATERING";
-          } else if (activeItem?.includes("hammer") || engine.buildPiece) {
+          } else if (activeItem.includes("hammer") || engine.buildPiece) {
             action = "HAMMERING";
+          } else if (activeItem.includes("rod")) {
+            action = "CASTING";
           } else {
             action = "ATTACK";
           }
           const progress = Math.min(1, Math.max(0, 1 - p.swingTimer / 0.25));
           const totalF = HUMAN_ANIMATIONS[action]?.totalFrames || 10;
           frameIndex = Math.min(totalF - 1, Math.floor(progress * totalF));
-        } else if (p.hopOffset > 0.05) {
+        } else if (p.isSwimming) {
+          action = "SWIMMING";
+          frameIndex = Math.floor(Date.now() / 100) % 12;
+        } else if (p.hopTimer && p.hopTimer > 0) {
           action = "JUMP";
-          frameIndex = Math.min(8, Math.floor((1 - p.hopTimer / 0.55) * 9));
+          const progress = Math.max(0, Math.min(1, 1 - p.hopTimer / 0.55));
+          frameIndex = Math.min(8, Math.floor(progress * 9));
         } else if (activeSlot && activeSlot.item && !isToolOrWeapon) {
           action = "CARRY";
           frameIndex = p.vx !== 0 || p.vy !== 0 ? Math.floor(Date.now() / 110) % 8 : 0;
@@ -779,13 +804,19 @@ export class SurvivalRenderer {
         } else if (p.vx !== 0 || p.vy !== 0) {
           action = "WALK";
           frameIndex = Math.floor(Date.now() / 110) % 8;
+        } else if (p.isWaiting) {
+          action = "WAITING";
+          frameIndex = Math.floor(Date.now() / 140) % 9;
         } else {
           action = "IDLE";
           frameIndex = Math.floor(Date.now() / 140) % 9;
         }
 
-        // 1. RENDER CHARACTER BODY WITH PAIRED TOOL MOVEMENT
         const isSwinging = p.swingTimer > 0;
+        const playerCenterX = screen.sx + cellSize / 2;
+        const groundY = screen.sy + cellSize / 2;
+
+        // RENDER CHARACTER BODY WITH INTEGRATED TOOL ANIMATION
         const playerEntity: any = {
           position: { x: p.x, y: p.y },
           species: "player",
@@ -797,11 +828,11 @@ export class SurvivalRenderer {
             action,
             currentFrame: frameIndex,
             flipX: isFacingLeft,
-            jumpOffset: p.hopOffset * 16,
+            jumpOffset: p.hopOffset * 24,
             eatingBobOffset: 0,
             deathAlpha: p.isDead ? 1.0 : 1.0,
             hasTool: isToolOrWeapon,
-            showTool: isToolOrWeapon || ['AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING', 'CASTING', 'REELING'].includes(action),
+            showTool: isToolOrWeapon || ['AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING', 'CASTING', 'REELING', 'CAUGHT', 'DOING', 'JUMP', 'SWIMMING', 'WAITING'].includes(action),
           },
         };
 
@@ -810,49 +841,11 @@ export class SurvivalRenderer {
           playerEntity,
           cellSize,
           false,
-          screen.sx + cellSize / 2,
-          screen.sy + cellSize / 2 - hopY,
+          playerCenterX,
+          groundY,
           1.0,
           action
         );
-
-        // 2. RENDER HELD ITEM ABOVE THE PLAYER (100% full opacity, flipped horizontally when facing west)
-        // Hidden during active tool swings since the tool is dynamically animated in hand
-        if (activeSlot && activeSlot.item && !p.isDead && !isSwinging) {
-          const itemDef = ITEM_CATALOG[activeSlot.item];
-          ctx.save();
-          ctx.imageSmoothingEnabled = false;
-          ctx.globalAlpha = 1.0; // 100% full opacity
-
-          // Held visibly above the player's head
-          const itemX = screen.sx + cellSize / 2;
-          const itemY = screen.sy + cellSize / 2 - hopY - 32;
-
-          ctx.translate(itemX, itemY);
-
-          // Face the direction by flipping it when the player faces west!
-          if (isFacingLeft) {
-            ctx.scale(-1, 1);
-          }
-
-          // Gentle carry bobbing
-          const bob = p.vx !== 0 || p.vy !== 0 ? Math.sin(Date.now() * 0.012) * 2 : 0;
-          ctx.translate(0, bob);
-
-          // Render item sprite or fallback icon
-          const itemImg = this.getItemSprite(activeSlot.item);
-          if (itemImg && itemImg.complete && itemImg.naturalWidth > 0) {
-            const iconSize = 24;
-            ctx.drawImage(itemImg, -iconSize / 2, -iconSize / 2, iconSize, iconSize);
-          } else {
-            ctx.font = `${Math.round(18 * (this.zoom / 2))}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(itemDef?.icon || "📦", 0, 0);
-          }
-
-          ctx.restore();
-        }
       },
     });
 

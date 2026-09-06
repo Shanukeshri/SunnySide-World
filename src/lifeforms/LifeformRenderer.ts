@@ -68,21 +68,67 @@ export class LifeformRenderer {
       }
     }
 
-    // 4. Preload Goblin and Skeleton animations
-    const monsterTypes = ['Goblin', 'Skeleton'];
-    const monsterStrips = [
+    // 4. Preload all Composites (village NPCs & characters)
+    const compositeSheets = [
+      'blacksmith_spikeyhair_hammering_strip23.png',
+      'builder_mophair_axe_strip10.png',
+      'child_bowlhair_jump_strip9.png',
+      'farmer_curlyhair_watering_strip5.png',
+      'fisher_bowlhair_reeling_strip13.png',
+      'guide_longhair_attack_strip10.png',
+      'merchant_longhair_waiting_strip9.png',
+      'villager_shorthair_walk_strip8.png',
+      'player_bowlhair_idle_strip9.png',
+      'player_curlyhair_idle_strip9.png',
+      'player_longhair_idle_strip9.png',
+      'player_mophair_idle_strip9.png',
+      'player_shorthair_idle_strip9.png',
+      'player_spikeyhair_idle_strip9.png',
+    ];
+    for (const c of compositeSheets) {
+      this.preloadImage(
+        `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Composites/${c}`
+      );
+    }
+
+    // 5. Preload Goblin animations
+    const goblinStrips = [
       'spr_walk_strip8.png',
+      'spr_run_strip8.png',
       'spr_idle_strip9.png',
       'spr_attack_strip10.png',
+      'spr_axe_strip10.png',
+      'spr_mining_strip10.png',
+      'spr_dig_strip13.png',
+      'spr_hammering_strip23.png',
+      'spr_watering_strip5.png',
+      'spr_carry_strip8.png',
+      'spr_swimming_strip12.png',
+      'spr_jump_strip9.png',
+      'spr_roll_strip10.png',
+      'spr_waiting_strip9.png',
       'spr_hurt_strip8.png',
       'spr_death_strip13.png',
     ];
-    for (const m of monsterTypes) {
-      for (const s of monsterStrips) {
-        this.preloadImage(
-          `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/${m}/PNG/${s}`
-        );
-      }
+    for (const s of goblinStrips) {
+      this.preloadImage(
+        `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/${s}`
+      );
+    }
+
+    // 6. Preload Skeleton animations
+    const skeletonStrips = [
+      'skeleton_idle_strip6.png',
+      'skeleton_walk_strip8.png',
+      'skeleton_attack_strip7.png',
+      'skeleton_hurt_strip7.png',
+      'skeleton_death_strip10.png',
+      'skeleton_jump_strip10.png',
+    ];
+    for (const s of skeletonStrips) {
+      this.preloadImage(
+        `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/${s}`
+      );
     }
   }
 
@@ -214,7 +260,36 @@ export class LifeformRenderer {
     const drawH = config.spriteAsset.drawHeight * zoomScale;
     const originYOffset = (config.spriteAsset.originYOffset || 0) * zoomScale;
 
-    if (isHuman && animDef) {
+    if (entity.compositeSheet) {
+      const compImg = this.getImage(entity.compositeSheet);
+      const totalF = entity.compositeFrames || 8;
+      const currentFrame = entity.anim?.currentFrame ?? Math.floor(Date.now() / 110);
+      const fIndex = currentFrame % totalF;
+      const frameX = fIndex * 96;
+      const frameY = 0;
+      const frameW = 96;
+      const frameH = 64;
+
+      const humanScale = 1.7 * zoomScale;
+      const destW = 96 * humanScale;
+      const destH = 64 * humanScale;
+      const destX = -48 * humanScale;
+      const destY = -40 * humanScale;
+
+      if (compImg) {
+        ctx.drawImage(
+          compImg,
+          frameX,
+          frameY,
+          frameW,
+          frameH,
+          destX,
+          destY,
+          destW,
+          destH
+        );
+      }
+    } else if (isHuman && animDef) {
       const currentFrame = entity.anim?.currentFrame ?? 0;
       const fIndex = currentFrame % animDef.totalFrames;
       const frameX = fIndex * 96;
@@ -271,9 +346,13 @@ export class LifeformRenderer {
         }
       }
 
-      // 3. Layered Tool Movement Overlay (paired with base)
-      const toolActionSet = new Set(['AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING', 'CASTING', 'REELING', 'DOING']);
-      const shouldDrawTool = entity.anim?.showTool ?? (toolActionSet.has(actionKey) || entity.anim?.hasTool || false);
+      // 3. Layered Tool Movement Overlay (paired with base across all 20 actions)
+      const toolActionSet = new Set([
+        'AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING',
+        'CASTING', 'REELING', 'CAUGHT', 'DOING', 'CARRY', 'ROLL',
+        'SWIMMING', 'WAITING', 'IDLE', 'WALK', 'WALKING', 'RUN', 'JUMP', 'HURT', 'DEATH'
+      ]);
+      const shouldDrawTool = entity.anim?.showTool ?? (entity.anim?.hasTool && toolActionSet.has(actionKey));
 
       if (shouldDrawTool) {
         const toolPath = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/${animDef.folder}/tools_${animDef.prefix}_strip${animDef.totalFrames}.png`;
@@ -347,80 +426,158 @@ export class LifeformRenderer {
   ): void {
     const isGoblin = enemy.type === 'goblin';
     const isSkeleton = enemy.type === 'skeleton';
-    const folder = isGoblin ? 'Goblin' : isSkeleton ? 'Skeleton' : null;
+    const zoomScale = cellSize / 24;
 
-    if (!folder) {
-      // Slime fallback
+    if (isSkeleton) {
+      let stripName = 'skeleton_idle_strip6.png';
+      let totalFrames = 6;
+      let frameDuration = 140;
+
+      if (enemy.health <= 0) {
+        stripName = 'skeleton_death_strip10.png';
+        totalFrames = 10;
+        frameDuration = 100;
+      } else if (enemy.hurtTimer > 0) {
+        stripName = 'skeleton_hurt_strip7.png';
+        totalFrames = 7;
+        frameDuration = 80;
+      } else if (enemy.state === 'ATTACK') {
+        stripName = 'skeleton_attack_strip7.png';
+        totalFrames = 7;
+        frameDuration = 70;
+      } else if (enemy.vx !== 0 || enemy.vy !== 0) {
+        stripName = 'skeleton_walk_strip8.png';
+        totalFrames = 8;
+        frameDuration = 100;
+      }
+
+      const path = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/${stripName}`;
+      const img = this.getImage(path);
+
+      const monsterScale = 1.7 * zoomScale;
+      const destW = 96 * monsterScale;
+      const destH = 64 * monsterScale;
+      const destX = -48 * monsterScale;
+      const destY = -40 * monsterScale;
+
       ctx.save();
-      ctx.font = `${20 * (cellSize / 24)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🟢', screenX, screenY - 4);
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(screenX, screenY);
+      if (enemy.vx < 0 || enemy.direction === 'LEFT') {
+        ctx.scale(-1, 1);
+      }
+
+      if (img) {
+        const frameIdx = Math.floor(Date.now() / frameDuration) % totalFrames;
+        const frameX = frameIdx * 96;
+        const frameY = 0;
+        const frameW = 96;
+        const frameH = 64;
+
+        if (enemy.hurtTimer > 0) {
+          ctx.filter = 'brightness(2.2) drop-shadow(0 0 4px #ef4444)';
+        }
+
+        ctx.drawImage(img, frameX, frameY, frameW, frameH, destX, destY, destW, destH);
+      } else {
+        ctx.font = `${20 * zoomScale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💀', 0, -20 * zoomScale);
+      }
       ctx.restore();
       return;
     }
 
-    let stripName = 'spr_idle_strip9.png';
-    let totalFrames = 8;
-    if (enemy.health <= 0) {
-      stripName = 'spr_death_strip13.png';
-      totalFrames = 13;
-    } else if (enemy.hurtTimer > 0) {
-      stripName = 'spr_hurt_strip8.png';
-      totalFrames = 8;
-    } else if (enemy.state === 'ATTACK') {
-      stripName = 'spr_attack_strip10.png';
-      totalFrames = 10;
-    } else if (enemy.vx !== 0 || enemy.vy !== 0) {
-      stripName = 'spr_walk_strip8.png';
-      totalFrames = 8;
-    }
+    if (isGoblin) {
+      let stripName = 'spr_idle_strip9.png';
+      let totalFrames = 8;
+      let frameDuration = 120;
+      let cols = 8;
 
-    const path = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/${folder}/PNG/${stripName}`;
-    const img = this.getImage(path);
-
-    const zoomScale = cellSize / 24;
-    const drawW = 34 * zoomScale;
-    const drawH = 38 * zoomScale;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.translate(screenX, screenY);
-
-    if (enemy.vx < 0) {
-      ctx.scale(-1, 1);
-    }
-
-    if (img) {
-      const frameIdx = Math.floor(Date.now() / 110) % totalFrames;
-      const strideX = 96;
-      const sourceX = frameIdx * strideX + 38;
-      const sourceY = 18;
-      const frameW = 20;
-      const frameH = 24;
-
-      if (enemy.hurtTimer > 0) {
-        ctx.filter = 'brightness(2.2) drop-shadow(0 0 4px #ef4444)';
+      if (enemy.health <= 0) {
+        stripName = 'spr_death_strip13.png';
+        totalFrames = 9;
+        cols = 9;
+        frameDuration = 90;
+      } else if (enemy.hurtTimer > 0) {
+        stripName = 'spr_hurt_strip8.png';
+        totalFrames = 8;
+        cols = 8;
+        frameDuration = 80;
+      } else if (enemy.state === 'ATTACK') {
+        stripName = 'spr_attack_strip10.png';
+        totalFrames = 9;
+        cols = 9;
+        frameDuration = 70;
+      } else if (enemy.action === 'AXE') {
+        stripName = 'spr_axe_strip10.png';
+        totalFrames = 10;
+        cols = 10;
+        frameDuration = 80;
+      } else if (enemy.action === 'MINING') {
+        stripName = 'spr_mining_strip10.png';
+        totalFrames = 10;
+        cols = 10;
+        frameDuration = 80;
+      } else if (enemy.state === 'CHASE') {
+        stripName = 'spr_run_strip8.png';
+        totalFrames = 8;
+        cols = 8;
+        frameDuration = 80;
+      } else if (enemy.vx !== 0 || enemy.vy !== 0) {
+        stripName = 'spr_walk_strip8.png';
+        totalFrames = 8;
+        cols = 8;
+        frameDuration = 100;
       }
 
-      ctx.drawImage(
-        img,
-        sourceX,
-        sourceY,
-        frameW,
-        frameH,
-        -drawW / 2,
-        -drawH + 5 * zoomScale,
-        drawW,
-        drawH
-      );
-    } else {
-      ctx.font = `${20 * (cellSize / 24)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(isGoblin ? '👺' : '💀', 0, -drawH / 2);
+      const path = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/${stripName}`;
+      const img = this.getImage(path);
+
+      const monsterScale = 1.7 * zoomScale;
+      const destW = 96 * monsterScale;
+      const destH = 64 * monsterScale;
+      const destX = -48 * monsterScale;
+      const destY = -40 * monsterScale;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(screenX, screenY);
+      if (enemy.vx < 0 || enemy.direction === 'LEFT') {
+        ctx.scale(-1, 1);
+      }
+
+      if (img) {
+        const frameIdx = Math.floor(Date.now() / frameDuration) % totalFrames;
+        const col = frameIdx % cols;
+        const row = Math.floor(frameIdx / cols);
+        const frameX = col * 96;
+        const frameY = row * 64;
+        const frameW = 96;
+        const frameH = 64;
+
+        if (enemy.hurtTimer > 0) {
+          ctx.filter = 'brightness(2.2) drop-shadow(0 0 4px #ef4444)';
+        }
+
+        ctx.drawImage(img, frameX, frameY, frameW, frameH, destX, destY, destW, destH);
+      } else {
+        ctx.font = `${20 * zoomScale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👺', 0, -20 * zoomScale);
+      }
+      ctx.restore();
+      return;
     }
 
+    // Slime fallback
+    ctx.save();
+    ctx.font = `${20 * zoomScale}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🟢', screenX, screenY - 4);
     ctx.restore();
   }
 

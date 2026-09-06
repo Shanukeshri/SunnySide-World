@@ -59,6 +59,20 @@ export const ITEM_CATALOG: Record<ItemId, ItemDef> = {
   stone_sword: { id: "stone_sword", name: "Stone Blade", category: "weapon", description: "Flint-edged shortsword for combat.", icon: "⚔️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png", maxStack: 1, durability: 110, maxDurability: 110, damage: 20 },
   iron_sword: { id: "iron_sword", name: "Iron Broadsword", category: "weapon", description: "Forged iron sword dealing lethal damage.", icon: "🗡️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png", maxStack: 1, durability: 220, maxDurability: 220, damage: 32 },
 
+  wooden_shovel: { id: "wooden_shovel", name: "Wooden Shovel", category: "tool", description: "Tills soil for crops and digs ground.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 40, maxDurability: 40, damage: 3, gatherPower: 10, gatherType: "all" },
+  stone_shovel: { id: "stone_shovel", name: "Stone Shovel", category: "tool", description: "Sturdy shovel for excavation and tilling.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 80, maxDurability: 80, damage: 6, gatherPower: 15, gatherType: "all" },
+  iron_shovel: { id: "iron_shovel", name: "Iron Shovel", category: "tool", description: "High-grade shovel for rapid digging.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 160, maxDurability: 160, damage: 10, gatherPower: 22, gatherType: "all" },
+
+  watering_can: { id: "watering_can", name: "Watering Can", category: "tool", description: "Waters crops and hydrated dry farmland.", icon: "🚰", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png", maxStack: 1, durability: 60, maxDurability: 60 },
+
+  wooden_hammer: { id: "wooden_hammer", name: "Wooden Mallet", category: "tool", description: "Carpenter mallet for building and repairing.", icon: "🔨", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png", maxStack: 1, durability: 50, maxDurability: 50, damage: 6 },
+  iron_hammer: { id: "iron_hammer", name: "Smithing Hammer", category: "tool", description: "Heavy iron hammer for forging and construction.", icon: "🔨", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png", maxStack: 1, durability: 150, maxDurability: 150, damage: 14 },
+
+  fishing_rod: { id: "fishing_rod", name: "Fishing Rod", category: "tool", description: "Casts into water to catch fresh fish.", icon: "🎣", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/rod.png", maxStack: 1, durability: 40, maxDurability: 40 },
+
+  raw_fish: { id: "raw_fish", name: "Raw Fish", category: "food", description: "Freshly caught river fish.", icon: "🐟", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 15, healthRestore: 5 },
+  cooked_fish: { id: "cooked_fish", name: "Grilled Fish", category: "food", description: "Delicious tender fish cooked over campfire.", icon: "🍣", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 45, healthRestore: 20 },
+
   // Survival & Stations
   torch: { id: "torch", name: "Torch", category: "survival", description: "Provides portable illumination in dark night.", icon: "🔥", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png", maxStack: 20 },
   campfire: { id: "campfire", name: "Campfire", category: "station", description: "Provides warmth, night light, and cooks meat.", icon: "🏕️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/plant.png", maxStack: 5, isPlaceable: true },
@@ -187,6 +201,62 @@ export const CRAFTING_RECIPES: Recipe[] = [
     category: "tools",
   },
   {
+    id: "wooden_shovel",
+    name: "Wooden Shovel",
+    result: "wooden_shovel",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 2 },
+      { item: "stick", count: 1 },
+    ],
+    category: "tools",
+  },
+  {
+    id: "stone_shovel",
+    name: "Stone Shovel",
+    result: "stone_shovel",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 2 },
+      { item: "stick", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "tools",
+  },
+  {
+    id: "watering_can",
+    name: "Watering Can",
+    result: "watering_can",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 3 },
+      { item: "fiber", count: 2 },
+    ],
+    category: "tools",
+  },
+  {
+    id: "wooden_hammer",
+    name: "Wooden Mallet",
+    result: "wooden_hammer",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 3 },
+      { item: "stick", count: 2 },
+    ],
+    category: "tools",
+  },
+  {
+    id: "fishing_rod",
+    name: "Fishing Rod",
+    result: "fishing_rod",
+    count: 1,
+    ingredients: [
+      { item: "stick", count: 3 },
+      { item: "fiber", count: 2 },
+    ],
+    category: "tools",
+  },
+  {
     id: "bread",
     name: "Hearty Bread",
     result: "bread",
@@ -200,6 +270,15 @@ export const CRAFTING_RECIPES: Recipe[] = [
     result: "cooked_meat",
     count: 1,
     ingredients: [{ item: "raw_meat", count: 1 }],
+    requiresStation: "campfire",
+    category: "survival",
+  },
+  {
+    id: "cooked_fish",
+    name: "Grilled Fish",
+    result: "cooked_fish",
+    count: 1,
+    ingredients: [{ item: "raw_fish", count: 1 }],
     requiresStation: "campfire",
     category: "survival",
   },
@@ -270,6 +349,13 @@ export class SurvivalEngine {
     hopTimer: number;
     swingTimer: number;
     hurtTimer: number;
+    rollTimer: number;
+    isSwimming: boolean;
+    idleStillTimer: number;
+    isWaiting: boolean;
+    doingTimer: number;
+    fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
+    fishingTimer: number;
   };
 
   // Inventory & Hotbar (20 main slots + 8 quick hotbar slots)
@@ -357,6 +443,13 @@ export class SurvivalEngine {
       hopTimer: 0,
       swingTimer: 0,
       hurtTimer: 0,
+      rollTimer: 0,
+      isSwimming: false,
+      idleStillTimer: 0,
+      isWaiting: false,
+      doingTimer: 0,
+      fishingState: "NONE",
+      fishingTimer: 0,
     };
 
     this.initInventory();
@@ -373,11 +466,15 @@ export class SurvivalEngine {
       this.hotbar.push({ item: null, count: 0 });
     }
 
-    // Starter items
+    // Starter tools with animations in Human folder
     this.hotbar[0] = { item: "wooden_axe", count: 1, durability: 40, maxDurability: 40 };
     this.hotbar[1] = { item: "wooden_pickaxe", count: 1, durability: 35, maxDurability: 35 };
-    this.hotbar[2] = { item: "berries", count: 6 };
-    this.hotbar[3] = { item: "torch", count: 3 };
+    this.hotbar[2] = { item: "wooden_sword", count: 1, durability: 50, maxDurability: 50 };
+    this.hotbar[3] = { item: "wooden_shovel", count: 1, durability: 40, maxDurability: 40 };
+    this.hotbar[4] = { item: "watering_can", count: 1, durability: 50, maxDurability: 50 };
+    this.hotbar[5] = { item: "wooden_hammer", count: 1, durability: 40, maxDurability: 40 };
+    this.hotbar[6] = { item: "fishing_rod", count: 1, durability: 30, maxDurability: 30 };
+    this.hotbar[7] = { item: "berries", count: 10 };
   }
 
   /**
@@ -402,14 +499,70 @@ export class SurvivalEngine {
       this.animals.push(animal);
     });
 
-    // Spawn 3 starting village NPCs
-    for (let i = 0; i < 3; i++) {
+    // Spawn 8 specialized village NPCs using each composite animation
+    const compositeRoles: ("blacksmith" | "builder" | "farmer" | "fisher" | "guide" | "merchant" | "child" | "villager")[] = [
+      "blacksmith",
+      "builder",
+      "farmer",
+      "fisher",
+      "guide",
+      "merchant",
+      "child",
+      "villager",
+    ];
+
+    compositeRoles.forEach((role, i) => {
       const config = SPECIES_CONFIGS["villager"];
-      const sx = this.player.x + (i * 3 - 3);
-      const sy = this.player.y - 5;
-      const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy);
+      const angle = (i / compositeRoles.length) * Math.PI * 2;
+      const radius = 4.5 + (i % 2) * 2;
+      const sx = this.player.x + Math.cos(angle) * radius;
+      const sy = this.player.y + Math.sin(angle) * radius;
+      const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy, role);
       this.npcs.push(npc);
-    }
+    });
+
+    // Spawn an initial goblin and skeleton nearby for immediate demonstration
+    this.enemies.push({
+      id: this.nextEntityId++,
+      type: "goblin",
+      name: "Forest Goblin",
+      x: this.player.x + 15,
+      y: this.player.y + 10,
+      vx: 0,
+      vy: 0,
+      direction: "LEFT",
+      health: 40,
+      maxHealth: 40,
+      damage: 14,
+      speed: 2.2,
+      state: "PATROL",
+      attackCooldown: 0,
+      patrolTimer: 3,
+      hurtTimer: 0,
+      deathTimer: 0.6,
+      isAlive: true,
+    });
+
+    this.enemies.push({
+      id: this.nextEntityId++,
+      type: "skeleton",
+      name: "Dungeon Skeleton",
+      x: this.player.x - 15,
+      y: this.player.y + 10,
+      vx: 0,
+      vy: 0,
+      direction: "RIGHT",
+      health: 45,
+      maxHealth: 45,
+      damage: 16,
+      speed: 2.0,
+      state: "PATROL",
+      attackCooldown: 0,
+      patrolTimer: 3,
+      hurtTimer: 0,
+      deathTimer: 0.6,
+      isAlive: true,
+    });
   }
 
   /**
@@ -503,13 +656,20 @@ export class SurvivalEngine {
    * Updates player position with collision detection against water, trees, and walls.
    */
   private updatePlayerMovement(dt: number) {
-    // Sprint logic
-    const currentSpeed =
+    const curTile = this.worldManager.getTile(Math.floor(this.player.x), Math.floor(this.player.y));
+    this.player.isSwimming = curTile.isWater;
+
+    // Sprint & swimming speed logic
+    let baseSpeed =
       this.player.isSprinting && this.player.stamina > 10
         ? this.player.sprintSpeed
         : this.player.speed;
+    if (this.player.isSwimming) {
+      baseSpeed *= 0.65;
+    }
+    const currentSpeed = baseSpeed;
 
-    if (this.player.isSprinting && (this.player.vx !== 0 || this.player.vy !== 0)) {
+    if (this.player.isSprinting && (this.player.vx !== 0 || this.player.vy !== 0) && !this.player.isSwimming) {
       this.player.stamina = Math.max(0, this.player.stamina - dt * 18);
     } else {
       this.player.stamina = Math.min(this.player.maxStamina, this.player.stamina + dt * 14);
@@ -555,6 +715,17 @@ export class SurvivalEngine {
       this.player.hopOffset = 0;
     }
 
+    // Still / idle detection for WAITING animation (> 3 seconds still)
+    if (this.player.vx === 0 && this.player.vy === 0 && this.player.swingTimer <= 0 && this.player.hopTimer <= 0 && !this.player.isSwimming) {
+      this.player.idleStillTimer += dt;
+      if (this.player.idleStillTimer >= 3.0) {
+        this.player.isWaiting = true;
+      }
+    } else {
+      this.player.idleStillTimer = 0;
+      this.player.isWaiting = false;
+    }
+
     // Tool swing animation timer
     if (this.player.swingTimer > 0) {
       this.player.swingTimer -= dt;
@@ -562,6 +733,40 @@ export class SurvivalEngine {
     if (this.player.hurtTimer > 0) {
       this.player.hurtTimer -= dt;
     }
+    if (this.player.rollTimer > 0) {
+      this.player.rollTimer -= dt;
+    }
+    if (this.player.doingTimer > 0) {
+      this.player.doingTimer -= dt;
+    }
+
+    // Fishing rod state machine
+    if (this.player.fishingTimer > 0) {
+      this.player.fishingTimer -= dt;
+      if (this.player.fishingTimer <= 0) {
+        if (this.player.fishingState === "CASTING") {
+          this.player.fishingState = "REELING";
+          this.player.fishingTimer = 1.6;
+        } else if (this.player.fishingState === "REELING") {
+          this.player.fishingState = "CAUGHT";
+          this.player.fishingTimer = 1.0;
+          this.addItemToInventory("raw_fish", 1);
+          this.addFloatingText("+1 Raw Fish 🐟", this.player.x, this.player.y - 1, "#38bdf8");
+        } else {
+          this.player.fishingState = "NONE";
+        }
+      }
+    }
+  }
+
+  public jump(): void {
+    if (this.player.isDead || this.player.hopTimer > 0 || this.player.isSwimming) return;
+    this.player.hopTimer = 0.55;
+    GameAudio.playJump();
+  }
+
+  public roll(): void {
+    this.jump();
   }
 
   private canMoveTo(x: number, y: number): boolean {
@@ -573,7 +778,8 @@ export class SurvivalEngine {
       { x: x + r, y: y + r },
     ];
     for (const p of pts) {
-      if (!this.worldManager.isWalkable(p.x, p.y)) return false;
+      const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
+      if (tile.isBlocked) return false;
       if (this.isBlockedByStructure(p.x, p.y)) return false;
     }
     return true;
@@ -784,21 +990,45 @@ export class SurvivalEngine {
   }
 
   private spawnEnemy(x: number, y: number) {
-    const isGoblin = Math.random() < 0.35;
+    const roll = Math.random();
+    let type: "skeleton" | "goblin" | "slime" = "slime";
+    let name = "Wild Slime";
+    let health = 25;
+    let damage = 8;
+    let speed = 1.8;
+    let action: string | undefined = undefined;
+
+    if (roll < 0.45) {
+      type = "skeleton";
+      name = "Dungeon Skeleton";
+      health = 45;
+      damage = 16;
+      speed = 2.1;
+    } else if (roll < 0.90) {
+      type = "goblin";
+      name = "Forest Goblin";
+      health = 40;
+      damage = 14;
+      speed = 2.3;
+      if (Math.random() < 0.25) action = "AXE";
+      else if (Math.random() < 0.25) action = "MINING";
+    }
+
     this.enemies.push({
       id: this.nextEntityId++,
-      type: isGoblin ? "goblin" : "slime",
-      name: isGoblin ? "Forest Goblin" : "Wild Slime",
+      type,
+      name,
       x,
       y,
       vx: 0,
       vy: 0,
       direction: "DOWN",
-      health: isGoblin ? 40 : 25,
-      maxHealth: isGoblin ? 40 : 25,
-      damage: isGoblin ? 14 : 8,
-      speed: isGoblin ? 2.4 : 1.8,
+      health,
+      maxHealth: health,
+      damage,
+      speed,
       state: "PATROL",
+      action,
       attackCooldown: 0,
       patrolTimer: 3,
       hurtTimer: 0,
@@ -925,6 +1155,46 @@ export class SurvivalEngine {
 
     this.player.swingTimer = 0.25;
     GameAudio.playSwing();
+
+    const activeSlot = this.getActiveItemSlot();
+    const activeItem = activeSlot?.item || "";
+
+    // Fishing Rod interaction on water
+    if (activeItem === "fishing_rod") {
+      const clickTile = this.worldManager.getTile(Math.floor(wx), Math.floor(wy));
+      if (clickTile.isWater) {
+        this.player.fishingState = "CASTING";
+        this.player.fishingTimer = 1.4;
+        this.addFloatingText("Casting line... 🎣", this.player.x, this.player.y - 1, "#67e8f9");
+        return;
+      }
+    }
+
+    // Watering Can
+    if (activeItem === "watering_can") {
+      this.player.swingTimer = 0.35;
+      this.addFloatingText("Watering soil 💧", wx, wy, "#60a5fa");
+      this.useActiveToolDurability();
+      return;
+    }
+
+    // Shovel / Digging
+    if (activeItem.includes("shovel")) {
+      this.player.swingTimer = 0.35;
+      this.emitWoodChips(wx, wy, "#a16207");
+      this.addFloatingText("Tilling earth 🪴", wx, wy, "#d97706");
+      this.useActiveToolDurability();
+      return;
+    }
+
+    // Hammer
+    if (activeItem.includes("hammer")) {
+      this.player.swingTimer = 0.35;
+      GameAudio.playCraft();
+      this.addFloatingText("Hammering 🔨", wx, wy, "#f59e0b");
+      this.useActiveToolDurability();
+      return;
+    }
 
     // 1. Check if clicking on an animal within interaction reach -> hits and sprints away!
     for (const animal of this.animals) {
@@ -1211,6 +1481,7 @@ export class SurvivalEngine {
 
     // Add crafted result
     const def = ITEM_CATALOG[recipe.result];
+    this.player.doingTimer = 0.6;
     this.addItemToInventory(recipe.result, recipe.count, def.durability, def.maxDurability);
     GameAudio.playCraft();
     this.addFloatingText(`Crafted: ${def.name}`, this.player.x, this.player.y - 0.8, "#a855f7");
@@ -1301,6 +1572,17 @@ export class SurvivalEngine {
 
   public addItemToInventory(item: ItemId, count: number, durability?: number, maxDurability?: number): boolean {
     const def = ITEM_CATALOG[item];
+    if (!def) return false;
+
+    // Requirement: only tools that have their animation in the Human folder can be picked in inventory
+    if (def.category === "tool" || def.category === "weapon") {
+      const allowedToolKeywords = ["axe", "pickaxe", "sword", "shovel", "hoe", "water", "hammer", "rod"];
+      const isAllowed = allowedToolKeywords.some((kw) => item.toLowerCase().includes(kw));
+      if (!isAllowed) {
+        return false;
+      }
+    }
+
     const maxStack = def?.maxStack || 99;
 
     // 1. Try stacking into existing hotbar or inventory slots

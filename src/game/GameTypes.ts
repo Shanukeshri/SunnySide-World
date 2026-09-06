@@ -31,6 +31,15 @@ export type ItemId =
   | "wooden_sword"
   | "stone_sword"
   | "iron_sword"
+  | "wooden_shovel"
+  | "stone_shovel"
+  | "iron_shovel"
+  | "watering_can"
+  | "wooden_hammer"
+  | "iron_hammer"
+  | "fishing_rod"
+  | "raw_fish"
+  | "cooked_fish"
   | "torch"
   | "campfire"
   | "workbench"
@@ -115,7 +124,7 @@ export interface PlacedStructure {
 
 export interface EnemyEntity {
   id: number;
-  type: "slime" | "goblin" | "wolf";
+  type: "slime" | "goblin" | "wolf" | "skeleton";
   name: string;
   x: number;
   y: number;
@@ -127,6 +136,7 @@ export interface EnemyEntity {
   damage: number;
   speed: number;
   state: "IDLE" | "PATROL" | "CHASE" | "ATTACK" | "HURT" | "DEAD";
+  action?: string;
   targetX?: number;
   targetY?: number;
   attackCooldown: number;

@@ -1720,10 +1720,10 @@ function initSurvivalInputs() {
       togglePauseModal();
     }
 
-    // Space: Hop ONLY (no hitting)
+    // Space: Jump
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
-        survivalEngine.player.hopTimer = 0.55;
+        survivalEngine.jump();
       }
     }
 
@@ -2014,8 +2014,8 @@ function renderCraftingList() {
 }
 
 function openDialogueModal(npc: NPC) {
-  dialogueNpcName.textContent = `Village Elder & Merchant`;
-  dialogueNpcText.textContent = `"Welcome, traveler! Between Oakvale and the next villages (Riverwood, Sunhaven, Pinecrest) lies dangerous open wilderness. Take provisions or barter with us!"`;
+  dialogueNpcName.textContent = npc.customTitle || `Village Elder & Merchant`;
+  dialogueNpcText.textContent = npc.customDialogue ? `"${npc.customDialogue}"` : `"Welcome, traveler! Between Oakvale and the next villages (Riverwood, Sunhaven, Pinecrest) lies dangerous open wilderness. Take provisions or barter with us!"`;
 
   barterTradeList.innerHTML = "";
 
