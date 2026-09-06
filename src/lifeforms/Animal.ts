@@ -7,6 +7,9 @@ export class Animal extends LivingEntity {
   private stateTimer: number = 0;
   private eatingElapsedTime: number = 0;
   private isHeadingToFood: boolean = false;
+  private fleeTimer: number = 0;
+  private fleeSourceX: number = 0;
+  private fleeSourceY: number = 0;
 
   constructor(id: number, config: SpeciesConfig, initialX: number, initialY: number) {
     super(id, config, initialX, initialY);
@@ -15,9 +18,10 @@ export class Animal extends LivingEntity {
   }
 
   /**
-   * Throttled AI Decision Tick (called at 5-10 Hz by LifeformManager - Section 32 & 33).
-   * Section 27: Strict Priority Hierarchy:
-   *   PETTED (highest)
+   * Throttled AI Decision Tick (called at 5-10 Hz by LifeformManager).
+   * Strict Priority Hierarchy:
+   *   FLEE (highest priority when threatened / struck)
+   *   PETTED
    *   EATING
    *   WANDER
    *   IDLE (lowest)
@@ -27,12 +31,29 @@ export class Animal extends LivingEntity {
       return;
     }
 
+    // 0. FLEE State: Animal was struck or spooked - sprints away from danger!
+    if (this.behaviorState === 'FLEE') {
+      this.fleeTimer -= dt;
+      if (this.fleeTimer <= 0) {
+        // Calm down: restore regular movement speed and return to idle
+        this.movement.speed = this.config.movementSpeed ?? this.config.defaultSpeed;
+        this.enterIdleState();
+        return;
+      }
+
+      // If finished current sprint step or stopped, pick another sprint waypoint away from danger
+      if (!this.movement.isMoving && this.fleeTimer > 0) {
+        this.sprintAwayFrom(this.fleeSourceX, this.fleeSourceY, detector);
+      }
+      return;
+    }
+
     // 1. Tick Petting Cooldown (Section 25: prevents spamming)
     if (this.interaction.pettingCooldown > 0) {
       this.interaction.pettingCooldown = Math.max(0, this.interaction.pettingCooldown - dt);
     }
 
-    // 2. Section 21 & 22: PETTED State (highest priority)
+    // 2. Section 21 & 22: PETTED State (high priority)
     if (this.interaction.isPetted) {
       this.interaction.pettedTimer -= dt;
       if (this.interaction.pettedTimer <= 0) {
@@ -183,11 +204,75 @@ export class Animal extends LivingEntity {
   }
 
   /**
-   * Triggered when path is blocked by collision (Section 12).
+   * Triggered when path is blocked by collision.
    */
   protected onMovementBlocked(): void {
     this.isHeadingToFood = false;
-    this.enterIdleState();
+    if (this.behaviorState === 'FLEE') {
+      // If blocked while fleeing, pick a deflected direction and keep sprinting!
+      this.clearTarget();
+    } else {
+      this.enterIdleState();
+    }
+  }
+
+  /**
+   * Causes the animal to enter panic/flee state and sprint rapidly away from a danger point.
+   */
+  public fleeFrom(sourceX: number, sourceY: number, detector?: EnvironmentDetector): void {
+    if (this.behaviorState === 'DEAD') return;
+
+    this.behaviorState = 'FLEE';
+    this.fleeTimer = 3.5;
+    this.fleeSourceX = sourceX;
+    this.fleeSourceY = sourceY;
+    this.isHeadingToFood = false;
+    this.interaction.isPetted = false;
+    this.anim.eatingBobOffset = 0;
+
+    // Sprint at 2.4x regular speed
+    this.movement.speed = (this.config.movementSpeed ?? this.config.defaultSpeed) * 2.4;
+
+    if (detector) {
+      this.sprintAwayFrom(sourceX, sourceY, detector);
+    } else {
+      const angle = Math.atan2(this.position.y - sourceY, this.position.x - sourceX);
+      this.setTarget(this.position.x + Math.cos(angle) * 5.0, this.position.y + Math.sin(angle) * 5.0);
+    }
+  }
+
+  /**
+   * Calculates a fleeing vector opposite to the danger source and finds a valid walkable tile.
+   */
+  private sprintAwayFrom(sourceX: number, sourceY: number, detector: EnvironmentDetector): void {
+    const baseAngle = Math.atan2(this.position.y - sourceY, this.position.x - sourceX);
+    const sprintDistance = 5.5 + Math.random() * 2.5;
+
+    // Try multiple angles radiating away from the threat
+    const angleOffsets = [0, 0.35, -0.35, 0.7, -0.7, 1.1, -1.1];
+    for (const offset of angleOffsets) {
+      const angle = baseAngle + offset;
+      const targetX = this.position.x + Math.cos(angle) * sprintDistance;
+      const targetY = this.position.y + Math.sin(angle) * sprintDistance;
+
+      if (detector.isWalkable(targetX, targetY, Boolean(this.config.isAquatic), Boolean(this.config.isAquatic))) {
+        this.setTarget(targetX, targetY);
+        return;
+      }
+    }
+
+    // Fallback: small step away
+    const fallbackX = this.position.x + Math.cos(baseAngle) * 3.0;
+    const fallbackY = this.position.y + Math.sin(baseAngle) * 3.0;
+    this.setTarget(fallbackX, fallbackY);
+  }
+
+  public override takeDamage(amount: number): void {
+    super.takeDamage(amount);
+    if (this.health > 0) {
+      // Animal panics and sprints away when hit
+      this.fleeFrom(this.fleeSourceX || this.position.x - 1, this.fleeSourceY || this.position.y);
+    }
   }
 
   /**
@@ -195,7 +280,7 @@ export class Animal extends LivingEntity {
    * Cancels current movement or eating immediately and enters PETTED state.
    */
   public pet(): boolean {
-    if (!this.interaction.canPet || this.interaction.pettingCooldown > 0) {
+    if (!this.interaction.canPet || this.interaction.pettingCooldown > 0 || this.behaviorState === 'FLEE') {
       return false;
     }
 
@@ -216,7 +301,7 @@ export class Animal extends LivingEntity {
    * Player feeds animal: reduces hunger and triggers small happy jumps + hearts.
    */
   public feed(): boolean {
-    if (!this.interaction.canFeed) return false;
+    if (!this.interaction.canFeed || this.behaviorState === 'FLEE') return false;
     this.needs.hunger = Math.max(0, this.needs.hunger - 45);
     this.interaction.heartsEmitted = true;
     // Animal performs 3 small-heighted fast jumps in gratitude

@@ -1251,7 +1251,9 @@ export class SettlementGenerator {
         }
 
         if (footprintValid) {
-          for (let dy = 0; dy < template.h; dy++) {
+          // Collision hitbox: rectangle equal to length of base and exactly half height (bottom half)
+          const baseStartY = Math.floor(template.h / 2);
+          for (let dy = baseStartY; dy < template.h; dy++) {
             for (let dx = 0; dx < template.w; dx++) {
               this.grid[ay + dy][ax + dx].blocked = true;
             }

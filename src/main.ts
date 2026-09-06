@@ -1477,6 +1477,16 @@ function updateSurvivalHUD() {
   renderQuestTracker();
 }
 
+function getItemIconHtml(itemKey: ItemId | null): string {
+  if (!itemKey) return "";
+  const def = ITEM_CATALOG[itemKey];
+  if (!def) return "📦";
+  if (def.spritePath) {
+    return `<img src="${def.spritePath}" class="slot-pixel-icon" alt="${def.name}" draggable="false" />`;
+  }
+  return `<span class="slot-item-icon">${def.icon}</span>`;
+}
+
 function renderHotbar() {
   if (!survivalEngine) return;
   hotbarSlotsContainer.innerHTML = "";
@@ -1494,11 +1504,10 @@ function renderHotbar() {
     slotEl.appendChild(keyEl);
 
     if (slot.item) {
-      const def = ITEM_CATALOG[slot.item];
-      const iconEl = document.createElement("span");
-      iconEl.className = "slot-item-icon";
-      iconEl.textContent = def?.icon || "📦";
-      slotEl.appendChild(iconEl);
+      const iconWrapper = document.createElement("div");
+      iconWrapper.className = "slot-icon-inner";
+      iconWrapper.innerHTML = getItemIconHtml(slot.item);
+      slotEl.appendChild(iconWrapper);
 
       if (slot.count > 1) {
         const countEl = document.createElement("span");
@@ -1711,12 +1720,10 @@ function initSurvivalInputs() {
       togglePauseModal();
     }
 
-    // Space Jump / Swing
+    // Space: Hop ONLY (no hitting)
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
         survivalEngine.player.hopTimer = 0.55;
-        survivalEngine.player.swingTimer = 0.22;
-        GameAudio.playSwing();
       }
     }
 
@@ -1925,9 +1932,8 @@ function renderInventoryGrids() {
     slotEl.className = "inv-slot";
 
     if (slot.item) {
-      const def = ITEM_CATALOG[slot.item];
       slotEl.innerHTML = `
-        <span class="slot-item-icon">${def.icon}</span>
+        <div class="slot-icon-inner">${getItemIconHtml(slot.item)}</div>
         ${slot.count > 1 ? `<span class="slot-item-count">${slot.count}</span>` : ""}
       `;
     }
@@ -1952,9 +1958,8 @@ function renderInventoryGrids() {
     slotEl.className = `inv-slot ${idx === survivalEngine?.activeHotbarIndex ? "active" : ""}`;
 
     if (slot.item) {
-      const def = ITEM_CATALOG[slot.item];
       slotEl.innerHTML = `
-        <span class="slot-item-icon">${def.icon}</span>
+        <div class="slot-icon-inner">${getItemIconHtml(slot.item)}</div>
         ${slot.count > 1 ? `<span class="slot-item-count">${slot.count}</span>` : ""}
       `;
     }
@@ -1977,7 +1982,6 @@ function renderCraftingList() {
   const recipes = CRAFTING_RECIPES.filter((r) => r.category === activeCraftCategory);
 
   recipes.forEach((rec) => {
-    const def = ITEM_CATALOG[rec.result];
     const canCraft = rec.ingredients.every((ing) => survivalEngine?.hasItem(ing.item, ing.count));
     const card = document.createElement("div");
     card.className = "recipe-card";
@@ -1988,7 +1992,7 @@ function renderCraftingList() {
 
     card.innerHTML = `
       <div class="recipe-info">
-        <span class="recipe-icon">${def?.icon || "🛠️"}</span>
+        <div class="recipe-icon-wrapper">${getItemIconHtml(rec.result)}</div>
         <div>
           <div class="recipe-name">${rec.name}</div>
           <div class="recipe-reqs">Requires: ${reqsStr} ${rec.requiresStation ? `• (${rec.requiresStation})` : ""}</div>
@@ -2029,9 +2033,9 @@ function openDialogueModal(npc: NPC) {
 
     row.innerHTML = `
       <div class="barter-details">
-        <span>Give ${trade.giveCount} ${ITEM_CATALOG[trade.give as ItemId]?.icon} ${ITEM_CATALOG[trade.give as ItemId]?.name}</span>
+        <span class="barter-item">${getItemIconHtml(trade.give as ItemId)} Give ${trade.giveCount} ${ITEM_CATALOG[trade.give as ItemId]?.name}</span>
         <span>➔</span>
-        <span>Receive ${trade.getCount} ${ITEM_CATALOG[trade.get as ItemId]?.icon} ${ITEM_CATALOG[trade.get as ItemId]?.name}</span>
+        <span class="barter-item">${getItemIconHtml(trade.get as ItemId)} Get ${trade.getCount} ${ITEM_CATALOG[trade.get as ItemId]?.name}</span>
       </div>
       <button class="btn-craft" ${canTrade ? "" : "disabled"}>Trade</button>
     `;
@@ -2067,8 +2071,7 @@ function openChestModal(chest: PlacedStructure) {
     const slotEl = document.createElement("div");
     slotEl.className = "inv-slot";
     if (slot.item) {
-      const def = ITEM_CATALOG[slot.item];
-      slotEl.innerHTML = `<span class="slot-item-icon">${def.icon}</span><span class="slot-item-count">${slot.count}</span>`;
+      slotEl.innerHTML = `<div class="slot-icon-inner">${getItemIconHtml(slot.item)}</div><span class="slot-item-count">${slot.count}</span>`;
     }
 
     slotEl.addEventListener("click", () => {
@@ -2089,8 +2092,7 @@ function openChestModal(chest: PlacedStructure) {
     const slotEl = document.createElement("div");
     slotEl.className = "inv-slot";
     if (slot.item) {
-      const def = ITEM_CATALOG[slot.item];
-      slotEl.innerHTML = `<span class="slot-item-icon">${def.icon}</span><span class="slot-item-count">${slot.count}</span>`;
+      slotEl.innerHTML = `<div class="slot-icon-inner">${getItemIconHtml(slot.item)}</div><span class="slot-item-count">${slot.count}</span>`;
     }
 
     slotEl.addEventListener("click", () => {

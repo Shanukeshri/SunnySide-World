@@ -19,7 +19,7 @@ export type SpeciesType =
   | 'player';
 
 // Section 8 & Section 28 & Section 29 behavior states
-export type BehaviorState = 'IDLE' | 'WANDER' | 'EATING' | 'PETTED' | 'WALK' | 'DEAD';
+export type BehaviorState = 'IDLE' | 'WANDER' | 'EATING' | 'PETTED' | 'WALK' | 'DEAD' | 'FLEE';
 
 // Section 4 environments: Grassland, Water, Village, Jungle
 export type EnvironmentType = 'GRASSLAND' | 'WATER' | 'VILLAGE' | 'JUNGLE';

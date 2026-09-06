@@ -45,6 +45,7 @@ export interface WorldChunk {
   tiles: WorldTile[][];
   resources: ResourceNode[];
   isGenerated: boolean;
+  spawnedWildlife?: { species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck'; x: number; y: number }[];
 }
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -184,10 +185,43 @@ export class WorldManager {
         playerTileY - (site.targetY + VILLAGE_HEIGHT / 2)
       );
 
-      // Trigger automatic generation when player is within approaching range (85 tiles)
+      // Trigger automatic generation when player is within approaching range (90 tiles)
       // or if it's the starter village (Oakvale)
       if (dist < 90 || (site.name === "Oakvale" && dist < 120)) {
         this.generateVillageAtSite(site);
+      }
+    }
+
+    // 2b. Infinite village generation (Minecraft-style): dynamically plan candidate sites across the infinite world
+    const macroStep = 120; // 3 village equivalents
+    const playerMx = Math.floor((playerTileX + macroStep / 2) / macroStep);
+    const playerMy = Math.floor((playerTileY + macroStep / 2) / macroStep);
+
+    for (let dmy = -1; dmy <= 1; dmy++) {
+      for (let dmx = -1; dmx <= 1; dmx++) {
+        const mx = playerMx + dmx;
+        const my = playerMy + dmy;
+        if (Math.abs(mx) <= 1 && Math.abs(my) <= 1) continue;
+
+        const siteId = `site_${mx}_${my}`;
+        if (!this.villagePlannedSites.some((s) => (s as any).siteId === siteId)) {
+          const rng = createSeededRNG(this.seed + (mx * 73856093 ^ my * 19349663));
+          const jitterX = Math.floor((rng() - 0.5) * 36);
+          const jitterY = Math.floor((rng() - 0.5) * 36);
+          const targetX = mx * macroStep + jitterX;
+          const targetY = my * macroStep + jitterY;
+          const villageNames = ["Millfield", "Elderglen", "Highgarden", "Silverstream", "Bramblebrook", "Dawnstar", "Amberfall", "Windshire", "Mosswood", "Falconridge"];
+          const name = villageNames[Math.floor(rng() * villageNames.length)];
+          const newSite = {
+            name: `${name} ${mx > 0 ? '+' : ''}${mx},${my > 0 ? '+' : ''}${my}`,
+            targetX,
+            targetY,
+            seed: Math.floor(rng() * 1000000),
+            generated: false,
+            siteId,
+          };
+          this.villagePlannedSites.push(newSite as any);
+        }
       }
     }
 
@@ -215,8 +249,6 @@ export class WorldManager {
     seed: number;
     generated: boolean;
   }) {
-    if (this.villages.length >= MAX_REALM_VILLAGES) return;
-
     site.generated = true;
     const settlementData = generateSettlement(site.seed, VILLAGE_WIDTH, VILLAGE_HEIGHT);
 
@@ -266,9 +298,10 @@ export class WorldManager {
       }
     }
 
-    // Mark house footprints as blocked (except front door cell)
+    // Mark house footprints as blocked: rectangle equal to length of base and exactly half height (bottom half)
     for (const house of data.houses) {
-      for (let dy = 0; dy < house.footprintH; dy++) {
+      const baseStartY = Math.floor(house.footprintH / 2);
+      for (let dy = baseStartY; dy < house.footprintH; dy++) {
         for (let dx = 0; dx < house.footprintW; dx++) {
           const wx = startX + house.x + dx;
           const wy = startY + house.y + dy;
@@ -276,6 +309,15 @@ export class WorldManager {
             continue; // Keep doorway walkable
           }
           this.getTile(wx, wy).isBlocked = true;
+        }
+      }
+    }
+
+    // Mark fences as blocked (openings / gates remain walkable)
+    if (data.farmObjects) {
+      for (const obj of data.farmObjects) {
+        if (typeof obj.id === 'string' && obj.id.startsWith('fence') && obj.id !== 'fence_wood_gate') {
+          this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
         }
       }
     }
@@ -289,13 +331,22 @@ export class WorldManager {
     data.trees.forEach((t) => {
       const wx = startX + t.x;
       const wy = startY + t.y;
+      const w = t.footprintW || 2;
+      const h = t.footprintH || 2;
+      // Mark trunk base as blocked (bottom row), allowing player to walk behind canopy
+      const trunkY = wy + h - 1;
+      const trunkX = wx + Math.floor(w / 2);
+      this.getTile(trunkX, trunkY).isBlocked = true;
+      if (w > 2) {
+        this.getTile(trunkX - 1, trunkY).isBlocked = true;
+      }
       this.addResourceToWorld({
         id: this.nextResourceId++,
         type: "tree",
         x: wx,
         y: wy,
-        w: t.footprintW || 2,
-        h: t.footprintH || 2,
+        w,
+        h,
         health: 30,
         maxHealth: 30,
         lootItem: "wood",
@@ -526,7 +577,15 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          tile.isBlocked = true;
+          // Mark only tree trunk base (bottom row) as blocked so player can walk behind canopy
+          if (ty + 1 < CHUNK_SIZE) {
+            chunk.tiles[ty + 1][tx].isBlocked = true;
+            if (tx + 1 < CHUNK_SIZE) {
+              chunk.tiles[ty + 1][tx + 1].isBlocked = true;
+            }
+          } else {
+            tile.isBlocked = true;
+          }
           continue;
         }
 
@@ -569,6 +628,47 @@ export class WorldManager {
         }
       }
     }
+
+    // Spawn wild animals naturally as the chunk loads (Minecraft-style)
+    chunk.spawnedWildlife = [];
+    const animalChance = rng();
+    if (animalChance < 0.65) {
+      const count = 1 + Math.floor(rng() * 3);
+      for (let i = 0; i < count; i++) {
+        const ax = chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const ay = chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const lx = ax - chunk.chunkX * CHUNK_SIZE;
+        const ly = ay - chunk.chunkY * CHUNK_SIZE;
+        const tile = chunk.tiles[ly]?.[lx];
+        if (tile && !tile.isBlocked && tile.inVillageId === undefined) {
+          let species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck' = 'chicken';
+          if (tile.isWater) {
+            species = 'duck';
+          } else {
+            const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
+            if (forestNoise > 0.3) {
+              species = rng() < 0.5 ? 'deer' : 'rabbit';
+            } else {
+              const r = rng();
+              if (r < 0.25) species = 'cow';
+              else if (r < 0.5) species = 'sheep';
+              else if (r < 0.75) species = 'pig';
+              else species = 'chicken';
+            }
+          }
+          chunk.spawnedWildlife.push({ species, x: ax + 0.5, y: ay + 0.5 });
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if a chunk is within active simulation and render range (<= maxChunkDist chunks away).
+   */
+  public isChunkActive(chunkX: number, chunkY: number, playerTileX: number, playerTileY: number, maxChunkDist: number = 4): boolean {
+    const pcx = Math.floor(playerTileX / CHUNK_SIZE);
+    const pcy = Math.floor(playerTileY / CHUNK_SIZE);
+    return Math.abs(chunkX - pcx) <= maxChunkDist && Math.abs(chunkY - pcy) <= maxChunkDist;
   }
 
   /**

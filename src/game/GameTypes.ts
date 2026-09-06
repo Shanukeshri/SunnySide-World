@@ -47,6 +47,7 @@ export interface ItemDef {
   category: ItemCategory;
   description: string;
   icon: string; // Emoji / Symbol representation
+  spritePath?: string; // Pixel art sprite icon path
   maxStack: number;
   durability?: number;
   maxDurability?: number;

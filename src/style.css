@@ -1937,27 +1937,30 @@ html {
   position: relative;
   width: 48px;
   height: 48px;
-  background: rgba(30, 41, 59, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background-color: rgba(20, 24, 36, 0.7);
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
   user-select: none;
 }
 
 .hotbar-slot:hover {
-  background: rgba(51, 65, 85, 0.8);
-  border-color: rgba(255, 255, 255, 0.25);
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
 .hotbar-slot.active {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.2);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-  transform: translateY(-2px);
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+  transform: translateY(-3px) scale(1.05);
 }
 
 .slot-key-num {
@@ -1968,10 +1971,30 @@ html {
   font-weight: 700;
   color: #64748b;
   font-family: 'JetBrains Mono', monospace;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .hotbar-slot.active .slot-key-num {
   color: #38bdf8;
+}
+
+.slot-icon-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.slot-pixel-icon {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
 }
 
 .slot-item-icon {
@@ -1986,17 +2009,18 @@ html {
   font-weight: 700;
   color: #f8fafc;
   font-family: 'JetBrains Mono', monospace;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 .slot-durability-bar {
   position: absolute;
-  bottom: 1px;
-  left: 2px;
-  right: 2px;
-  height: 2px;
+  bottom: 2px;
+  left: 4px;
+  right: 4px;
+  height: 3px;
   background: #22c55e;
   border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .hotbar-key-hints {
@@ -2107,9 +2131,12 @@ html {
 .inv-slot {
   position: relative;
   aspect-ratio: 1;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  background-color: rgba(20, 24, 36, 0.65);
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2118,8 +2145,14 @@ html {
 }
 
 .inv-slot:hover {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  filter: brightness(1.15);
+  transform: scale(1.04);
+}
+
+.inv-slot.active {
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
 }
 
 .inv-hotbar-preview {
@@ -2192,7 +2225,36 @@ html {
 .recipe-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.recipe-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.recipe-icon-wrapper .slot-pixel-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.barter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.barter-item .slot-pixel-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
 }
 
 .recipe-icon {

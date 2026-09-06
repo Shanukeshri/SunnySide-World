@@ -249,7 +249,12 @@ export abstract class LivingEntity implements ILivingEntity {
       // Section 13: Animal direction UP, DOWN, LEFT, RIGHT
       if (Math.abs(dx) > Math.abs(dy)) {
         this.direction = dx > 0 ? 'RIGHT' : 'LEFT';
-        this.anim.flipX = dx < 0;
+        // Sunnyside animal sprites face LEFT natively, while human characters face RIGHT natively
+        if (this.type === 'ANIMAL') {
+          this.anim.flipX = dx > 0;
+        } else {
+          this.anim.flipX = dx < 0;
+        }
       } else {
         this.direction = dy > 0 ? 'DOWN' : 'UP';
       }

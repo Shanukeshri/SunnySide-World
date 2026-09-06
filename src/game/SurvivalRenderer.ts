@@ -12,7 +12,7 @@
  */
 
 import { SurvivalEngine, ITEM_CATALOG } from "./SurvivalEngine";
-import { LifeformRenderer } from "../lifeforms/LifeformRenderer";
+import { LifeformRenderer, HUMAN_ANIMATIONS } from "../lifeforms/LifeformRenderer";
 import { CHUNK_SIZE } from "./WorldManager";
 import { ResourceNode, PlacedStructure, EnemyEntity } from "./GameTypes";
 
@@ -201,6 +201,13 @@ export class SurvivalRenderer {
     for (const [key, def] of Object.entries(SPRITE_DEFS)) {
       this.spriteImages.set(key, this.loadImage(def.path));
     }
+
+    // Preload item sprites for hotbar & held items
+    for (const [id, def] of Object.entries(ITEM_CATALOG)) {
+      if ((def as any).spritePath) {
+        this.getItemSprite(id);
+      }
+    }
   }
 
   private loadImage(src: string): HTMLImageElement {
@@ -213,6 +220,20 @@ export class SurvivalRenderer {
     const img = this.spriteImages.get(key);
     if (img && img.complete && img.naturalWidth > 0) return img;
     return null;
+  }
+
+  private itemSprites: Map<string, HTMLImageElement> = new Map();
+
+  public getItemSprite(itemId: string): HTMLImageElement | null {
+    if (this.itemSprites.has(itemId)) {
+      return this.itemSprites.get(itemId)!;
+    }
+    const def = (ITEM_CATALOG as any)[itemId];
+    const path = def?.spritePath;
+    if (!path) return null;
+    const img = this.loadImage(path);
+    this.itemSprites.set(itemId, img);
+    return img;
   }
 
   /**
@@ -472,6 +493,10 @@ export class SurvivalRenderer {
           const wy = village.gridY + cell.y;
           if (wx < minTileX - 1 || wx > maxTileX + 1 || wy < minTileY - 1 || wy > maxTileY + 1) continue;
 
+          // Check if crop resource node exists and is depleted
+          const cropRes = engine.worldManager.getResourceAt(wx + 0.5, wy + 0.5, 0.6);
+          if (cropRes && cropRes.isDepleted) continue;
+
           depthList.push({
             yOrder: wy + 0.95,
             draw: () => {
@@ -625,8 +650,14 @@ export class SurvivalRenderer {
     }
 
     // 6.4 Living Wildlife Animals (Cows, Sheep, Chickens, Rabbits)
+    const pcx = Math.floor(engine.player.x / 16);
+    const pcy = Math.floor(engine.player.y / 16);
     for (const animal of engine.animals) {
       if (!animal.isActive) continue;
+      const acx = Math.floor(animal.position.x / 16);
+      const acy = Math.floor(animal.position.y / 16);
+      if (Math.abs(acx - pcx) > 4 || Math.abs(acy - pcy) > 4) continue;
+
       depthList.push({
         yOrder: animal.position.y + 0.5,
         draw: () => {
@@ -644,9 +675,13 @@ export class SurvivalRenderer {
       });
     }
 
-    // 6.5 Village NPCs (Standing tall, equal visual scale to wildlife!)
+    // 6.5 Village NPCs (Frozen and hidden when outside 4-chunk active radius)
     for (const npc of engine.npcs) {
       if (!npc.isActive) continue;
+      const ncx = Math.floor(npc.position.x / 16);
+      const ncy = Math.floor(npc.position.y / 16);
+      if (Math.abs(ncx - pcx) > 4 || Math.abs(ncy - pcy) > 4) continue;
+
       depthList.push({
         yOrder: npc.position.y + 0.5,
         draw: () => {
@@ -672,25 +707,14 @@ export class SurvivalRenderer {
       });
     }
 
-    // 6.6 Hostile Night Enemies
+    // 6.6 Hostile Night Enemies (Animated Goblin & Skeleton sprites)
     for (const enemy of engine.enemies) {
       depthList.push({
         yOrder: enemy.y + 0.5,
         draw: () => {
           const screen = worldToScreen(enemy.x, enemy.y);
           this.lifeformRenderer.renderShadow(ctx, screen.sx + cellSize / 2, screen.sy + cellSize * 0.8, cellSize * 0.35, cellSize * 0.18);
-
-          ctx.save();
-          if (enemy.hurtTimer > 0) {
-            ctx.filter = "brightness(2) drop-shadow(0 0 4px #ef4444)";
-          }
-
-          const icon = enemy.type === "goblin" ? "👺" : "🟢";
-          ctx.font = `${20 * (this.zoom / 2)}px sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(icon, screen.sx + cellSize / 2, screen.sy + cellSize / 2 - 4);
-          ctx.restore();
+          this.lifeformRenderer.renderEnemy(ctx, enemy, cellSize, screen.sx + cellSize / 2, screen.sy + cellSize / 2);
 
           // Enemy Health Bar
           const barW = cellSize * 0.9;
@@ -703,7 +727,7 @@ export class SurvivalRenderer {
       });
     }
 
-    // 6.7 Player Character & Held Tool
+    // 6.7 Player Character & Held Item
     depthList.push({
       yOrder: engine.player.y + 0.5,
       draw: () => {
@@ -711,47 +735,73 @@ export class SurvivalRenderer {
         const screen = worldToScreen(p.x, p.y);
         const hopY = p.hopOffset * cellSize;
         const isFacingLeft = p.facing === "LEFT";
-
-        // 1. RENDER HELD TOOL BEHIND CHARACTER LAYER (Faces character's moving direction!)
         const activeSlot = engine.getActiveItemSlot();
-        if (activeSlot && activeSlot.item) {
-          const itemDef = ITEM_CATALOG[activeSlot.item];
-          const swingProgress = p.swingTimer > 0 ? p.swingTimer / 0.22 : 0;
-          const baseAngle = isFacingLeft ? -Math.PI * 0.25 : Math.PI * 0.25;
-          const swingAngle = isFacingLeft
-            ? baseAngle - swingProgress * Math.PI * 0.55
-            : baseAngle + swingProgress * Math.PI * 0.55;
+        const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
+        const isToolOrWeapon = activeItemDef?.category === "tool" || activeItemDef?.category === "weapon";
 
-          // Tool offset behind the back/shoulder based on facing
-          const toolOffsetX = isFacingLeft ? -cellSize * 0.32 : cellSize * 0.32;
-          const toolOffsetY = -cellSize * 0.22;
+        // Determine human animation action
+        let action = "IDLE";
+        let frameIndex = 0;
 
-          ctx.save();
-          ctx.translate(screen.sx + cellSize / 2 + toolOffsetX, screen.sy + cellSize / 2 + toolOffsetY - hopY);
-          if (isFacingLeft) {
-            ctx.scale(-1, 1); // Flip tool sprite to match left-facing direction
+        if (p.isDead) {
+          action = "DEATH";
+          frameIndex = Math.min(12, Math.floor(Date.now() / 100) % 13);
+        } else if (p.hurtTimer && p.hurtTimer > 0) {
+          action = "HURT";
+          frameIndex = Math.floor(Date.now() / 90) % 8;
+        } else if (p.swingTimer > 0) {
+          const activeItem = activeSlot?.item;
+          if (activeItem?.includes("axe")) {
+            action = "AXE";
+          } else if (activeItem?.includes("pickaxe")) {
+            action = "MINING";
+          } else if (activeItem?.includes("hoe") || activeItem?.includes("shovel")) {
+            action = "DIG";
+          } else if (activeItem?.includes("water")) {
+            action = "WATERING";
+          } else if (activeItem?.includes("hammer") || engine.buildPiece) {
+            action = "HAMMERING";
+          } else {
+            action = "ATTACK";
           }
-          ctx.rotate(swingAngle);
-          ctx.font = `${18 * (this.zoom / 2)}px sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(itemDef.icon, 0, 0);
-          ctx.restore();
+          const progress = Math.min(1, Math.max(0, 1 - p.swingTimer / 0.25));
+          const totalF = HUMAN_ANIMATIONS[action]?.totalFrames || 10;
+          frameIndex = Math.min(totalF - 1, Math.floor(progress * totalF));
+        } else if (p.hopOffset > 0.05) {
+          action = "JUMP";
+          frameIndex = Math.min(8, Math.floor((1 - p.hopTimer / 0.55) * 9));
+        } else if (activeSlot && activeSlot.item && !isToolOrWeapon) {
+          action = "CARRY";
+          frameIndex = p.vx !== 0 || p.vy !== 0 ? Math.floor(Date.now() / 110) % 8 : 0;
+        } else if (p.isSprinting && (p.vx !== 0 || p.vy !== 0)) {
+          action = "RUN";
+          frameIndex = Math.floor(Date.now() / 90) % 8;
+        } else if (p.vx !== 0 || p.vy !== 0) {
+          action = "WALK";
+          frameIndex = Math.floor(Date.now() / 110) % 8;
+        } else {
+          action = "IDLE";
+          frameIndex = Math.floor(Date.now() / 140) % 9;
         }
 
-        // 2. RENDER CHARACTER BODY IN FRONT OF THE TOOL
+        // 1. RENDER CHARACTER BODY WITH PAIRED TOOL MOVEMENT
+        const isSwinging = p.swingTimer > 0;
         const playerEntity: any = {
           position: { x: p.x, y: p.y },
           species: "player",
           type: "PLAYER",
           isActive: true,
-          behaviorState: "WALK",
+          behaviorState: p.isDead ? "DEAD" : "WALK",
           hairstyle: "mophair",
           anim: {
-            currentFrame: p.vx !== 0 || p.vy !== 0 ? Math.floor(Date.now() / 120) % 8 : 0,
+            action,
+            currentFrame: frameIndex,
             flipX: isFacingLeft,
             jumpOffset: p.hopOffset * 16,
             eatingBobOffset: 0,
+            deathAlpha: p.isDead ? 1.0 : 1.0,
+            hasTool: isToolOrWeapon,
+            showTool: isToolOrWeapon || ['AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING', 'CASTING', 'REELING'].includes(action),
           },
         };
 
@@ -762,8 +812,47 @@ export class SurvivalRenderer {
           false,
           screen.sx + cellSize / 2,
           screen.sy + cellSize / 2 - hopY,
-          1.0
+          1.0,
+          action
         );
+
+        // 2. RENDER HELD ITEM ABOVE THE PLAYER (100% full opacity, flipped horizontally when facing west)
+        // Hidden during active tool swings since the tool is dynamically animated in hand
+        if (activeSlot && activeSlot.item && !p.isDead && !isSwinging) {
+          const itemDef = ITEM_CATALOG[activeSlot.item];
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalAlpha = 1.0; // 100% full opacity
+
+          // Held visibly above the player's head
+          const itemX = screen.sx + cellSize / 2;
+          const itemY = screen.sy + cellSize / 2 - hopY - 32;
+
+          ctx.translate(itemX, itemY);
+
+          // Face the direction by flipping it when the player faces west!
+          if (isFacingLeft) {
+            ctx.scale(-1, 1);
+          }
+
+          // Gentle carry bobbing
+          const bob = p.vx !== 0 || p.vy !== 0 ? Math.sin(Date.now() * 0.012) * 2 : 0;
+          ctx.translate(0, bob);
+
+          // Render item sprite or fallback icon
+          const itemImg = this.getItemSprite(activeSlot.item);
+          if (itemImg && itemImg.complete && itemImg.naturalWidth > 0) {
+            const iconSize = 24;
+            ctx.drawImage(itemImg, -iconSize / 2, -iconSize / 2, iconSize, iconSize);
+          } else {
+            ctx.font = `${Math.round(18 * (this.zoom / 2))}px sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(itemDef?.icon || "📦", 0, 0);
+          }
+
+          ctx.restore();
+        }
       },
     });
 
