@@ -6,6 +6,8 @@ The browser never decides what actually happened. It only sends intent/input. Th
 
 That gives you almost the same architecture in single-player and multiplayer.
 
+NOTE : Maintain the game logic and everything acheived till now.
+
 1. The architecture we want
 
 Eventually:
