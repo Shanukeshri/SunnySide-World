@@ -1714,7 +1714,7 @@ function initSurvivalInputs() {
     // Space Jump / Swing
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
-        survivalEngine.player.hopTimer = 0.35;
+        survivalEngine.player.hopTimer = 0.55;
         survivalEngine.player.swingTimer = 0.22;
         GameAudio.playSwing();
       }

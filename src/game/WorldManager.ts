@@ -258,11 +258,31 @@ export class WorldManager {
         tile.isRoad = vCell.isRoad;
         tile.isFarm = vCell.isFarm;
         tile.isWater = vCell.isWater;
-        tile.isBlocked = vCell.blocked;
+        // Roads, farms, and grass are ALWAYS walkable; only water is blocked by default
+        tile.isBlocked = vCell.isWater;
         if (vCell.rotation !== undefined) {
           tile.rotation = vCell.rotation;
         }
       }
+    }
+
+    // Mark house footprints as blocked (except front door cell)
+    for (const house of data.houses) {
+      for (let dy = 0; dy < house.footprintH; dy++) {
+        for (let dx = 0; dx < house.footprintW; dx++) {
+          const wx = startX + house.x + dx;
+          const wy = startY + house.y + dy;
+          if (house.door && (startX + house.door.x) === wx && (startY + house.door.y) === wy) {
+            continue; // Keep doorway walkable
+          }
+          this.getTile(wx, wy).isBlocked = true;
+        }
+      }
+    }
+
+    // Mark wells as blocked
+    for (const well of data.wells) {
+      this.getTile(startX + well.x, startY + well.y).isBlocked = true;
     }
 
     // Add village harvestable resources (trees, bushes, crops) into chunk resources

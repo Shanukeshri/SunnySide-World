@@ -234,10 +234,14 @@ export class SurvivalRenderer {
     const halfWidth = canvas.width / 2;
     const halfHeight = canvas.height / 2;
 
+    // Pixel-snapped integer camera to prevent subpixel jitter and seam gaps during movement
+    const camPixelX = Math.round(this.cameraX * cellSize);
+    const camPixelY = Math.round(this.cameraY * cellSize);
+
     // Screen-to-world conversion helper
     const worldToScreen = (wx: number, wy: number) => ({
-      sx: Math.round(halfWidth + (wx - this.cameraX) * cellSize),
-      sy: Math.round(halfHeight + (wy - this.cameraY) * cellSize),
+      sx: Math.round(halfWidth + Math.round(wx * cellSize) - camPixelX),
+      sy: Math.round(halfHeight + Math.round(wy * cellSize) - camPixelY),
     });
 
     // Clear canvas with rich sunnyside grass green (prevents dark background leakage)
@@ -257,10 +261,11 @@ export class SurvivalRenderer {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
         for (let tx = minTileX; tx <= maxTileX; tx++) {
           const screen = worldToScreen(tx, ty);
-          const nextX = Math.round(halfWidth + (tx + 1 - this.cameraX) * cellSize);
-          const nextY = Math.round(halfHeight + (ty + 1 - this.cameraY) * cellSize);
-          const tileW = nextX - screen.sx;
-          const tileH = nextY - screen.sy;
+          const nextX = Math.round(halfWidth + Math.round((tx + 1) * cellSize) - camPixelX);
+          const nextY = Math.round(halfHeight + Math.round((ty + 1) * cellSize) - camPixelY);
+          // +1px overlap guarantees zero pixel gap lines between adjacent tiles during movement
+          const tileW = nextX - screen.sx + 1;
+          const tileH = nextY - screen.sy + 1;
 
           const tile = engine.worldManager.getTile(tx, ty);
 
@@ -295,10 +300,10 @@ export class SurvivalRenderer {
           if (wx < minTileX - 1 || wx > maxTileX + 1 || wy < minTileY - 1 || wy > maxTileY + 1) continue;
 
           const screen = worldToScreen(wx, wy);
-          const nextX = Math.round(halfWidth + (wx + 1 - this.cameraX) * cellSize);
-          const nextY = Math.round(halfHeight + (wy + 1 - this.cameraY) * cellSize);
-          const tileW = nextX - screen.sx;
-          const tileH = nextY - screen.sy;
+          const nextX = Math.round(halfWidth + Math.round((wx + 1) * cellSize) - camPixelX);
+          const nextY = Math.round(halfHeight + Math.round((wy + 1) * cellSize) - camPixelY);
+          const tileW = nextX - screen.sx + 1;
+          const tileH = nextY - screen.sy + 1;
 
           if (this.soilImg && this.soilImg.complete && this.soilImg.naturalWidth > 0) {
             ctx.drawImage(this.soilImg, screen.sx, screen.sy, tileW, tileH);
@@ -698,14 +703,43 @@ export class SurvivalRenderer {
       });
     }
 
-    // 6.7 Player Character (Standing tall, equal visual scale to wildlife!)
+    // 6.7 Player Character & Held Tool
     depthList.push({
       yOrder: engine.player.y + 0.5,
       draw: () => {
         const p = engine.player;
         const screen = worldToScreen(p.x, p.y);
         const hopY = p.hopOffset * cellSize;
+        const isFacingLeft = p.facing === "LEFT";
 
+        // 1. RENDER HELD TOOL BEHIND CHARACTER LAYER (Faces character's moving direction!)
+        const activeSlot = engine.getActiveItemSlot();
+        if (activeSlot && activeSlot.item) {
+          const itemDef = ITEM_CATALOG[activeSlot.item];
+          const swingProgress = p.swingTimer > 0 ? p.swingTimer / 0.22 : 0;
+          const baseAngle = isFacingLeft ? -Math.PI * 0.25 : Math.PI * 0.25;
+          const swingAngle = isFacingLeft
+            ? baseAngle - swingProgress * Math.PI * 0.55
+            : baseAngle + swingProgress * Math.PI * 0.55;
+
+          // Tool offset behind the back/shoulder based on facing
+          const toolOffsetX = isFacingLeft ? -cellSize * 0.32 : cellSize * 0.32;
+          const toolOffsetY = -cellSize * 0.22;
+
+          ctx.save();
+          ctx.translate(screen.sx + cellSize / 2 + toolOffsetX, screen.sy + cellSize / 2 + toolOffsetY - hopY);
+          if (isFacingLeft) {
+            ctx.scale(-1, 1); // Flip tool sprite to match left-facing direction
+          }
+          ctx.rotate(swingAngle);
+          ctx.font = `${18 * (this.zoom / 2)}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(itemDef.icon, 0, 0);
+          ctx.restore();
+        }
+
+        // 2. RENDER CHARACTER BODY IN FRONT OF THE TOOL
         const playerEntity: any = {
           position: { x: p.x, y: p.y },
           species: "player",
@@ -715,7 +749,7 @@ export class SurvivalRenderer {
           hairstyle: "mophair",
           anim: {
             currentFrame: p.vx !== 0 || p.vy !== 0 ? Math.floor(Date.now() / 120) % 8 : 0,
-            flipX: p.direction === "LEFT",
+            flipX: isFacingLeft,
             jumpOffset: p.hopOffset * 16,
             eatingBobOffset: 0,
           },
@@ -730,20 +764,6 @@ export class SurvivalRenderer {
           screen.sy + cellSize / 2 - hopY,
           1.0
         );
-
-        // Render Held Weapon / Tool
-        const activeSlot = engine.getActiveItemSlot();
-        if (activeSlot && activeSlot.item) {
-          const itemDef = ITEM_CATALOG[activeSlot.item];
-          const swingAngle = p.swingTimer > 0 ? (p.swingTimer / 0.22) * Math.PI * 0.6 : 0;
-          ctx.save();
-          ctx.translate(screen.sx + cellSize * 0.85, screen.sy + cellSize * 0.35 - hopY);
-          ctx.rotate(swingAngle);
-          ctx.font = `${16 * (this.zoom / 2)}px sans-serif`;
-          ctx.textAlign = "center";
-          ctx.fillText(itemDef.icon, 0, 0);
-          ctx.restore();
-        }
       },
     });
 

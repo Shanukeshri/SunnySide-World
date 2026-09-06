@@ -255,6 +255,7 @@ export class SurvivalEngine {
     vx: number;
     vy: number;
     direction: Direction;
+    facing: "LEFT" | "RIGHT";
     speed: number;
     sprintSpeed: number;
     isSprinting: boolean;
@@ -340,6 +341,7 @@ export class SurvivalEngine {
       vx: 0,
       vy: 0,
       direction: "DOWN",
+      facing: "RIGHT",
       speed: 3.4,
       sprintSpeed: 5.6,
       isSprinting: false,
@@ -495,28 +497,39 @@ export class SurvivalEngine {
     const nextX = this.player.x + this.player.vx * currentSpeed * dt;
     const nextY = this.player.y + this.player.vy * currentSpeed * dt;
 
-    // Horizontal collision
-    if (this.worldManager.isWalkable(nextX, this.player.y) && !this.isBlockedByStructure(nextX, this.player.y)) {
+    // Smooth movement with diagonal sliding
+    if (this.canMoveTo(nextX, nextY)) {
       this.player.x = nextX;
-    }
-    // Vertical collision
-    if (this.worldManager.isWalkable(this.player.x, nextY) && !this.isBlockedByStructure(this.player.x, nextY)) {
       this.player.y = nextY;
+    } else {
+      // Slide horizontally if clear
+      if (this.canMoveTo(nextX, this.player.y)) {
+        this.player.x = nextX;
+      }
+      // Slide vertically if clear
+      if (this.canMoveTo(this.player.x, nextY)) {
+        this.player.y = nextY;
+      }
     }
 
-    // Facing direction
-    if (Math.abs(this.player.vx) > Math.abs(this.player.vy)) {
-      if (this.player.vx > 0) this.player.direction = "RIGHT";
-      else if (this.player.vx < 0) this.player.direction = "LEFT";
-    } else if (Math.abs(this.player.vy) > 0) {
-      if (this.player.vy > 0) this.player.direction = "DOWN";
-      else if (this.player.vy < 0) this.player.direction = "UP";
+    // Facing direction: moving diagonal updates facing direction smoothly (e.g. SW to SE switches to East immediately)
+    if (this.player.vx > 0) {
+      this.player.facing = "RIGHT";
+      this.player.direction = "RIGHT";
+    } else if (this.player.vx < 0) {
+      this.player.facing = "LEFT";
+      this.player.direction = "LEFT";
+    } else if (this.player.vy > 0) {
+      this.player.direction = "DOWN";
+    } else if (this.player.vy < 0) {
+      this.player.direction = "UP";
     }
 
-    // Visual hop animation (during petting or jumping)
+    // Visual hop/jump animation (smooth, longer 0.55s graceful parabolic arc)
     if (this.player.hopTimer > 0) {
       this.player.hopTimer -= dt;
-      this.player.hopOffset = Math.sin((1 - this.player.hopTimer / 0.35) * Math.PI) * 0.35;
+      const progress = Math.max(0, Math.min(1, 1 - this.player.hopTimer / 0.55));
+      this.player.hopOffset = Math.sin(progress * Math.PI) * 0.55;
     } else {
       this.player.hopOffset = 0;
     }
@@ -527,10 +540,25 @@ export class SurvivalEngine {
     }
   }
 
+  private canMoveTo(x: number, y: number): boolean {
+    const r = 0.22;
+    const pts = [
+      { x: x - r, y: y - r },
+      { x: x + r, y: y - r },
+      { x: x - r, y: y + r },
+      { x: x + r, y: y + r },
+    ];
+    for (const p of pts) {
+      if (!this.worldManager.isWalkable(p.x, p.y)) return false;
+      if (this.isBlockedByStructure(p.x, p.y)) return false;
+    }
+    return true;
+  }
+
   private isBlockedByStructure(x: number, y: number): boolean {
     for (const struct of this.placedStructures) {
       if (struct.type === "wood_wall" || (struct.type === "wood_door" && !struct.isOpen)) {
-        if (Math.abs(x - struct.x) < 0.7 && Math.abs(y - struct.y) < 0.7) {
+        if (Math.abs(x - (struct.x + 0.5)) < 0.55 && Math.abs(y - (struct.y + 0.5)) < 0.55) {
           return true;
         }
       }
@@ -895,9 +923,13 @@ export class SurvivalEngine {
         this.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.3, res.y);
       }
 
-      // Unblock tile if obstacle was cleared
-      const tile = this.worldManager.getTile(Math.floor(res.x), Math.floor(res.y));
-      tile.isBlocked = false;
+      // Unblock all tiles if obstacle was cleared
+      for (let dy = 0; dy < res.h; dy++) {
+        for (let dx = 0; dx < res.w; dx++) {
+          const tile = this.worldManager.getTile(Math.floor(res.x + dx), Math.floor(res.y + dy));
+          tile.isBlocked = false;
+        }
+      }
     }
   }
 
