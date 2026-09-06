@@ -1,0 +1,2792 @@
+For the **single-player version**, I would implement the NPC/wildlife system in the following pieces. Keep the code structured so that later the simulation can move to a server, but **do not build multiplayer/network synchronization yet**.
+
+## 1. Entity system
+
+Create a generic living-entity structure.
+
+Each entity needs:
+
+* `id`
+* `type`
+* `species`
+* `position`
+* `direction`
+* `speed`
+* `state`
+* `target`
+* `health`
+* `hunger`
+* interaction properties
+* animation state
+
+Example:
+
+```text
+Animal
+├── id
+├── species
+├── position
+├── direction
+├── movement
+├── behaviorState
+├── needs
+└── interactionState
+```
+
+Every entity gets a unique small integer ID.
+
+---
+
+# 2. `generateRandom(id)`
+
+Create one centralized random-generation function.
+
+Every random decision in the NPC/wildlife system must go through it.
+
+Use it for:
+
+* spawn decisions
+* group sizes
+* initial position variation
+* idle duration
+* wandering duration
+* wandering direction
+* wandering distance
+* eating decisions
+* choosing whether to continue eating
+* future AI decisions
+
+Do **not** use `Math.random()` directly inside animal/NPC logic.
+
+The important reason is that later you can make the simulation deterministic/server-controlled much more easily.
+
+---
+
+# 3. Species configuration
+
+Don't hardcode behavior separately for every animal.
+
+Create configuration for each species.
+
+For example:
+
+```text
+Cow
+├── movementSpeed
+├── preferredEnvironment
+├── food
+├── groupSize
+├── idleTime
+├── wanderTime
+├── wanderRadius
+├── canPet
+└── canFeed
+```
+
+Then:
+
+```text
+Sheep
+Rabbit
+Chicken
+Deer
+```
+
+can use the same generic animal system with different parameters.
+
+---
+
+# 4. World environment detection
+
+Since there is only one biome, don't create a complicated biome system.
+
+The world has:
+
+```text
+Grassland
+Water
+Village
+```
+
+And derive:
+
+```text
+Jungle
+```
+
+when a tree cluster contains **20 or more trees**.
+
+So animals can query something like:
+
+```text
+getEnvironmentAt(x, y)
+```
+
+and receive information about their surroundings.
+
+Example:
+
+```text
+grass: true
+water: false
+village: false
+denseTrees: true
+```
+
+---
+
+# 5. Wildlife spawn system
+
+Implement a wildlife population manager.
+
+Its job:
+
+```text
+check area
+    ↓
+determine desired population
+    ↓
+find valid spawn location
+    ↓
+choose species
+    ↓
+create animal
+```
+
+Spawn rules should consider:
+
+* valid terrain
+* grass availability
+* jungle/dense-tree area
+* distance from player
+* existing population
+* species-specific rules
+* group size
+
+---
+
+# 6. Animal groups
+
+Animals shouldn't always spawn individually.
+
+For example:
+
+```text
+Cow
+ ├── Cow #101
+ ├── Cow #102
+ ├── Cow #103
+ └── Cow #104
+```
+
+When a group is spawned:
+
+1. Choose a group center.
+2. Generate group size.
+3. Find nearby valid positions.
+4. Spawn animals around the center.
+
+Each animal still has its own unique ID.
+
+Initially, animals don't need sophisticated flocking.
+
+They can simply remain within a loose distance of the group.
+
+---
+
+# 7. Spawn/despawn management
+
+Maintain an active wildlife population around the player.
+
+Conceptually:
+
+```text
+Player
+   ↓
+active simulation radius
+   ↓
+animals inside → active
+animals far away → inactive/despawned
+```
+
+For now, because this is single player, you can simply remove animals that get sufficiently far away.
+
+Later, this can become a proper server-side entity activation system.
+
+---
+
+# 8. Basic animal state machine
+
+Implement these states first:
+
+```text
+IDLE
+WANDER
+EATING
+PETTED
+```
+
+Later you can add:
+
+```text
+FLEE
+ATTACK
+SLEEP
+FOLLOW
+TAMED
+```
+
+but don't implement them now.
+
+---
+
+# 9. Idle behavior
+
+When an animal is idle:
+
+```text
+Animal stands still
+       ↓
+wait random duration
+       ↓
+make decision
+```
+
+The decision comes from:
+
+```text
+generateRandom(animal.id)
+```
+
+Possible result:
+
+```text
+remain idle
+```
+
+or:
+
+```text
+start wandering
+```
+
+This prevents every animal from constantly moving.
+
+---
+
+# 10. Wandering
+
+Basic logic:
+
+```text
+IDLE
+ ↓
+choose random nearby target
+ ↓
+validate target
+ ↓
+WANDER
+ ↓
+walk toward target
+ ↓
+target reached
+ ↓
+IDLE
+```
+
+The target should be relatively close.
+
+For example:
+
+```text
+current position
+       ↓
+random point 3–7 tiles away
+```
+
+Don't make animals randomly travel hundreds of tiles.
+
+---
+
+# 11. Movement
+
+Use simple target-based movement.
+
+Conceptually:
+
+```text
+direction = normalize(target - position)
+
+position += direction × speed × deltaTime
+```
+
+When sufficiently close:
+
+```text
+target reached
+```
+
+then:
+
+```text
+state = IDLE
+```
+
+No complex pathfinding initially.
+
+---
+
+# 12. Movement collision
+
+Animals should respect the world.
+
+They shouldn't walk through:
+
+* water
+* buildings
+* mountains/blocked terrain
+* map boundaries
+* other non-walkable objects
+
+Before moving:
+
+```text
+isWalkable(nextPosition)
+```
+
+If false:
+
+```text
+stop
+choose another target
+```
+
+---
+
+# 13. Animal direction
+
+Calculate direction from movement.
+
+```text
+dx = targetX - x
+dy = targetY - y
+```
+
+Then determine:
+
+```text
+UP
+DOWN
+LEFT
+RIGHT
+```
+
+This feeds directly into the sprite animation system.
+
+---
+
+# 14. Walking animation
+
+When:
+
+```text
+state == WANDER
+```
+
+play:
+
+```text
+walk animation
+```
+
+When:
+
+```text
+state == IDLE
+```
+
+play:
+
+```text
+idle animation
+```
+
+Animation should be completely separate from movement logic.
+
+---
+
+# 15. Grass detection
+
+Animals that eat grass should periodically check their surroundings.
+
+Conceptually:
+
+```text
+Animal
+ ↓
+Is grass nearby?
+ ↓
+Yes
+ ↓
+Is hunger high enough?
+ ↓
+Yes
+ ↓
+move toward grass
+```
+
+Once sufficiently close:
+
+```text
+state = EATING
+```
+
+For the first version, you can simply search for the nearest suitable grass position within a small radius.
+
+---
+
+# 16. Eating behavior
+
+When eating:
+
+```text
+Animal stops moving
+```
+
+Then:
+
+```text
+EATING
+   ↓
+slow vertical bob
+   ↓
+wait
+   ↓
+finish eating
+   ↓
+IDLE
+```
+
+The vertical movement is **visual animation**, not actual world movement.
+
+For example:
+
+```text
+Y
+│
+│    /\ 
+│   /  \
+│__/    \__
+```
+
+Very small and slow.
+
+---
+
+# 17. Eating animation
+
+While eating:
+
+```text
+baseY - smallOffset
+baseY
+baseY + smallOffset
+baseY
+```
+
+Use a smooth oscillation rather than abruptly changing position.
+
+The animal should look like:
+
+```text
+🐄
+ ↓
+dip
+ ↓
+rise
+ ↓
+dip
+ ↓
+rise
+```
+
+The actual logical position remains unchanged.
+
+---
+
+# 18. Hunger
+
+Give animals a basic hunger value.
+
+For example:
+
+```text
+hunger = 0 → not hungry
+hunger = high → wants food
+```
+
+Over time:
+
+```text
+time passes
+    ↓
+hunger increases
+```
+
+When hunger reaches a threshold:
+
+```text
+animal prioritizes eating
+```
+
+This means animals aren't constantly stopping to eat.
+
+---
+
+# 19. Grass consumption
+
+For the initial implementation:
+
+```text
+Animal eats grass
+```
+
+doesn't necessarily have to destroy the grass.
+
+Just use:
+
+```text
+grass detected
+→ eating animation
+→ hunger reduced
+```
+
+Later you can make grass temporarily disappear and regenerate.
+
+---
+
+# 20. Pet interaction detection
+
+The player needs to be close enough to interact.
+
+Conceptually:
+
+```text
+player
+   ↓
+interaction radius
+   ↓
+animal?
+   ↓
+canPet?
+```
+
+If yes:
+
+```text
+pet interaction available
+```
+
+This can eventually support an interaction prompt.
+
+---
+
+# 21. Petting action
+
+When the player pets:
+
+```text
+PLAYER
+ ↓
+PET
+ ↓
+ANIMAL
+```
+
+Animal immediately:
+
+```text
+current movement cancelled
+state = PETTED
+```
+
+So if the animal was wandering:
+
+```text
+WANDER
+   ↓
+PETTED
+```
+
+and it stops.
+
+---
+
+# 22. Petting animation
+
+The animal:
+
+```text
+PETTED
+```
+
+for a short duration.
+
+During this:
+
+* animal stops
+* animal can play a small reaction animation
+* hearts appear
+* player performs a small hop
+
+After the duration:
+
+```text
+PETTED
+ ↓
+IDLE
+```
+
+---
+
+# 23. Heart effect
+
+When petting occurs:
+
+```text
+spawnHeartEffect(animal)
+```
+
+The hearts should be visual particles/effects.
+
+Something like:
+
+```text
+       ♥
+     ♥
+       ♥
+      🐄
+```
+
+They:
+
+* spawn above animal
+* float upward
+* fade out
+* disappear
+
+They are not gameplay entities.
+
+---
+
+# 24. Player hop
+
+When the pet action succeeds:
+
+```text
+player
+ ↓
+small hop animation
+```
+
+Use a short vertical offset:
+
+```text
+normal
+  ↓
+slightly up
+  ↓
+highest point
+  ↓
+down
+  ↓
+normal
+```
+
+Don't actually move the player's logical world position.
+
+Again:
+
+**visual position ≠ logical position.**
+
+---
+
+# 25. Petting cooldown
+
+Prevent this:
+
+```text
+click
+click
+click
+click
+click
+```
+
+from repeatedly triggering hearts.
+
+Have:
+
+```text
+petCooldown
+```
+
+After successful petting:
+
+```text
+petCooldown = short duration
+```
+
+Once it reaches zero:
+
+```text
+canPet = true
+```
+
+---
+
+# 26. Feeding interaction
+
+Add feeding as a separate interaction even if the first version only supports grass.
+
+Eventually:
+
+```text
+Player holds food
+       ↓
+interacts with animal
+       ↓
+animal accepts food
+       ↓
+hunger decreases
+       ↓
+small positive reaction
+```
+
+Keep this separate from petting.
+
+---
+
+# 27. Animal interaction priority
+
+When multiple things could happen, give them priority.
+
+For example:
+
+```text
+PETTED
+  ↑
+  │ highest priority
+EATING
+  ↑
+  │
+WANDER
+  ↑
+  │
+IDLE
+```
+
+So:
+
+```text
+Animal is eating
+        +
+player pets it
+        ↓
+EATING cancelled
+        ↓
+PETTED
+```
+
+This prevents conflicting behaviors.
+
+---
+
+# 28. Animal death
+
+You don't necessarily need it immediately, but the entity system should support:
+
+```text
+ALIVE
+ ↓
+health reaches 0
+ ↓
+DEAD
+ ↓
+death animation
+ ↓
+loot/drop
+ ↓
+entity removed
+```
+
+This becomes important when hunting/combat is implemented.
+
+---
+
+# 29. Village NPC base system
+
+Keep village NPCs separate from wildlife behavior while sharing the same underlying entity framework.
+
+For example:
+
+```text
+LivingEntity
+│
+├── Animal
+│
+└── NPC
+```
+
+Village NPC states can eventually be:
+
+```text
+IDLE
+WALK
+WORK
+TALK
+SLEEP
+```
+
+For now, implement only:
+
+```text
+IDLE
+WALK
+```
+
+with fixed/random movement around the village.
+
+---
+
+# 30. Village boundaries
+
+Village NPCs should have a home area.
+
+```text
+Village
+ └── NPC allowed area
+```
+
+NPCs can wander inside that area but shouldn't randomly leave the village.
+
+Later you can add:
+
+```text
+home
+workplace
+daily schedule
+```
+
+without changing the basic entity architecture.
+
+---
+
+# 31. Rendering/animation separation
+
+Keep these three things separate:
+
+```text
+GAME LOGIC
+    ↓
+logical position/state
+
+MOVEMENT
+    ↓
+position changes
+
+RENDERING
+    ↓
+sprite + animation + effects
+```
+
+For example, eating:
+
+```text
+Game state:
+    animal.state = EATING
+
+Movement:
+    no movement
+
+Renderer:
+    eating bob animation
+```
+
+Petting:
+
+```text
+Game state:
+    animal.state = PETTED
+
+Movement:
+    stopped
+
+Renderer:
+    hearts
+    animal reaction
+    player hop
+```
+
+This separation will make the multiplayer conversion much easier later.
+
+---
+
+# 32. Update loop
+
+The NPC manager can run something like:
+
+```text
+NPC UPDATE
+│
+├── update needs
+│
+├── update state timers
+│
+├── make behavior decisions
+│
+├── calculate movement
+│
+├── check collisions
+│
+├── check interactions
+│
+└── update animation state
+```
+
+But don't make every animal perform expensive calculations every frame.
+
+---
+
+# 33. Update frequency
+
+Rendering might run at:
+
+```text
+60 FPS
+```
+
+but behavioral decisions don't need to.
+
+For example:
+
+```text
+60 FPS
+    → movement/rendering
+
+5–10 times/sec
+    → behavior decisions
+
+occasionally
+    → spawning/population management
+```
+
+This will let you have many animals without unnecessarily consuming CPU.
+
+---
+
+# 34. Final implementation order
+
+I'd implement the system in this exact order:
+
+```text
+1. Entity ID system
+2. generateRandom(id)
+3. Generic LivingEntity
+4. Animal configuration
+5. Environment detection
+6. Wildlife spawn manager
+7. Animal creation/destruction
+8. IDLE state
+9. WANDER state
+10. Target selection
+11. Movement
+12. Collision
+13. Direction
+14. Walk/idle animations
+15. Grass detection
+16. Hunger
+17. EATING state
+18. Eating animation
+19. Player interaction radius
+20. PET interaction
+21. PETTED state
+22. Heart effect
+23. Player hop
+24. Pet cooldown
+25. Feeding interaction
+26. Village NPC base
+27. Village NPC movement
+28. Population/despawn management
+```
+
+At that point you have a complete **first-generation life simulation**:
+
+```text
+             WORLD
+               │
+       ┌───────┴───────┐
+       ↓               ↓
+   WILDLIFE          VILLAGE
+       │               │
+       ↓               ↓
+    SPAWN            SPAWN
+       │               │
+       ↓               ↓
+     IDLE             IDLE
+       │
+       ↓
+    WANDER
+       │
+       ├──────────────┐
+       ↓              ↓
+     GRASS           PLAYER
+       │              │
+       ↓              ↓
+     EAT             PET
+       │              │
+       ↓              ↓
+     IDLE           PETTED
+                      │
+             ┌────────┴────────┐
+             ↓                 ↓
+          HEARTS            HOP
+             │                 │
+             └────────┬────────┘
+                      ↓
+                     IDLE
+```
+
+For now, **don't add networking, WebRTC, Socket.io synchronization, complex pathfinding, flocking, advanced AI, breeding, taming, or complicated NPC schedules**. Build the local simulation cleanly first; if the state boundaries are kept as above, converting the simulation to server-authoritative multiplayer later will be much more straightforward.
+
+A top-down, browser-based, Minecraft-inspired survival sandbox set in a procedurally generated grassland world, with jungle regions formed by dense tree clusters, water, villages, wildlife, NPCs, gathering, crafting, building, exploration, combat, survival, and progression.
+
+It is single-player now, but every gameplay system should be structured so that multiplayer/server authority can be introduced later.
+
+1. The Core Game Loop
+
+Everything ultimately revolves around this:
+
+EXPLORE
+   ↓
+FIND RESOURCES
+   ↓
+GATHER
+   ↓
+CRAFT BETTER TOOLS
+   ↓
+BUILD SHELTER
+   ↓
+SURVIVE
+   ↓
+EXPLORE FURTHER
+   ↓
+FIND RARE RESOURCES
+   ↓
+CRAFT BETTER EQUIPMENT
+   ↓
+FIGHT / EXPLORE DANGEROUS AREAS
+   ↓
+UNLOCK NEW CAPABILITIES
+   ↓
+BUILD / EXPLORE / SURVIVE
+
+There shouldn't be a forced linear campaign initially.
+
+The player should be able to decide:
+
+"I want to build."
+
+"I want to explore."
+
+"I want to gather."
+
+"I want to fight."
+
+"I want to farm."
+
+"I want to tame animals."
+
+"I want to discover the world."
+2. World Generation
+
+You already have this working, so the gameplay layer sits on top of it.
+
+The world contains:
+
+Grassland
+Water
+Trees
+Rocks
+Grass
+Resources
+Villages
+Special locations
+
+And:
+
+Tree cluster >= 20
+        ↓
+Jungle region
+
+The world is generated from a seed.
+
+That means:
+
+WORLD SEED
+     ↓
+MAP GENERATION
+     ↓
+TERRAIN
+     ↓
+OBJECT GENERATION
+     ↓
+RESOURCE GENERATION
+     ↓
+SPAWN LOCATIONS
+
+The same seed should produce the same base world.
+
+3. World State
+
+The game needs a persistent world state.
+
+World
+│
+├── seed
+├── dimensions
+├── terrain
+├── trees
+├── rocks
+├── water
+├── villages
+├── structures
+├── resources
+├── entities
+├── crops
+├── droppedItems
+└── worldTime
+
+The important distinction is:
+
+Generated state
+
+Can be recreated from the seed.
+
+Modified state
+
+Must be saved.
+
+For example:
+
+Tree generated by world
+→ don't need to save every detail.
+
+Player chopped that tree
+→ save that modification.
+4. Player
+
+The player is the central entity.
+
+Player state:
+
+position
+direction
+health
+maxHealth
+
+hunger
+maxHunger
+
+stamina
+maxStamina
+
+inventory
+equipment
+hotbar
+
+experience
+progression
+
+spawnPoint
+
+currentAction
+5. Player Movement
+
+The player can:
+
+Walk
+Sprint
+Stop
+Change direction
+Interact while moving
+
+Movement pipeline:
+
+INPUT
+ ↓
+Desired movement
+ ↓
+Check collision
+ ↓
+Resolve collision
+ ↓
+Update player position
+ ↓
+Update animation
+
+The renderer should never directly modify the actual player position.
+
+6. Player Interaction
+
+The player should have one universal interaction system.
+
+Nearby:
+
+Animal
+NPC
+Tree
+Rock
+Chest
+Door
+Workbench
+Furnace
+Crop
+Dropped item
+
+The system determines:
+
+What am I looking at?
+Is it within interaction range?
+What action is available?
+
+Then:
+
+[E] Interact
+
+or equivalent input.
+
+7. Picking Up Items
+
+Dropped resources/items exist in the world.
+
+Example:
+
+Tree destroyed
+      ↓
+Wood drops
+      ↓
+Item entity appears
+      ↓
+Player walks near it
+      ↓
+Pickup
+      ↓
+Inventory
+
+You can eventually support:
+
+auto pickup
+manual pickup
+pickup radius
+item stacking
+8. Inventory
+
+Inventory is the foundation of survival/crafting.
+
+Example:
+
+┌────┬────┬────┬────┐
+│Wood│Wood│Stone│    │
+├────┼────┼────┼────┤
+│     │    │     │    │
+├────┼────┼────┼────┤
+│     │    │     │    │
+└────┴────┴────┴────┘
+
+Operations:
+
+Add
+Remove
+Move
+Split
+Merge
+Stack
+Drop
+Use
+Equip
+9. Hotbar
+
+The player has quick-access slots.
+
+1  2  3  4  5  6  7  8
+
+Selecting an item:
+
+Hotbar selection
+       ↓
+Current active item
+       ↓
+Player action
+
+Example:
+
+axe selected
+ ↓
+left click
+ ↓
+attempt tree interaction
+10. Gathering
+
+This is one of the main loops.
+
+Tree
+Equip axe
+ ↓
+Hit tree
+ ↓
+Tree loses health
+ ↓
+Tree destroyed
+ ↓
+Wood drops
+ ↓
+Tree disappears
+Rock
+Equip pickaxe
+ ↓
+Hit rock
+ ↓
+Rock health decreases
+ ↓
+Ore/stone drops
+Bush
+Interact
+ ↓
+berries collected
+
+Eventually:
+
+grass
+flowers
+fiber
+wood
+stone
+coal
+iron
+rare minerals
+11. Tool System
+
+Tools determine what the player can gather.
+
+Hand
+ ↓
+Wooden Tool
+ ↓
+Stone Tool
+ ↓
+Iron Tool
+ ↓
+Advanced Tool
+
+Different tools:
+
+Axe
+Pickaxe
+Hoe
+Shovel
+Weapon
+
+Each has:
+
+damage
+gatherPower
+speed
+durability
+range
+12. Tool Durability
+
+Every use:
+
+durability -= usageCost
+
+At:
+
+durability <= 0
+
+the item breaks.
+
+This creates the loop:
+
+Gather
+ ↓
+Tools wear down
+ ↓
+Gather materials
+ ↓
+Craft replacement
+13. Crafting
+
+The crafting system is the progression engine.
+
+Recipe:
+
+3 Wood
+2 Stone
+1 Fiber
+      ↓
+Stone Axe
+
+The system checks:
+
+Recipe unlocked?
+Materials available?
+Required station available?
+Inventory has space?
+
+Then:
+
+Remove ingredients
+ ↓
+Create item
+ ↓
+Add item
+14. Crafting Stations
+
+Eventually:
+
+Workbench
+Furnace
+Cooking Station
+Forge
+Advanced Workbench
+
+Each station unlocks different recipes.
+
+15. Resource Progression
+
+I'd make resource progression roughly:
+
+Natural resources
+       ↓
+Basic tools
+       ↓
+Stone
+       ↓
+Metal
+       ↓
+Advanced materials
+
+This naturally pushes exploration.
+
+For example:
+
+You need iron
+ ↓
+Iron isn't commonly available nearby
+ ↓
+Explore
+ ↓
+Find cave
+ ↓
+Find iron
+ ↓
+Craft iron pickaxe
+ ↓
+Access deeper resources
+16. Survival
+
+The survival layer revolves around:
+
+Health
+Hunger
+Stamina
+
+Potentially later:
+
+Temperature
+Thirst
+Sleep
+Poison
+Bleeding
+
+I would not implement all of those initially.
+
+17. Hunger
+
+Hunger slowly decreases.
+
+Hunger
+100
+ ↓
+80
+ ↓
+60
+ ↓
+40
+ ↓
+20
+ ↓
+0
+
+At zero:
+
+Hunger = 0
+ ↓
+health starts decreasing
+
+Food restores hunger.
+
+18. Food
+
+Food comes from:
+
+Berries
+Animals
+Farming
+Fishing
+Cooking
+NPC trading
+
+Food can have:
+
+hungerRestoration
+healthRestoration
+buff
+
+For example:
+
+Berry
++10 hunger
+
+Cooked meat
++35 hunger
++5 health
+19. Stamina
+
+Used for:
+
+Sprint
+Heavy actions
+Potentially combat
+
+Regenerates when not being consumed.
+
+This creates:
+
+Sprint
+ ↓
+stamina falls
+ ↓
+stop sprinting
+ ↓
+recover
+20. Day/Night
+
+The world has a clock.
+
+Morning
+ ↓
+Day
+ ↓
+Evening
+ ↓
+Night
+ ↓
+Morning
+
+The clock affects gameplay.
+
+During day:
+
+normal wildlife
+NPC work
+exploration
+
+At night:
+
+NPCs return home
+different enemies spawn
+visibility decreases
+danger increases
+21. Shelter
+
+One of the first survival objectives should be:
+
+Build shelter before night.
+
+The player gathers:
+
+Wood
+Stone
+Fiber
+
+Then:
+
+Floor
+Walls
+Door
+Roof
+
+Eventually:
+
+Chest
+Workbench
+Bed
+Campfire
+Furnace
+22. Building System
+
+Building flow:
+
+Select structure
+ ↓
+Placement preview
+ ↓
+Check validity
+ ↓
+Check materials
+ ↓
+Place
+ ↓
+Consume materials
+ ↓
+Structure becomes world object
+
+Placement must validate:
+
+Within world
+Not inside water
+Not overlapping forbidden objects
+Enough room
+Valid terrain
+23. Structures
+
+Start with:
+
+Floor
+Wall
+Door
+Window
+Roof
+Fence
+Chest
+Workbench
+Campfire
+
+Later:
+
+Furniture
+Decorations
+Defensive walls
+Storage
+Farming structures
+Advanced stations
+24. Storage
+
+Chests work like inventories.
+
+Player Inventory
+       ↕
+     Chest
+
+This becomes important because inventory capacity should eventually be limited.
+
+25. Wildlife
+
+Animals have their own simulation.
+
+Examples:
+
+Cow
+Sheep
+Rabbit
+Chicken
+Deer
+
+Behavior:
+
+IDLE
+ ↓
+WANDER
+ ↓
+EAT
+ ↓
+IDLE
+
+Environmental preferences:
+
+grassland
+dense tree areas
+water
+26. Animal Feeding
+
+Natural:
+
+Animal
+ ↓
+find grass
+ ↓
+walk toward grass
+ ↓
+stop
+ ↓
+EAT
+
+Eating animation:
+
+small vertical bob
+
+This is visual state, not world movement.
+
+27. Animal Petting
+
+Player approaches:
+
+Animal
+ ↓
+Interact
+ ↓
+Pet
+
+Animal:
+
+stop moving
+ ↓
+brief pause
+ ↓
+heart effect
+ ↓
+return to previous/basic state
+
+Player:
+
+small hop
+
+The heart and hop are visual events.
+
+28. Animal Taming
+
+I would put this in the eventual design even if we don't implement it immediately.
+
+Wild
+ ↓
+Feed
+ ↓
+Pet
+ ↓
+Trust increases
+ ↓
+Familiar
+ ↓
+More interaction
+ ↓
+Tamed
+
+Eventually tamed animals could:
+
+follow player
+stay at home
+produce resources
+assist
+breed
+29. Animal Breeding
+
+Later:
+
+Two compatible animals
++
+food
++
+sufficient trust
+ ↓
+breeding
+ ↓
+baby animal
+
+Population limits prevent infinite growth.
+
+30. NPC System
+
+Villages contain NPCs.
+
+NPC types:
+
+Villager
+Farmer
+Merchant
+Blacksmith
+Guard
+
+Each has:
+
+role
+home
+workplace
+schedule
+dialogue
+inventory
+31. NPC Daily Routine
+
+Example:
+
+06:00
+Wake up
+
+07:00
+Go to work
+
+07:30
+Work
+
+12:00
+Lunch / idle
+
+13:00
+Work
+
+18:00
+Return home
+
+21:00
+Sleep
+
+The exact times don't matter initially.
+
+The important part is that NPCs respond to the world clock.
+
+32. NPC Dialogue
+
+Interaction:
+
+Player
+ ↓
+NPC
+ ↓
+Talk
+ ↓
+Dialogue
+
+Dialogue can eventually depend on:
+
+time
+player progression
+quests
+previous conversations
+relationship
+world events
+33. Trading
+
+Merchant:
+
+Player item
+     ↕
+Merchant inventory
+
+Trade system checks:
+
+item available
+currency/material available
+trade valid
+
+You could have money later, but barter is also appropriate for a survival game.
+
+34. Quest / Objective System
+
+Don't make this a huge RPG quest system initially.
+
+Start with simple objectives:
+
+Collect 10 wood
+Craft an axe
+Build a shelter
+Find food
+Survive the night
+Find the village
+Find iron
+Build a furnace
+Explore a cave
+
+These teach the player the game.
+
+35. Combat
+
+Combat starts with the player.
+
+Equip weapon
+ ↓
+Attack
+ ↓
+Attack hitbox
+ ↓
+Find target
+ ↓
+Apply damage
+ ↓
+Target reaction
+
+Weapons:
+
+Sword
+Spear
+Bow
+Axe
+
+You can decide exact weapons later.
+
+36. Enemy AI
+
+Enemies are different from passive wildlife.
+
+Basic:
+
+IDLE
+ ↓
+PATROL
+ ↓
+DETECT PLAYER
+ ↓
+CHASE
+ ↓
+ATTACK
+
+If player escapes:
+
+CHASE
+ ↓
+player too far
+ ↓
+SEARCH
+ ↓
+RETURN
+37. Enemy Spawning
+
+Enemies can primarily appear:
+
+At night
+Outside villages
+In dangerous areas
+Inside caves
+
+Use population caps.
+
+maximumEnemiesPerRegion
+38. Combat Damage
+
+Every damage event:
+
+Attacker
+ ↓
+Attack definition
+ ↓
+Target
+ ↓
+Damage calculation
+ ↓
+Armor/resistance
+ ↓
+Final damage
+ ↓
+Health
+
+Eventually:
+
+critical hit
+knockback
+stun
+status effects
+39. Enemy Death
+Health <= 0
+ ↓
+Death
+ ↓
+Death animation
+ ↓
+Loot generation
+ ↓
+Item drops
+ ↓
+Entity removed
+40. Loot Tables
+
+Every enemy has a loot table.
+
+Enemy
+ ↓
+Loot table
+ ↓
+generateRandom(entityId)
+ ↓
+Determine drops
+ ↓
+Spawn items
+
+This same concept can work for:
+
+Enemies
+Chests
+Rare resources
+Fishing
+Harvesting
+41. Farming
+
+Eventually the player can create a sustainable food source.
+
+Flow:
+
+Find seeds
+ ↓
+Prepare soil
+ ↓
+Plant
+ ↓
+Water / maintain
+ ↓
+Grow
+ ↓
+Harvest
+ ↓
+Seeds/resources
+
+Crop states:
+
+EMPTY
+ ↓
+PLANTED
+ ↓
+GROWING
+ ↓
+MATURE
+ ↓
+HARVESTED
+42. Cooking
+
+Cooking turns resources into better food.
+
+Raw meat
++
+Campfire
+ ↓
+Cooked meat
+
+Recipes:
+
+Berry meal
+Cooked meat
+Vegetable meal
+Stew
+
+Eventually food can provide buffs.
+
+43. Fishing
+
+Since you have water, fishing is a natural system.
+
+Eventually:
+
+Craft fishing rod
+ ↓
+Go to water
+ ↓
+Cast
+ ↓
+Wait
+ ↓
+Fish bites
+ ↓
+React
+ ↓
+Catch
+
+Fish can become:
+
+Food
+Cooking ingredient
+Trading item
+44. Exploration
+
+The world should reward leaving the starting area.
+
+Things to find:
+
+Village
+Caves
+Dense jungle regions
+Rare resources
+Ruins
+Chests
+Enemy areas
+Interesting terrain
+45. Caves
+
+Caves provide progression.
+
+Surface
+ ↓
+Cave entrance
+ ↓
+Underground
+ ↓
+Stone
+ ↓
+Coal
+ ↓
+Iron
+ ↓
+Rare resources
+
+Danger increases with depth.
+
+46. Resource Tiers
+
+This creates the exploration loop.
+
+Example:
+
+WOOD
+STONE
+   ↓
+STONE TOOLS
+   ↓
+IRON
+   ↓
+IRON TOOLS
+   ↓
+DEEPER CAVES
+   ↓
+RARE MATERIAL
+   ↓
+ADVANCED EQUIPMENT
+47. Progression
+
+The player should unlock:
+
+Recipes
+Tools
+Weapons
+Building pieces
+Stations
+Equipment
+Abilities
+
+You can have either:
+
+Recipe-based progression
+
+Finding/learning recipes.
+
+or:
+
+Tier-based progression
+
+Unlocking entire technology levels.
+
+A hybrid is probably best.
+
+48. Experience / Skills
+
+This is optional but useful.
+
+You could track:
+
+Gathering
+Combat
+Crafting
+Farming
+Exploration
+
+For example:
+
+Gathering Level 3
+
+could unlock:
+
+better gathering speed
+new recipes
+
+But I would implement this after the core survival loop works.
+
+49. Weather
+
+This can come later.
+
+Possible:
+
+Clear
+Cloudy
+Rain
+Storm
+
+Effects:
+
+visual atmosphere
+lighting
+animal behavior
+crop growth
+player visibility
+
+Don't make weather mandatory for version one.
+
+50. World Events
+
+Later:
+
+Animal migration
+Enemy invasion
+Merchant arrival
+Rare resource appearance
+Storm
+Special NPC event
+
+These can make the world feel alive.
+
+51. Player Death
+Health = 0
+ ↓
+Death
+ ↓
+Death screen
+ ↓
+Respawn
+
+Possible penalties:
+
+drop some inventory
+lose resources
+return to spawn
+
+This can be configurable.
+
+52. Save/Load
+
+The save should capture:
+
+WORLD
+├── seed
+├── modifications
+├── buildings
+├── destroyed resources
+├── crops
+├── chests
+└── world time
+
+PLAYER
+├── position
+├── inventory
+├── equipment
+├── health
+├── hunger
+├── progression
+└── discovered locations
+53. Audio Logic
+
+Gameplay events should trigger sounds:
+
+Tree hit
+Rock hit
+Item pickup
+Craft
+Attack
+Damage
+Animal
+Pet
+Eat
+Build
+Door
+Water
+Footsteps
+
+Again:
+
+GAME EVENT
+   ↓
+AUDIO SYSTEM
+   ↓
+SOUND
+
+The gameplay system shouldn't directly manage audio assets.
+
+54. Visual Effects
+
+Similarly:
+
+GAME EVENT
+   ↓
+VFX SYSTEM
+
+Examples:
+
+Animal pet
+ → hearts
+
+Player hit
+ → impact
+
+Tree hit
+ → particles
+
+Mining
+ → stone particles
+
+Building
+ → placement effect
+
+Enemy death
+ → death effect
+
+These don't need to become persistent world state unless they represent something meaningful.
+
+55. UI Logic
+
+The game needs:
+
+Health bar
+Hunger bar
+Stamina bar
+Hotbar
+Inventory
+Crafting
+Interaction prompt
+NPC dialogue
+Chest UI
+Building UI
+Map
+Pause menu
+Settings
+Death screen
+
+UI reads game state.
+
+It shouldn't own game state.
+
+56. Camera
+
+Top-down camera:
+
+Player position
+      ↓
+Camera follows
+      ↓
+World rendered around camera
+
+Potentially later:
+
+zoom
+camera bounds
+screen shake
+smooth following
+57. Game State Machine
+
+At the highest level:
+
+LOADING
+   ↓
+PLAYING
+   │
+   ├── PAUSED
+   │
+   ├── INVENTORY
+   │
+   ├── CRAFTING
+   │
+   ├── DIALOGUE
+   │
+   ├── BUILDING
+   │
+   └── DEAD
+
+The actual simulation can pause when appropriate.
+
+58. Internal Event System
+
+Have a central event mechanism:
+
+PLAYER_MOVED
+PLAYER_DAMAGED
+PLAYER_DIED
+
+ITEM_PICKED
+ITEM_DROPPED
+ITEM_USED
+
+RESOURCE_HIT
+RESOURCE_DESTROYED
+
+ITEM_CRAFTED
+
+ANIMAL_PETTED
+ANIMAL_FED
+ANIMAL_DIED
+
+NPC_TALKED
+TRADE_COMPLETED
+
+ENEMY_ATTACKED
+ENEMY_DIED
+
+BUILDING_PLACED
+BUILDING_DESTROYED
+
+CROP_PLANTED
+CROP_HARVESTED
+
+This is one of the most valuable architectural pieces for the eventual multiplayer conversion.
+
+59. Simulation vs Rendering
+
+Keep this strict.
+
+Simulation
+Player has 75 health.
+
+Cow #183 is eating.
+
+Tree #927 has 20 HP.
+
+Chest #52 contains 10 wood.
+
+Crop #81 is growing.
+
+Enemy #42 is chasing player.
+Rendering
+Cow bobbing while eating.
+
+Heart floating upward.
+
+Player hopping.
+
+Tree shaking.
+
+Crop animation.
+
+Enemy walk animation.
+
+The first category is gameplay.
+
+The second is presentation.
+
+60. Multiplayer Preparation
+
+Although we're not implementing multiplayer, every system should eventually be capable of moving from:
+
+LOCAL GAME
+     ↓
+LOCAL GAME STATE
+
+to:
+
+SERVER
+     ↓
+AUTHORITATIVE GAME STATE
+     ↓
+CLIENT
+
+So don't design things around:
+
+React component changes game state
+
+Instead:
+
+Input
+ ↓
+Game System
+ ↓
+Game State
+ ↓
+Event
+ ↓
+Renderer
+
+Later:
+
+Client Input
+ ↓
+Server
+ ↓
+Game System
+ ↓
+Authoritative State
+ ↓
+Socket.io
+ ↓
+Clients
+61. What We Should Eventually Synchronize
+
+When multiplayer arrives, these become network-relevant:
+
+Player position
+Player health
+Player inventory
+Player equipment
+
+Animal state
+Animal position
+
+NPC state
+NPC position
+
+Enemy state
+Enemy position
+
+Resource state
+Building state
+Chest contents
+Crop state
+
+Combat results
+Item drops
+Crafting results
+World modifications
+62. What We Should Never Need to Synchronize
+
+These should remain presentation-level:
+
+Sprite animation frame
+Heart particles
+Eating bob
+Player hop
+Footstep particles
+Hit particles
+Screen shake
+Camera
+UI
+Sound
+
+That separation will save you a huge amount of work later.
+
+63. Complete Player Experience
+
+If we put everything together, a new game could look like:
+
+NEW WORLD
+    ↓
+Spawn
+    ↓
+Explore surroundings
+    ↓
+Find trees / rocks / grass
+    ↓
+Gather resources
+    ↓
+Craft basic tools
+    ↓
+Find food
+    ↓
+Meet wildlife
+    ↓
+Pet / feed animals
+    ↓
+Find village
+    ↓
+Talk to NPCs
+    ↓
+Learn about resources / world
+    ↓
+Build shelter
+    ↓
+Night arrives
+    ↓
+Survive
+    ↓
+Explore further
+    ↓
+Find cave
+    ↓
+Mine better materials
+    ↓
+Craft better equipment
+    ↓
+Fight stronger enemies
+    ↓
+Build better base
+    ↓
+Farm / cook / trade
+    ↓
+Explore deeper
+    ↓
+Discover rare resources
+    ↓
+Unlock advanced crafting
+    ↓
+Build / explore / survive
+
+And importantly, after the first few hours there shouldn't be an artificial:
+
+YOU WIN
+
+The game should be sandbox-oriented.
+
+64. The Actual Implementation Roadmap
+
+I would divide the project into these milestones.
+
+Phase 1 — Core Engine
+Game state
+Entity system
+Entity IDs
+generateRandom()
+Game clock
+Game loop
+Event system
+Collision
+Player movement
+Camera
+Phase 2 — World Interaction
+Trees
+Rocks
+Grass
+Resource health
+Resource destruction
+Item drops
+Pickup
+Inventory
+Hotbar
+Tools
+Durability
+Phase 3 — Survival
+Hunger
+Health
+Stamina
+Food
+Day/night
+Death
+Respawn
+Phase 4 — Wildlife
+Spawning
+Population limits
+Idle
+Wander
+Eating
+Grass interaction
+Petting
+Feeding
+Hearts
+Animal animation
+Animal death
+Phase 5 — Crafting
+Recipes
+Workbench
+Crafting UI
+Recipe unlocking
+Tool progression
+Phase 6 — Building
+Build mode
+Placement preview
+Collision
+Structures
+Doors
+Storage
+Destruction
+Phase 7 — NPCs
+Village NPCs
+Schedules
+Home
+Work
+Movement
+Dialogue
+Trading
+Basic objectives
+Phase 8 — Combat
+Weapons
+Attack system
+Hitboxes
+Damage
+Enemies
+Enemy AI
+Enemy spawning
+Loot
+Phase 9 — Advanced Survival
+Farming
+Cooking
+Fishing
+Animal taming
+Animal breeding
+Phase 10 — Exploration
+Caves
+Rare resources
+POIs
+Chests
+Dangerous areas
+Discovery system
+Phase 11 — Progression
+Technology tiers
+Equipment tiers
+Recipes
+Skills
+Objectives
+Milestones
+Phase 12 — Persistence
+Save
+Load
+World modifications
+Player progression
+Crops
+Buildings
+Containers
+Persistent entities
+Phase 13 — Polish
+VFX
+Audio
+Animation
+UI
+Particles
+Weather
+World events
+Performance
+Phase 14 — Multiplayer Conversion
+
+Only after the single-player game is fun:
+
+Authoritative server
+      ↓
+Move game systems server-side
+      ↓
+Socket.io state/events
+      ↓
+Client prediction/interpolation
+      ↓
+Entity replication
+      ↓
+Interest management
+      ↓
+WebRTC voice/peer features
+The most important design decision
+
+I would not build this as "Minecraft but top-down" mechanically. Use Minecraft's survival sandbox philosophy, but give your game its own identity through:
+
+Living wildlife
+       +
+Village NPC ecosystem
+       +
+Exploration
+       +
+Procedural world
+       +
+Building
+       +
+Survival
+       +
+Animal relationships
+       +
+Emergent events
+
+And for the code architecture, make Game State + Systems + Events the backbone:
+
+                 INPUT
+                   ↓
+             ┌───────────┐
+             │  SYSTEMS  │
+             └─────┬─────┘
+                   ↓
+              GAME STATE
+                   ↓
+                EVENTS
+             ┌─────┴─────┐
+             ↓           ↓
+          RENDER       AUDIO/VFX
+
+That architecture is suitable for the single-player game right now, while keeping the eventual transition to:
+
+Client → Socket.io → Authoritative Server → State → Clients
+
+reasonably clean rather than requiring a rewrite of the entire game.

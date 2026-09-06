@@ -652,13 +652,8 @@ export class SettlementGenerator {
   // STEP 4: Water bodies — Join of 2 to 4 big squares with diagonals at corners
   // ─────────────────────────────────────────────────────────────────
   private generateWaterBodies() {
-    this.waterBodies = [];
-
-    // 70% chance to have water
-    if (this.rng() > 0.7) return;
-
-    // 1 to 2 ponds
-    const pondCount = this.rng() > 0.5 ? 2 : 1;
+    // Guaranteed 1 to 2 scenic ponds for wildlife/ducks and village landscape
+    const pondCount = this.rng() > 0.4 ? 2 : 1;
 
     for (let p = 0; p < pondCount; p++) {
       // Find open area far from borders and avoiding heavy road overlap

@@ -2,13 +2,37 @@
 // SETTLEMENT RENDERER (Canvas 2D, Pixel-perfect, Strict map.txt assets)
 // ═══════════════════════════════════════════════════════════════════
 
-import { SettlementData, PlacedObject, FarmPlot } from './SettlementGenerator';
+import { SettlementData } from './SettlementGenerator';
+import { Animal } from '../lifeforms/Animal';
+import { NPC } from '../lifeforms/NPC';
+import { Player } from '../lifeforms/Player';
+import { HeartParticle } from '../lifeforms/types';
+import { LifeformRenderer } from '../lifeforms/LifeformRenderer';
 
 export interface RenderOptions {
   cellSize?: number;        // default 24px
   showGrid?: boolean;       // show 16x16 grid lines
   showClearance?: boolean;  // show road clearance buffer
   showFootprints?: boolean; // show object collision footprints
+}
+
+export interface DynamicLifeforms {
+  animals: readonly Animal[];
+  npcs: readonly NPC[];
+  player: Player | null;
+  particles: readonly HeartParticle[];
+}
+
+export interface PreparedSettlementScene {
+  data: SettlementData;
+  cellSize: number;
+  backgroundCanvas: HTMLCanvasElement;
+  renderFrame: (
+    targetCanvas: HTMLCanvasElement,
+    lifeforms?: DynamicLifeforms,
+    lifeformRenderer?: LifeformRenderer,
+    options?: RenderOptions
+  ) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -198,27 +222,14 @@ function getCropPath(cropId: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN RENDER FUNCTION
+// PREPARE SETTLEMENT SCENE & RENDER PIPELINE
 // ═══════════════════════════════════════════════════════════════════
 
-export async function renderSettlement(
-  canvas: HTMLCanvasElement,
+export async function prepareSettlementScene(
   data: SettlementData,
   options: RenderOptions = {}
-): Promise<void> {
+): Promise<PreparedSettlementScene> {
   const cellSize = options.cellSize || 24;
-  const showGrid = options.showGrid ?? false;
-  const showClearance = options.showClearance ?? false;
-  const showFootprints = options.showFootprints ?? false;
-
-  canvas.width = data.width * cellSize;
-  canvas.height = data.height * cellSize;
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  // Pixel art rendering (no blur)
-  ctx.imageSmoothingEnabled = false;
 
   // Preload primary assets
   const [tilesetImg, housesImg, soilImg, treeBushImg] = await Promise.all([
@@ -241,329 +252,417 @@ export async function renderSettlement(
   }
   await Promise.all(spritePromises);
 
-  // ── LAYER 1: Base flat ground (Grass, Sand, Stone) ─────────────
-  for (let y = 0; y < data.height; y++) {
-    for (let x = 0; x < data.width; x++) {
-      const cell = data.grid[y][x];
-      const dx = x * cellSize;
-      const dy = y * cellSize;
+  // ── PRE-RENDER STATIC GROUND TO OFFSCREEN CANVAS (Layers 1-5) ──
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = data.width * cellSize;
+  bgCanvas.height = data.height * cellSize;
+  const bgCtx = bgCanvas.getContext('2d');
 
-      const grassCropKey = (cell.terrain in TILESET_CROPS && (cell.terrain.startsWith('grass_textured_') || cell.terrain.startsWith('grass_tile_')))
-        ? cell.terrain
-        : 'grass_textured_01';
-      const grassCrop = TILESET_CROPS[grassCropKey] || TILESET_CROPS['grass_textured_01'];
-      ctx.drawImage(tilesetImg, grassCrop.x, grassCrop.y, grassCrop.w, grassCrop.h, dx, dy, cellSize, cellSize);
+  if (bgCtx) {
+    bgCtx.imageSmoothingEnabled = false;
 
-      if (cell.terrain === 'sand_tile_01') {
-        const sandCrop = TILESET_CROPS['sand_tile_01'];
-        ctx.drawImage(tilesetImg, sandCrop.x, sandCrop.y, sandCrop.w, sandCrop.h, dx, dy, cellSize, cellSize);
-      }
-
-      if (cell.terrain === 'stone_tile_01') {
-        const stoneCrop = TILESET_CROPS['stone_tile_01'];
-        ctx.drawImage(tilesetImg, stoneCrop.x, stoneCrop.y, stoneCrop.w, stoneCrop.h, dx, dy, cellSize, cellSize);
-      }
-    }
-  }
-
-  // ── LAYER 2: Water Bodies & Rotated Diagonal Corner Transitions ──
-  for (let y = 0; y < data.height; y++) {
-    for (let x = 0; x < data.width; x++) {
-      const cell = data.grid[y][x];
-      if (!cell.isWater && !cell.terrain.startsWith('water_tile_') && cell.terrain !== 'shore_transition_01') continue;
-
-      const dx = x * cellSize;
-      const dy = y * cellSize;
-
-      if (cell.terrain === 'shore_transition_01') {
-        const shoreCrop = TILESET_CROPS['shore_transition_01'];
-        const rot = cell.rotation || 0;
-
-        ctx.save();
-        ctx.translate(dx + cellSize / 2, dy + cellSize / 2);
-        ctx.rotate(rot);
-        ctx.drawImage(
-          tilesetImg,
-          shoreCrop.x, shoreCrop.y, shoreCrop.w, shoreCrop.h,
-          -cellSize / 2, -cellSize / 2, cellSize, cellSize
-        );
-        ctx.restore();
-      } else {
-        const waterCrop = TILESET_CROPS['water_tile_01'];
-        ctx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
-      }
-    }
-  }
-
-  // ── LAYER 3: Road & Paths (Broken / overwritten by ponds!) ───────
-  for (let y = 0; y < data.height; y++) {
-    for (let x = 0; x < data.width; x++) {
-      const cell = data.grid[y][x];
-      if (!cell.isRoad || cell.isWater) continue;
-
-      const dx = x * cellSize;
-      const dy = y * cellSize;
-
-      const pathCropKey = (cell.terrain in TILESET_CROPS && cell.terrain.startsWith('path_tile_'))
-        ? cell.terrain
-        : 'path_tile_01';
-      const pathCrop = TILESET_CROPS[pathCropKey] || TILESET_CROPS['path_tile_01'];
-
-      ctx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);
-    }
-  }
-
-  // ── LAYER 4: Farmland & Crops (Using new tilled_soil.png) ───────
-  for (const farm of data.farms) {
-    for (const c of farm.cells) {
-      const dx = c.x * cellSize;
-      const dy = c.y * cellSize;
-
-      // Draw new tilled soil from assets/tilled_soil.png
-      if (soilImg.width > 0) {
-        ctx.drawImage(soilImg, dx, dy, cellSize, cellSize);
-      } else {
-        const dirtCrop = TILESET_CROPS['dirt_tile_01'];
-        ctx.drawImage(tilesetImg, dirtCrop.x, dirtCrop.y, dirtCrop.w, dirtCrop.h, dx, dy, cellSize, cellSize);
-      }
-
-      // Draw growing crop
-      const cropImg = imageCache.get(getCropPath(c.cropId));
-      if (cropImg && cropImg.width > 0) {
-        const scale = (cellSize * 0.75) / Math.max(cropImg.width, cropImg.height);
-        const cw = cropImg.width * scale;
-        const ch = cropImg.height * scale;
-        const cx = dx + (cellSize - cw) / 2;
-        const cy = dy + (cellSize - ch) / 2;
-        ctx.drawImage(cropImg, cx, cy, cw, ch);
-      }
-    }
-  }
-
-  // ── LAYER 5: Ground Scatter & Natural Decorations ──────────────
-  for (const deco of data.decorations) {
-    const dx = deco.x * cellSize;
-    const dy = deco.y * cellSize;
-
-    if (deco.id in TILESET_CROPS) {
-      const crop = TILESET_CROPS[deco.id];
-      ctx.drawImage(tilesetImg, crop.x, crop.y, crop.w, crop.h, dx, dy, cellSize, cellSize);
-    } else if (deco.id in SPRITE_DEFS) {
-      const def = SPRITE_DEFS[deco.id];
-      const img = imageCache.get(def.path);
-      if (img && img.width > 0) {
-        // Lying-around items (acorns, truffles, berries) are rendered noticeably smaller
-        const isLyingSmall = (deco.id === 'acorn_deco_01' || deco.id === 'truffle_deco_01' || deco.id.includes('berry'));
-        const targetDim = isLyingSmall ? (cellSize * 0.45) : (cellSize * 0.85);
-        const scale = targetDim / Math.max(def.w, def.h);
-        const dw = def.w * scale;
-        const dh = def.h * scale;
-        const sx = dx + (cellSize - dw) / 2;
-        const sy = dy + (cellSize - dh) / 2;
-        ctx.drawImage(img, sx, sy, dw, dh);
-      }
-    }
-  }
-
-  // ── LAYER 6: Y-Sorted Structures (Houses, Wells, Trees, Bushes, Farm Objects & Fences)
-  interface DrawableEntity {
-    ySort: number;
-    draw: () => void;
-  }
-
-  const entities: DrawableEntity[] = [];
-
-  // Farm Objects & Continuous Fences
-  if (data.farmObjects) {
-    for (const obj of data.farmObjects) {
-      entities.push({
-        ySort: obj.y + 1,
-        draw: () => {
-          if (obj.id in TILESET_CROPS) {
-            const crop = TILESET_CROPS[obj.id];
-            ctx.drawImage(
-              tilesetImg,
-              crop.x, crop.y, crop.w, crop.h,
-              obj.x * cellSize, obj.y * cellSize, cellSize, cellSize
-            );
-          } else if (obj.id in SPRITE_DEFS) {
-            const def = SPRITE_DEFS[obj.id];
-            const img = imageCache.get(def.path);
-            if (img && img.width > 0) {
-              // Scale proportionally with cellSize so objects grow/shrink with zoom
-              const scale = cellSize / Math.max(def.w, def.h);
-              const dw = def.w * scale;
-              const dh = def.h * scale;
-              // Bottom-align within the grid cell for proper depth perspective
-              const ddx = obj.x * cellSize + (cellSize - dw) / 2;
-              const ddy = (obj.y + 1) * cellSize - dh;
-              ctx.drawImage(img, ddx, ddy, dw, dh);
-            }
-          }
-        },
-      });
-    }
-  }
-
-  // Wells
-  for (const well of data.wells) {
-    entities.push({
-      ySort: well.y + 1,
-      draw: () => {
-        const def = SPRITE_DEFS[well.id];
-        const img = imageCache.get(def.path);
-        if (img && img.width > 0) {
-          // Scale proportionally with cellSize
-          const scale = cellSize / Math.max(def.w, def.h);
-          const dw = def.w * scale;
-          const dh = def.h * scale;
-          const dx = well.x * cellSize + (cellSize - dw) / 2;
-          const dy = (well.y + 1) * cellSize - dh;
-          ctx.drawImage(img, dx, dy, dw, dh);
-        }
-      },
-    });
-  }
-
-  // Trees — Exclusively from trees_and_bushes.png (first 5 sprites)
-  // Rendered at 1.5x previous size: targetW = cellSize * 3, centred on 2-cell footprint
-  for (const tree of data.trees) {
-    entities.push({
-      ySort: tree.y + 2,
-      draw: () => {
-        const crop = TREE_BUSH_CROPS[tree.id] || TREE_BUSH_CROPS['tree_01'];
-        if (treeBushImg && treeBushImg.width > 0) {
-          const targetW = cellSize * 3;  // 1.5x the old cellSize*2
-          const aspect = crop.h / crop.w;
-          const targetH = targetW * aspect;
-          // Centre horizontally over the 2-cell footprint, ground at bottom of row y+2
-          const dx = tree.x * cellSize - (targetW - cellSize * 2) / 2;
-          const dy = (tree.y + 2) * cellSize - targetH;
-          ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, targetW, targetH);
-        }
-      },
-    });
-  }
-
-  // Bushes — Exclusively from trees_and_bushes.png (last 4 sprites)
-  // Rendered at actual size: bushW = cellSize, centred in the cell
-  if (data.bushes) {
-    for (const bush of data.bushes) {
-      entities.push({
-        ySort: bush.y + 1,
-        draw: () => {
-          const crop = TREE_BUSH_CROPS[bush.id] || TREE_BUSH_CROPS['bush_01'];
-          if (treeBushImg && treeBushImg.width > 0) {
-            const bushW = cellSize;  // Actual cell footprint size (1.0x)
-            const aspect = crop.h / crop.w;
-            const bushH = bushW * aspect;
-            const dx = bush.x * cellSize + (cellSize - bushW) / 2;
-            const dy = (bush.y + 1) * cellSize - bushH;
-            ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, bushW, bushH);
-          }
-        },
-      });
-    }
-  }
-
-  // Houses
-  for (const house of data.houses) {
-    entities.push({
-      ySort: house.y + house.footprintH,
-      draw: () => {
-        const crop = HOUSE_CROPS[house.id];
-        if (crop && housesImg.width > 0) {
-          const [cx, cy, cw, ch] = crop;
-
-          const footprintPixelW = house.footprintW * cellSize;
-          const footprintPixelH = house.footprintH * cellSize;
-
-          const scale = Math.min(
-            (footprintPixelW * 1.15) / cw,
-            (footprintPixelH * 1.35) / ch
-          );
-          const dw = cw * scale;
-          const dh = ch * scale;
-
-          const dx = house.x * cellSize + (footprintPixelW - dw) / 2;
-          const dy = (house.y + house.footprintH) * cellSize - dh + 4;
-
-          // Soft ambient drop shadow under house base
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-          ctx.beginPath();
-          ctx.ellipse(
-            dx + dw / 2,
-            (house.y + house.footprintH) * cellSize - 2,
-            dw * 0.46,
-            8,
-            0,
-            0,
-            Math.PI * 2
-          );
-          ctx.fill();
-
-          ctx.drawImage(housesImg, cx, cy, cw, ch, dx, dy, dw, dh);
-        }
-      },
-    });
-  }
-
-  // Sort and draw entities back-to-front
-  entities.sort((a, b) => a.ySort - b.ySort);
-  for (const ent of entities) {
-    ent.draw();
-  }
-
-  // ── LAYER 7: Debug Overlays (Optional) ──────────────────────────
-  if (showClearance) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-    ctx.lineWidth = 1;
+    // ── LAYER 1: Base flat ground (Grass, Sand, Stone) ─────────────
     for (let y = 0; y < data.height; y++) {
       for (let x = 0; x < data.width; x++) {
-        if (data.grid[y][x].isRoadReserved && !data.grid[y][x].isRoad) {
-          ctx.strokeRect(x * cellSize + 0.5, y * cellSize + 0.5, cellSize - 1, cellSize - 1);
+        const cell = data.grid[y][x];
+        const dx = x * cellSize;
+        const dy = y * cellSize;
+
+        const grassCropKey =
+          cell.terrain in TILESET_CROPS &&
+          (cell.terrain.startsWith('grass_textured_') || cell.terrain.startsWith('grass_tile_'))
+            ? cell.terrain
+            : 'grass_textured_01';
+        const grassCrop = TILESET_CROPS[grassCropKey] || TILESET_CROPS['grass_textured_01'];
+        bgCtx.drawImage(tilesetImg, grassCrop.x, grassCrop.y, grassCrop.w, grassCrop.h, dx, dy, cellSize, cellSize);
+
+        if (cell.terrain === 'sand_tile_01') {
+          const sandCrop = TILESET_CROPS['sand_tile_01'];
+          bgCtx.drawImage(tilesetImg, sandCrop.x, sandCrop.y, sandCrop.w, sandCrop.h, dx, dy, cellSize, cellSize);
+        }
+
+        if (cell.terrain === 'stone_tile_01') {
+          const stoneCrop = TILESET_CROPS['stone_tile_01'];
+          bgCtx.drawImage(tilesetImg, stoneCrop.x, stoneCrop.y, stoneCrop.w, stoneCrop.h, dx, dy, cellSize, cellSize);
+        }
+      }
+    }
+
+    // ── LAYER 2: Water Bodies & Rotated Diagonal Corner Transitions ──
+    for (let y = 0; y < data.height; y++) {
+      for (let x = 0; x < data.width; x++) {
+        const cell = data.grid[y][x];
+        if (!cell.isWater && !cell.terrain.startsWith('water_tile_') && cell.terrain !== 'shore_transition_01') continue;
+
+        const dx = x * cellSize;
+        const dy = y * cellSize;
+
+        if (cell.terrain === 'shore_transition_01') {
+          const shoreCrop = TILESET_CROPS['shore_transition_01'];
+          const rot = cell.rotation || 0;
+
+          bgCtx.save();
+          bgCtx.translate(dx + cellSize / 2, dy + cellSize / 2);
+          bgCtx.rotate(rot);
+          bgCtx.drawImage(
+            tilesetImg,
+            shoreCrop.x, shoreCrop.y, shoreCrop.w, shoreCrop.h,
+            -cellSize / 2, -cellSize / 2, cellSize, cellSize
+          );
+          bgCtx.restore();
+        } else {
+          const waterCrop = TILESET_CROPS['water_tile_01'];
+          bgCtx.drawImage(tilesetImg, waterCrop.x, waterCrop.y, waterCrop.w, waterCrop.h, dx, dy, cellSize, cellSize);
+        }
+      }
+    }
+
+    // ── LAYER 3: Road & Paths ───────────────────────────────────────
+    for (let y = 0; y < data.height; y++) {
+      for (let x = 0; x < data.width; x++) {
+        const cell = data.grid[y][x];
+        if (!cell.isRoad || cell.isWater) continue;
+
+        const dx = x * cellSize;
+        const dy = y * cellSize;
+
+        const pathCropKey =
+          cell.terrain in TILESET_CROPS && cell.terrain.startsWith('path_tile_')
+            ? cell.terrain
+            : 'path_tile_01';
+        const pathCrop = TILESET_CROPS[pathCropKey] || TILESET_CROPS['path_tile_01'];
+
+        bgCtx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);
+      }
+    }
+
+    // ── LAYER 4: Farmland Tilled Soil Ground ───────────────────────
+    for (const farm of data.farms) {
+      for (const c of farm.cells) {
+        const dx = c.x * cellSize;
+        const dy = c.y * cellSize;
+
+        if (soilImg.width > 0) {
+          bgCtx.drawImage(soilImg, dx, dy, cellSize, cellSize);
+        } else {
+          const dirtCrop = TILESET_CROPS['dirt_tile_01'];
+          bgCtx.drawImage(tilesetImg, dirtCrop.x, dirtCrop.y, dirtCrop.w, dirtCrop.h, dx, dy, cellSize, cellSize);
+        }
+      }
+    }
+
+    // ── LAYER 5: Ground Scatter & Natural Decorations ──────────────
+    for (const deco of data.decorations) {
+      const dx = deco.x * cellSize;
+      const dy = deco.y * cellSize;
+
+      if (deco.id in TILESET_CROPS) {
+        const crop = TILESET_CROPS[deco.id];
+        bgCtx.drawImage(tilesetImg, crop.x, crop.y, crop.w, crop.h, dx, dy, cellSize, cellSize);
+      } else if (deco.id in SPRITE_DEFS) {
+        const def = SPRITE_DEFS[deco.id];
+        const img = imageCache.get(def.path);
+        if (img && img.width > 0) {
+          const isLyingSmall = deco.id === 'acorn_deco_01' || deco.id === 'truffle_deco_01' || deco.id.includes('berry');
+          const targetDim = isLyingSmall ? cellSize * 0.45 : cellSize * 0.85;
+          const scale = targetDim / Math.max(def.w, def.h);
+          const dw = def.w * scale;
+          const dh = def.h * scale;
+          const sx = dx + (cellSize - dw) / 2;
+          const sy = dy + (cellSize - dh) / 2;
+          bgCtx.drawImage(img, sx, sy, dw, dh);
         }
       }
     }
   }
 
-  if (showGrid) {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= data.width; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * cellSize, 0);
-      ctx.lineTo(x * cellSize, data.height * cellSize);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= data.height; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * cellSize);
-      ctx.lineTo(data.width * cellSize, y * cellSize);
-      ctx.stroke();
-    }
-  }
+  // Define render frame callback
+  const renderFrame = (
+    targetCanvas: HTMLCanvasElement,
+    lifeforms?: DynamicLifeforms,
+    lifeformRenderer?: LifeformRenderer,
+    frameOptions: RenderOptions = {}
+  ): void => {
+    const showGrid = frameOptions.showGrid ?? options.showGrid ?? false;
+    const showClearance = frameOptions.showClearance ?? options.showClearance ?? false;
+    const showFootprints = frameOptions.showFootprints ?? options.showFootprints ?? false;
 
-  if (showFootprints) {
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    for (const h of data.houses) {
-      ctx.strokeRect(
-        h.x * cellSize + 1,
-        h.y * cellSize + 1,
-        h.footprintW * cellSize - 2,
-        h.footprintH * cellSize - 2
-      );
+    if (targetCanvas.width !== bgCanvas.width) targetCanvas.width = bgCanvas.width;
+    if (targetCanvas.height !== bgCanvas.height) targetCanvas.height = bgCanvas.height;
+
+    const ctx = targetCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+
+    // Blit pre-rendered background
+    ctx.drawImage(bgCanvas, 0, 0);
+
+    // ── LAYER 6: Y-Sorted Structures & Lifeforms ──────────────────
+    interface DrawableEntity {
+      ySort: number;
+      draw: () => void;
     }
 
-    ctx.strokeStyle = '#10b981';
-    for (const f of data.farms) {
-      ctx.strokeRect(
-        f.x * cellSize + 1,
-        f.y * cellSize + 1,
-        f.w * cellSize - 2,
-        f.h * cellSize - 2
-      );
+    const entities: DrawableEntity[] = [];
+
+    // Farm Crops (Sown on top of tilled soil, Y-sorted so character/animals walking behind hide behind them)
+    for (const farm of data.farms) {
+      for (const c of farm.cells) {
+        entities.push({
+          ySort: c.y + 0.999, // Rooted in tilled soil cell (occludes entities walking behind or through furrow)
+          draw: () => {
+            const cropImg = imageCache.get(getCropPath(c.cropId));
+            if (cropImg && cropImg.width > 0) {
+              const scale = cellSize / 16;
+              const cw = Math.round(cropImg.width * scale);
+              const ch = Math.round(cropImg.height * scale);
+              const cx = Math.round(c.x * cellSize + (cellSize - cw) / 2);
+              const cy = Math.round((c.y + 0.88) * cellSize - ch);
+              ctx.drawImage(cropImg, cx, cy, cw, ch);
+            }
+          },
+        });
+      }
     }
-  }
+
+    // Farm Objects & Continuous Fences
+    if (data.farmObjects) {
+      for (const obj of data.farmObjects) {
+        entities.push({
+          ySort: obj.y + 1,
+          draw: () => {
+            if (obj.id in TILESET_CROPS) {
+              const crop = TILESET_CROPS[obj.id];
+              ctx.drawImage(
+                tilesetImg,
+                crop.x, crop.y, crop.w, crop.h,
+                obj.x * cellSize, obj.y * cellSize, cellSize, cellSize
+              );
+            } else if (obj.id in SPRITE_DEFS) {
+              const def = SPRITE_DEFS[obj.id];
+              const img = imageCache.get(def.path);
+              if (img && img.width > 0) {
+                const scale = cellSize / Math.max(def.w, def.h);
+                const dw = def.w * scale;
+                const dh = def.h * scale;
+                const ddx = obj.x * cellSize + (cellSize - dw) / 2;
+                const ddy = (obj.y + 1) * cellSize - dh;
+                ctx.drawImage(img, ddx, ddy, dw, dh);
+              }
+            }
+          },
+        });
+      }
+    }
+
+    // Wells
+    for (const well of data.wells) {
+      entities.push({
+        ySort: well.y + 1,
+        draw: () => {
+          const def = SPRITE_DEFS[well.id];
+          const img = imageCache.get(def.path);
+          if (img && img.width > 0) {
+            const scale = cellSize / Math.max(def.w, def.h);
+            const dw = def.w * scale;
+            const dh = def.h * scale;
+            const dx = well.x * cellSize + (cellSize - dw) / 2;
+            const dy = (well.y + 1) * cellSize - dh;
+            ctx.drawImage(img, dx, dy, dw, dh);
+          }
+        },
+      });
+    }
+
+    // Trees
+    for (const tree of data.trees) {
+      entities.push({
+        ySort: tree.y + 2,
+        draw: () => {
+          const crop = TREE_BUSH_CROPS[tree.id] || TREE_BUSH_CROPS['tree_01'];
+          if (treeBushImg && treeBushImg.width > 0) {
+            const targetW = cellSize * 3;
+            const aspect = crop.h / crop.w;
+            const targetH = targetW * aspect;
+            const dx = tree.x * cellSize - (targetW - cellSize * 2) / 2;
+            const dy = (tree.y + 2) * cellSize - targetH;
+            ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, targetW, targetH);
+          }
+        },
+      });
+    }
+
+    // Bushes
+    if (data.bushes) {
+      for (const bush of data.bushes) {
+        entities.push({
+          ySort: bush.y + 1,
+          draw: () => {
+            const crop = TREE_BUSH_CROPS[bush.id] || TREE_BUSH_CROPS['bush_01'];
+            if (treeBushImg && treeBushImg.width > 0) {
+              const bushW = cellSize;
+              const aspect = crop.h / crop.w;
+              const bushH = bushW * aspect;
+              const dx = bush.x * cellSize + (cellSize - bushW) / 2;
+              const dy = (bush.y + 1) * cellSize - bushH;
+              ctx.drawImage(treeBushImg, crop.x, crop.y, crop.w, crop.h, dx, dy, bushW, bushH);
+            }
+          },
+        });
+      }
+    }
+
+    // Houses
+    for (const house of data.houses) {
+      entities.push({
+        ySort: house.y + house.footprintH,
+        draw: () => {
+          const crop = HOUSE_CROPS[house.id];
+          if (crop && housesImg.width > 0) {
+            const [cx, cy, cw, ch] = crop;
+            const footprintPixelW = house.footprintW * cellSize;
+            const footprintPixelH = house.footprintH * cellSize;
+            const scale = Math.min((footprintPixelW * 1.15) / cw, (footprintPixelH * 1.35) / ch);
+            const dw = cw * scale;
+            const dh = ch * scale;
+            const dx = house.x * cellSize + (footprintPixelW - dw) / 2;
+            const dy = (house.y + house.footprintH) * cellSize - dh + 4;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(dx + dw / 2, (house.y + house.footprintH) * cellSize - 2, dw * 0.46, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.drawImage(housesImg, cx, cy, cw, ch, dx, dy, dw, dh);
+          }
+        },
+      });
+    }
+
+    // Dynamic Lifeforms (Animals, Villagers, Player)
+    let targetedAnimal: Animal | null = null;
+    if (lifeforms && lifeformRenderer) {
+      if (lifeforms.player) {
+        targetedAnimal = lifeforms.player.findNearbyInteractable(lifeforms.animals as Animal[], 2.0);
+      }
+
+      // Animals
+      for (const animal of lifeforms.animals) {
+        if (!animal.isActive) continue;
+        entities.push({
+          ySort: animal.position.y,
+          draw: () => {
+            lifeformRenderer.renderEntity(ctx, animal, cellSize, animal === targetedAnimal);
+          },
+        });
+      }
+
+      // NPCs
+      for (const npc of lifeforms.npcs) {
+        if (!npc.isActive) continue;
+        entities.push({
+          ySort: npc.position.y,
+          draw: () => {
+            lifeformRenderer.renderEntity(ctx, npc, cellSize);
+          },
+        });
+      }
+
+      // Player
+      if (lifeforms.player && lifeforms.player.isActive) {
+        const player = lifeforms.player;
+        entities.push({
+          ySort: player.position.y,
+          draw: () => {
+            lifeformRenderer.renderEntity(ctx, player, cellSize);
+          },
+        });
+      }
+    }
+
+    // Sort and draw entities back-to-front
+    entities.sort((a, b) => a.ySort - b.ySort);
+    for (const ent of entities) {
+      ent.draw();
+    }
+
+    // Dynamic particles & HUD prompt overlays
+    if (lifeforms && lifeformRenderer) {
+      lifeformRenderer.renderParticles(ctx, lifeforms.particles, cellSize);
+      if (targetedAnimal) {
+        lifeformRenderer.renderInteractionPrompt(ctx, targetedAnimal, cellSize);
+      }
+    }
+
+    // ── LAYER 7: Debug Overlays ────────────────────────────────────
+    if (showClearance) {
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < data.height; y++) {
+        for (let x = 0; x < data.width; x++) {
+          if (data.grid[y][x].isRoadReserved && !data.grid[y][x].isRoad) {
+            ctx.strokeRect(x * cellSize + 0.5, y * cellSize + 0.5, cellSize - 1, cellSize - 1);
+          }
+        }
+      }
+    }
+
+    if (showGrid) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= data.width; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * cellSize, 0);
+        ctx.lineTo(x * cellSize, data.height * cellSize);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= data.height; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * cellSize);
+        ctx.lineTo(data.width * cellSize, y * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    if (showFootprints) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      for (const h of data.houses) {
+        ctx.strokeRect(
+          h.x * cellSize + 1,
+          h.y * cellSize + 1,
+          h.footprintW * cellSize - 2,
+          h.footprintH * cellSize - 2
+        );
+      }
+
+      ctx.strokeStyle = '#10b981';
+      for (const f of data.farms) {
+        ctx.strokeRect(
+          f.x * cellSize + 1,
+          f.y * cellSize + 1,
+          f.w * cellSize - 2,
+          f.h * cellSize - 2
+        );
+      }
+    }
+  };
+
+  return {
+    data,
+    cellSize,
+    backgroundCanvas: bgCanvas,
+    renderFrame,
+  };
 }
+
+export async function renderSettlement(
+  canvas: HTMLCanvasElement,
+  data: SettlementData,
+  options: RenderOptions = {}
+): Promise<void> {
+  const scene = await prepareSettlementScene(data, options);
+  scene.renderFrame(canvas, undefined, undefined, options);
+}
+

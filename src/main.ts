@@ -9,8 +9,22 @@ import {
 } from "./generation/SettlementGenerator";
 import {
   renderSettlement,
+  prepareSettlementScene,
+  PreparedSettlementScene,
   RenderOptions,
 } from "./generation/SettlementRenderer";
+import { LifeformManager } from "./lifeforms/LifeformManager";
+import { LifeformRenderer } from "./lifeforms/LifeformRenderer";
+import { Animal } from "./lifeforms/Animal";
+import { NPC } from "./lifeforms/NPC";
+import {
+  SurvivalEngine,
+  ITEM_CATALOG,
+  CRAFTING_RECIPES,
+} from "./game/SurvivalEngine";
+import { SurvivalRenderer } from "./game/SurvivalRenderer";
+import { GameAudio } from "./game/GameAudio";
+import { ItemId, Recipe, PlacedStructure, InventorySlot } from "./game/GameTypes";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -43,58 +57,76 @@ function initPhaser() {
 // TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════════
 const tabSettlement = document.getElementById("tab-settlement")!;
+const tabGame = document.getElementById("tab-game")!;
 const tabHouses = document.getElementById("tab-houses")!;
 const tabTerrain = document.getElementById("tab-terrain")!;
 const tabAssetsMap = document.getElementById("tab-assets-map")!;
 
 const viewSettlement = document.getElementById("settlement-view")!;
+const viewGame = document.getElementById("game-view")!;
 const viewHouses = document.getElementById("houses-view")!;
 const viewTerrain = document.getElementById("terrain-view")!;
 const viewAssetsMap = document.getElementById("assets-map-view")!;
 
 const atlasControls = document.getElementById("atlas-controls")!;
-const allViews = [viewSettlement, viewHouses, viewTerrain, viewAssetsMap];
-const allTabs = [tabSettlement, tabHouses, tabTerrain, tabAssetsMap];
+const allViews = [viewSettlement, viewGame, viewHouses, viewTerrain, viewAssetsMap];
+const allTabs = [tabSettlement, tabGame, tabHouses, tabTerrain, tabAssetsMap];
 
-function switchTab(tab: "settlement" | "houses" | "terrain" | "assets-map") {
+export function switchTab(tab: "settlement" | "game" | "houses" | "terrain" | "assets-map") {
   allViews.forEach((v) => v.classList.remove("active"));
   allTabs.forEach((t) => {
     t.classList.remove("active");
     t.setAttribute("aria-selected", "false");
   });
 
-  if (tab === "settlement") {
+  if (tab === "game") {
+    stopSettlementLoop();
+    viewGame.classList.add("active");
+    tabGame.classList.add("active");
+    tabGame.setAttribute("aria-selected", "true");
+    atlasControls.classList.add("hidden");
+    if (game) game.scene.pause("AtlasScene");
+    ensureSurvivalGameLoaded();
+    startSurvivalGameLoop();
+  } else if (tab === "settlement") {
+    stopSurvivalGameLoop();
     viewSettlement.classList.add("active");
     tabSettlement.classList.add("active");
     tabSettlement.setAttribute("aria-selected", "true");
     atlasControls.classList.add("hidden");
     if (game) game.scene.pause("AtlasScene");
     ensureSettlementLoaded();
-  } else if (tab === "houses") {
-    viewHouses.classList.add("active");
-    tabHouses.classList.add("active");
-    tabHouses.setAttribute("aria-selected", "true");
-    atlasControls.classList.add("hidden");
-    if (game) game.scene.pause("AtlasScene");
-    drawHouses();
-  } else if (tab === "terrain") {
-    viewTerrain.classList.add("active");
-    tabTerrain.classList.add("active");
-    tabTerrain.setAttribute("aria-selected", "true");
-    atlasControls.classList.add("hidden");
-    if (game) game.scene.pause("AtlasScene");
-    drawTerrainChunks();
-  } else if (tab === "assets-map") {
-    viewAssetsMap.classList.add("active");
-    tabAssetsMap.classList.add("active");
-    tabAssetsMap.setAttribute("aria-selected", "true");
-    atlasControls.classList.remove("hidden");
-    initPhaser();
-    if (game) game.scene.resume("AtlasScene");
+    startSettlementLoop();
+  } else {
+    stopSettlementLoop();
+    stopSurvivalGameLoop();
+    if (tab === "houses") {
+      viewHouses.classList.add("active");
+      tabHouses.classList.add("active");
+      tabHouses.setAttribute("aria-selected", "true");
+      atlasControls.classList.add("hidden");
+      if (game) game.scene.pause("AtlasScene");
+      drawHouses();
+    } else if (tab === "terrain") {
+      viewTerrain.classList.add("active");
+      tabTerrain.classList.add("active");
+      tabTerrain.setAttribute("aria-selected", "true");
+      atlasControls.classList.add("hidden");
+      if (game) game.scene.pause("AtlasScene");
+      drawTerrainChunks();
+    } else if (tab === "assets-map") {
+      viewAssetsMap.classList.add("active");
+      tabAssetsMap.classList.add("active");
+      tabAssetsMap.setAttribute("aria-selected", "true");
+      atlasControls.classList.remove("hidden");
+      initPhaser();
+      if (game) game.scene.resume("AtlasScene");
+    }
   }
 }
 
 tabSettlement.addEventListener("click", () => switchTab("settlement"));
+tabGame.addEventListener("click", () => switchTab("game"));
 tabHouses.addEventListener("click", () => switchTab("houses"));
 tabTerrain.addEventListener("click", () => switchTab("terrain"));
 tabAssetsMap.addEventListener("click", () => switchTab("assets-map"));
@@ -891,6 +923,84 @@ let startPanY = 0;
 let scrollStartX = 0;
 let scrollStartY = 0;
 
+// ═══════════════════════════════════════════════════════════════════
+// SETTLEMENT SIMULATION & RENDERING LOOP
+// ═══════════════════════════════════════════════════════════════════
+
+let lifeformManager: LifeformManager | null = null;
+const lifeformRenderer: LifeformRenderer = new LifeformRenderer();
+let currentSettlementScene: PreparedSettlementScene | null = null;
+let animFrameId: number | null = null;
+let lastTime: number = 0;
+let isSettlementTabActive: boolean = false;
+
+export function startSettlementLoop() {
+  isSettlementTabActive = true;
+  if (!animFrameId) {
+    lastTime = performance.now();
+    animFrameId = requestAnimationFrame(settlementLoop);
+  }
+}
+
+export function stopSettlementLoop() {
+  isSettlementTabActive = false;
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+}
+
+function settlementLoop(now: number) {
+  if (!isSettlementTabActive) {
+    animFrameId = null;
+    return;
+  }
+
+  const dt = Math.min(0.1, (now - lastTime) / 1000);
+  lastTime = now;
+
+  // 1. High-frequency simulation update (60 FPS)
+  if (lifeformManager) {
+    lifeformManager.update(dt);
+  }
+
+  // 2. High-frequency visual render (60 FPS)
+  if (currentSettlementScene && settlementCanvas && lifeformManager) {
+    currentSettlementScene.renderFrame(
+      settlementCanvas,
+      {
+        animals: lifeformManager.getAnimals(),
+        npcs: lifeformManager.getNPCs(),
+        player: lifeformManager.player,
+        particles: lifeformManager.getParticles(),
+      },
+      lifeformRenderer,
+      {
+        cellSize: Math.round(16 * currentZoomLevel),
+        showGrid: optShowGrid,
+        showClearance: optShowClearance,
+        showFootprints: optShowFootprints,
+      }
+    );
+
+    // Update live counts
+    const wildBadge = document.getElementById("stat-wildlife-count");
+    const npcBadge = document.getElementById("stat-villagers-count");
+    if (wildBadge) {
+      wildBadge.textContent = String(
+        lifeformManager.getAnimals().filter((a) => a.isActive).length
+      );
+    }
+    if (npcBadge) {
+      npcBadge.textContent = String(
+        lifeformManager.getNPCs().filter((n) => n.isActive).length
+      );
+    }
+  }
+
+  animFrameId = requestAnimationFrame(settlementLoop);
+}
+
 function ensureSettlementLoaded() {
   if (!isSettlementInitialized) {
     initSettlementUI();
@@ -936,7 +1046,7 @@ function updateSettlementBadges(data: SettlementData) {
 async function renderCurrentSettlement() {
   if (!currentSettlementData || !settlementCanvas) return;
   const cellSize = Math.round(16 * currentZoomLevel);
-  await renderSettlement(settlementCanvas, currentSettlementData, {
+  currentSettlementScene = await prepareSettlementScene(currentSettlementData, {
     cellSize,
     showGrid: optShowGrid,
     showClearance: optShowClearance,
@@ -944,17 +1054,22 @@ async function renderCurrentSettlement() {
   });
 }
 
-function generateAndRenderSettlement(seed?: number) {
+async function generateAndRenderSettlement(seed?: number) {
   currentSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
   currentSettlementData = generateSettlement(currentSeed, 48, 36);
   updateSettlementBadges(currentSettlementData);
-  renderCurrentSettlement();
+
+  // Initialize lifeforms with the new world
+  lifeformManager = new LifeformManager(currentSettlementData);
+
+  await renderCurrentSettlement();
+  startSettlementLoop();
 }
 
-function updateZoomDisplay() {
+async function updateZoomDisplay() {
   const label = document.getElementById("settlement-zoom-label");
   if (label) label.textContent = `${Math.round(currentZoomLevel * 100)}%`;
-  renderCurrentSettlement();
+  await renderCurrentSettlement();
 }
 
 function initSettlementUI() {
@@ -1030,7 +1145,6 @@ function initSettlementUI() {
     toggleGrid.addEventListener("click", () => {
       optShowGrid = !optShowGrid;
       toggleGrid.classList.toggle("active", optShowGrid);
-      renderCurrentSettlement();
     });
   }
 
@@ -1038,7 +1152,6 @@ function initSettlementUI() {
     toggleClearance.addEventListener("click", () => {
       optShowClearance = !optShowClearance;
       toggleClearance.classList.toggle("active", optShowClearance);
-      renderCurrentSettlement();
     });
   }
 
@@ -1046,11 +1159,58 @@ function initSettlementUI() {
     toggleFootprints.addEventListener("click", () => {
       optShowFootprints = !optShowFootprints;
       toggleFootprints.classList.toggle("active", optShowFootprints);
-      renderCurrentSettlement();
     });
   }
 
-  // Pan & Drag on viewport
+  // ── KEYBOARD CONTROLS (WASD/Arrows for Movement, [E] Pet, [F] Feed) ──
+  const activeKeys = new Set<string>();
+
+  window.addEventListener("keydown", (e) => {
+    if (!isSettlementTabActive) return;
+    if (e.target instanceof HTMLInputElement) return;
+
+    const key = e.key.toLowerCase();
+    activeKeys.add(key);
+
+    if (key === " " || e.code === "Space") {
+      lifeformManager?.player?.jump();
+    } else if (key === "e") {
+      lifeformManager?.petClosestAnimal();
+    } else if (key === "f") {
+      lifeformManager?.feedClosestAnimal();
+    }
+
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(key) || e.code === "Space") {
+      e.preventDefault();
+    }
+
+    updatePlayerMovementInput();
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (!isSettlementTabActive) return;
+    if (e.target instanceof HTMLInputElement) return;
+
+    const key = e.key.toLowerCase();
+    activeKeys.delete(key);
+    updatePlayerMovementInput();
+  });
+
+  function updatePlayerMovementInput() {
+    if (!lifeformManager || !lifeformManager.player) return;
+
+    let dx = 0;
+    let dy = 0;
+    if (activeKeys.has("w") || activeKeys.has("arrowup")) dy -= 1;
+    if (activeKeys.has("s") || activeKeys.has("arrowdown")) dy += 1;
+    if (activeKeys.has("a") || activeKeys.has("arrowleft")) dx -= 1;
+    if (activeKeys.has("d") || activeKeys.has("arrowright")) dx += 1;
+
+    lifeformManager.player.moveInputX = dx;
+    lifeformManager.player.moveInputY = dy;
+  }
+
+  // ── MOUSE PAN, CLICK TO MOVE & PET ──────────────────────────
   if (settlementViewport) {
     settlementViewport.addEventListener("mousedown", (e) => {
       isPanning = true;
@@ -1068,8 +1228,38 @@ function initSettlementUI() {
       settlementViewport.scrollTop = scrollStartY - dy;
     });
 
-    window.addEventListener("mouseup", () => {
+    window.addEventListener("mouseup", (e) => {
+      if (!isPanning) return;
       isPanning = false;
+
+      // Detect click if mouse didn't drag
+      const dragDist = Math.hypot(e.clientX - startPanX, e.clientY - startPanY);
+      if (dragDist < 5 && settlementCanvas && lifeformManager) {
+        const rect = settlementCanvas.getBoundingClientRect();
+        const cellSize = Math.round(16 * currentZoomLevel);
+        const clickX = (e.clientX - rect.left) / cellSize;
+        const clickY = (e.clientY - rect.top) / cellSize;
+
+        const clicked = lifeformManager.findEntityAt(clickX, clickY, 1.4);
+        if (clicked && clicked.type === "ANIMAL") {
+          const animal = clicked as Animal;
+          if (
+            lifeformManager.player &&
+            Math.hypot(
+              lifeformManager.player.position.x - animal.position.x,
+              lifeformManager.player.position.y - animal.position.y
+            ) <= 2.2
+          ) {
+            if (animal.pet()) {
+              lifeformManager.player.triggerHop();
+            }
+          } else if (lifeformManager.player) {
+            lifeformManager.player.setTarget(animal.position.x, animal.position.y);
+          }
+        } else if (lifeformManager.player) {
+          lifeformManager.player.setTarget(clickX, clickY);
+        }
+      }
     });
 
     settlementViewport.addEventListener(
@@ -1090,6 +1280,845 @@ function initSettlementUI() {
   }
 }
 
-// Initial auto-start on page load
-switchTab("settlement");
+// ═══════════════════════════════════════════════════════════════════
+// FULL-SCREEN SURVIVAL GAME CONTROLLER & HUD
+// ═══════════════════════════════════════════════════════════════════
+
+const survivalCanvas = document.getElementById("survival-game-canvas") as HTMLCanvasElement;
+const radarCanvas = document.getElementById("radar-canvas") as HTMLCanvasElement;
+
+let survivalEngine: SurvivalEngine | null = null;
+let survivalRenderer: SurvivalRenderer | null = null;
+let survivalAnimFrameId: number | null = null;
+let lastSurvivalTime = 0;
+let isSurvivalTabActive = false;
+let isSurvivalInitialized = false;
+
+// HUD Elements
+const hudHpVal = document.getElementById("hud-hp-val")!;
+const hudHpBar = document.getElementById("hud-hp-bar")!;
+const hudHungerVal = document.getElementById("hud-hunger-val")!;
+const hudHungerBar = document.getElementById("hud-hunger-bar")!;
+const hudStaminaVal = document.getElementById("hud-stamina-val")!;
+const hudStaminaBar = document.getElementById("hud-stamina-bar")!;
+const hudClockIcon = document.getElementById("hud-clock-icon")!;
+const hudClockTime = document.getElementById("hud-clock-time")!;
+const hudClockPhase = document.getElementById("hud-clock-phase")!;
+const hudVillagesCount = document.getElementById("hud-villages-count")!;
+const hudNearestVillage = document.getElementById("hud-nearest-village")!;
+const hotbarSlotsContainer = document.getElementById("hotbar-slots-container")!;
+const gameActionPrompt = document.getElementById("game-action-prompt")!;
+const questListItems = document.getElementById("quest-list-items")!;
+const radarVillageList = document.getElementById("radar-village-list")!;
+
+// Modals
+const modalInventory = document.getElementById("modal-inventory")!;
+const modalDialogue = document.getElementById("modal-dialogue")!;
+const modalChest = document.getElementById("modal-chest")!;
+const modalPause = document.getElementById("modal-pause")!;
+const modalGameOver = document.getElementById("modal-gameover")!;
+
+// Modal Controls
+const btnCloseInventory = document.getElementById("btn-close-inventory")!;
+const btnCloseDialogue = document.getElementById("btn-close-dialogue")!;
+const btnCloseChest = document.getElementById("btn-close-chest")!;
+const btnClosePause = document.getElementById("btn-close-pause")!;
+const btnResumeGame = document.getElementById("btn-resume-game")!;
+const btnSaveGame = document.getElementById("btn-save-game")!;
+const btnLoadGame = document.getElementById("btn-load-game")!;
+const btnResetGame = document.getElementById("btn-reset-game")!;
+const btnRespawn = document.getElementById("btn-respawn")!;
+
+const btnToggleFullscreen = document.getElementById("btn-toggle-fullscreen")!;
+const btnToggleAudio = document.getElementById("btn-toggle-audio")!;
+const btnOpenInventory = document.getElementById("btn-open-inventory")!;
+const btnOpenPause = document.getElementById("btn-open-pause")!;
+
+const modalInventoryGrid = document.getElementById("modal-inventory-grid")!;
+const modalHotbarGrid = document.getElementById("modal-hotbar-grid")!;
+const craftRecipesList = document.getElementById("craft-recipes-list")!;
+const dialogueNpcName = document.getElementById("dialogue-npc-name")!;
+const dialogueNpcText = document.getElementById("dialogue-npc-text")!;
+const barterTradeList = document.getElementById("barter-trade-list")!;
+const modalChestGrid = document.getElementById("modal-chest-grid")!;
+const modalChestPlayerGrid = document.getElementById("modal-chest-player-grid")!;
+
+let activeCraftCategory = "tools";
+
+function ensureSurvivalGameLoaded() {
+  if (!isSurvivalInitialized) {
+    survivalEngine = new SurvivalEngine(currentSeed);
+    (window as any).survivalEngine = survivalEngine;
+    (window as any).gameEngine = survivalEngine;
+    survivalRenderer = new SurvivalRenderer();
+    initSurvivalInputs();
+    initSurvivalUI();
+    resizeSurvivalCanvas();
+    isSurvivalInitialized = true;
+  }
+}
+
+export function startSurvivalGameLoop() {
+  isSurvivalTabActive = true;
+  resizeSurvivalCanvas();
+  if (!survivalAnimFrameId) {
+    lastSurvivalTime = performance.now();
+    survivalAnimFrameId = requestAnimationFrame(survivalGameLoop);
+  }
+}
+
+export function stopSurvivalGameLoop() {
+  isSurvivalTabActive = false;
+  if (survivalAnimFrameId) {
+    cancelAnimationFrame(survivalAnimFrameId);
+    survivalAnimFrameId = null;
+  }
+}
+
+function resizeSurvivalCanvas() {
+  if (survivalCanvas && viewGame) {
+    const rect = viewGame.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      survivalCanvas.width = rect.width;
+      survivalCanvas.height = rect.height;
+    }
+  }
+}
+
+window.addEventListener("resize", () => {
+  if (isSurvivalTabActive) {
+    resizeSurvivalCanvas();
+  }
+});
+
+function survivalGameLoop(now: number) {
+  if (!isSurvivalTabActive) {
+    survivalAnimFrameId = null;
+    return;
+  }
+
+  const dt = Math.min(0.08, (now - lastSurvivalTime) / 1000);
+  lastSurvivalTime = now;
+
+  if (survivalEngine && survivalRenderer && survivalCanvas) {
+    // 1. Simulation Update
+    survivalEngine.update(dt);
+
+    // 2. Render World & Entities
+    survivalRenderer.render(survivalCanvas, survivalEngine);
+
+    // 3. Update HUD & Radar
+    updateSurvivalHUD();
+    renderRadarMiniMap();
+
+    // 4. Game Over Modal Check
+    if (survivalEngine.player.isDead) {
+      modalGameOver.classList.remove("hidden");
+    } else {
+      modalGameOver.classList.add("hidden");
+    }
+
+    // 5. NPC Dialogue Modal Check
+    if (survivalEngine.activeDialogueNPC && modalDialogue.classList.contains("hidden")) {
+      openDialogueModal(survivalEngine.activeDialogueNPC);
+    }
+
+    // 6. Chest Modal Check
+    if (survivalEngine.activeChest && modalChest.classList.contains("hidden")) {
+      openChestModal(survivalEngine.activeChest);
+    }
+  }
+
+  survivalAnimFrameId = requestAnimationFrame(survivalGameLoop);
+}
+
+function updateSurvivalHUD() {
+  if (!survivalEngine) return;
+
+  const p = survivalEngine.player;
+  const wt = survivalEngine.worldTime;
+
+  // Meters
+  hudHpVal.textContent = `${Math.ceil(p.health)}/${p.maxHealth}`;
+  hudHpBar.style.width = `${Math.max(0, (p.health / p.maxHealth) * 100)}%`;
+
+  hudHungerVal.textContent = `${Math.ceil(p.hunger)}/${p.maxHunger}`;
+  hudHungerBar.style.width = `${Math.max(0, (p.hunger / p.maxHunger) * 100)}%`;
+
+  hudStaminaVal.textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
+  hudStaminaBar.style.width = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
+
+  // World Clock
+  const hrPad = String(wt.hour).padStart(2, "0");
+  const minPad = String(wt.minute).padStart(2, "0");
+  const isPM = wt.hour >= 12;
+  const displayHour = wt.hour % 12 === 0 ? 12 : wt.hour % 12;
+  hudClockTime.textContent = `${String(displayHour).padStart(2, "0")}:${minPad} ${isPM ? "PM" : "AM"}`;
+  hudClockIcon.textContent = wt.timeOfDay === "Night" ? "🌙" : wt.timeOfDay === "Sunset" ? "🌇" : wt.timeOfDay === "Morning" ? "🌅" : "☀️";
+  hudClockPhase.textContent = `Day ${wt.dayNumber} • ${wt.timeOfDay}`;
+
+  // Discovered Villages (out of max 4)
+  const totalDiscovered = survivalEngine.worldManager.villages.filter((v) => v.discovered).length;
+  hudVillagesCount.textContent = `${totalDiscovered}/4`;
+
+  const nearest = survivalEngine.worldManager.getNearestVillage(p.x, p.y);
+  if (nearest) {
+    const distMeters = Math.round(nearest.dist);
+    hudNearestVillage.textContent = distMeters < 25 ? `In: ${nearest.village.name}` : `Nearest: ${nearest.village.name} (~${distMeters}m)`;
+  }
+
+  // Hotbar render
+  renderHotbar();
+
+  // Action Prompt Detection
+  updateActionPrompt();
+
+  // Quest Tracker
+  renderQuestTracker();
+}
+
+function renderHotbar() {
+  if (!survivalEngine) return;
+  hotbarSlotsContainer.innerHTML = "";
+
+  survivalEngine.hotbar.forEach((slot, idx) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = `hotbar-slot ${idx === survivalEngine?.activeHotbarIndex ? "active" : ""}`;
+    slotEl.addEventListener("click", () => {
+      if (survivalEngine) survivalEngine.activeHotbarIndex = idx;
+    });
+
+    const keyEl = document.createElement("span");
+    keyEl.className = "slot-key-num";
+    keyEl.textContent = String(idx + 1);
+    slotEl.appendChild(keyEl);
+
+    if (slot.item) {
+      const def = ITEM_CATALOG[slot.item];
+      const iconEl = document.createElement("span");
+      iconEl.className = "slot-item-icon";
+      iconEl.textContent = def?.icon || "📦";
+      slotEl.appendChild(iconEl);
+
+      if (slot.count > 1) {
+        const countEl = document.createElement("span");
+        countEl.className = "slot-item-count";
+        countEl.textContent = String(slot.count);
+        slotEl.appendChild(countEl);
+      }
+
+      if (slot.durability !== undefined && slot.maxDurability) {
+        const duraEl = document.createElement("div");
+        duraEl.className = "slot-durability-bar";
+        duraEl.style.width = `${(slot.durability / slot.maxDurability) * 100}%`;
+        slotEl.appendChild(duraEl);
+      }
+    }
+
+    hotbarSlotsContainer.appendChild(slotEl);
+  });
+}
+
+function updateActionPrompt() {
+  if (!survivalEngine) return;
+  const p = survivalEngine.player;
+
+  // 1. Nearby NPC
+  for (const npc of survivalEngine.npcs) {
+    if (Math.hypot(p.x - npc.position.x, p.y - npc.position.y) <= 2.2) {
+      showPrompt("[E]", "Talk to Villager");
+      return;
+    }
+  }
+
+  // 2. Nearby Animal
+  for (const animal of survivalEngine.animals) {
+    if (Math.hypot(p.x - animal.position.x, p.y - animal.position.y) <= 2.0) {
+      showPrompt("[E]", `Pet ${animal.species.toUpperCase()}`);
+      return;
+    }
+  }
+
+  // 3. Nearby Resource Node (Tree, Rock, Bush)
+  const res = survivalEngine.worldManager.getResourceAt(p.x, p.y, 2.2);
+  if (res && !res.isDepleted) {
+    const action = res.type === "tree" ? "Chop Tree" : res.type === "rock" || res.type === "iron_rock" ? "Mine Rock" : "Harvest";
+    showPrompt("[Left Click]", action);
+    return;
+  }
+
+  // 4. Nearby Chest or Door
+  for (const struct of survivalEngine.placedStructures) {
+    if (Math.hypot(p.x - struct.x, p.y - struct.y) <= 2.0) {
+      if (struct.type === "chest") {
+        showPrompt("[E]", "Open Storage Chest");
+        return;
+      }
+      if (struct.type === "wood_door") {
+        showPrompt("[E]", struct.isOpen ? "Close Door" : "Open Door");
+        return;
+      }
+    }
+  }
+
+  // Hide prompt if no interactable nearby
+  gameActionPrompt.classList.add("hidden");
+}
+
+function showPrompt(key: string, desc: string) {
+  const keyEl = gameActionPrompt.querySelector(".prompt-key")!;
+  const descEl = gameActionPrompt.querySelector(".prompt-desc")!;
+  keyEl.textContent = key;
+  descEl.textContent = desc;
+  gameActionPrompt.classList.remove("hidden");
+}
+
+function renderQuestTracker() {
+  if (!survivalEngine) return;
+  questListItems.innerHTML = "";
+
+  survivalEngine.quests.forEach((q) => {
+    const item = document.createElement("div");
+    item.className = `quest-item ${q.completed ? "completed" : ""}`;
+
+    item.innerHTML = `
+      <div class="quest-item-title">
+        <span>${q.completed ? "✓" : "○"} ${q.title}</span>
+        <span class="mono">${q.progress}/${q.goal}</span>
+      </div>
+      <div class="quest-item-desc">${q.desc}</div>
+    `;
+
+    questListItems.appendChild(item);
+  });
+}
+
+/**
+ * Renders the Compass / Radar widget showing player orientation and 2-4x gap villages.
+ */
+function renderRadarMiniMap() {
+  if (!survivalEngine || !radarCanvas) return;
+  const ctx = radarCanvas.getContext("2d");
+  if (!ctx) return;
+
+  const w = radarCanvas.width;
+  const h = radarCanvas.height;
+  const center = w / 2;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Radar circle background
+  ctx.fillStyle = "#022c22";
+  ctx.beginPath();
+  ctx.arc(center, center, center - 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw concentric range rings (2 village widths and 4 village widths)
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(center, center, center * 0.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(center, center, center * 0.85, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Player position in center
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.arc(center, center, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw compass needles towards villages (enforcing 2 to 4 gap rule)
+  const p = survivalEngine.player;
+  const planned = survivalEngine.worldManager.villagePlannedSites;
+
+  planned.forEach((site, i) => {
+    const isGenerated = site.generated;
+    const dx = site.targetX - p.x;
+    const dy = site.targetY - p.y;
+    const dist = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+
+    // Radar scale: radius corresponds to ~160 tiles (4 village equivalents)
+    const radarDist = Math.min(center - 8, (dist / 160) * (center - 8));
+    const iconX = center + Math.cos(angle) * radarDist;
+    const iconY = center + Math.sin(angle) * radarDist;
+
+    ctx.fillStyle = isGenerated ? "#22c55e" : "rgba(255, 255, 255, 0.4)";
+    ctx.beginPath();
+    ctx.arc(iconX, iconY, isGenerated ? 4 : 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pointer line from center to village marker
+    ctx.strokeStyle = isGenerated ? "rgba(34, 197, 94, 0.4)" : "rgba(255, 255, 255, 0.15)";
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(iconX, iconY);
+    ctx.stroke();
+  });
+}
+
+function initSurvivalInputs() {
+  const activeKeys = new Set<string>();
+
+  window.addEventListener("keydown", (e) => {
+    if (!isSurvivalTabActive) return;
+    if (e.target instanceof HTMLInputElement) return;
+
+    const key = e.key.toLowerCase();
+    activeKeys.add(key);
+
+    if (e.shiftKey) {
+      if (survivalEngine) survivalEngine.player.isSprinting = true;
+    }
+
+    // Hotbar quick keys 1-8
+    if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(key)) {
+      if (survivalEngine) {
+        survivalEngine.activeHotbarIndex = parseInt(key, 10) - 1;
+      }
+    }
+
+    // Interact [E]
+    if (key === "e") {
+      survivalEngine?.handleInteractKey();
+    }
+
+    // Feed / Eat [F]
+    if (key === "f") {
+      survivalEngine?.handleFeedKey();
+    }
+
+    // Inventory / Crafting [I / C]
+    if (key === "i" || key === "c") {
+      toggleInventoryModal();
+    }
+
+    // Build mode [B]
+    if (key === "b") {
+      if (survivalEngine) {
+        survivalEngine.isBuildMode = !survivalEngine.isBuildMode;
+        const active = survivalEngine.getActiveItemSlot()?.item;
+        survivalEngine.buildPiece = active && ITEM_CATALOG[active]?.isPlaceable ? active : "wood_wall";
+        survivalEngine.addFloatingText(survivalEngine.isBuildMode ? "Build Mode ON" : "Build Mode OFF", survivalEngine.player.x, survivalEngine.player.y - 1, "#38bdf8");
+      }
+    }
+
+    // Pause [ESC]
+    if (key === "escape") {
+      togglePauseModal();
+    }
+
+    // Space Jump / Swing
+    if (key === " " || e.code === "Space") {
+      if (survivalEngine) {
+        survivalEngine.player.hopTimer = 0.35;
+        survivalEngine.player.swingTimer = 0.22;
+        GameAudio.playSwing();
+      }
+    }
+
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(key) || e.code === "Space") {
+      e.preventDefault();
+    }
+
+    updatePlayerMovement();
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (!isSurvivalTabActive) return;
+    if (e.target instanceof HTMLInputElement) return;
+
+    const key = e.key.toLowerCase();
+    activeKeys.delete(key);
+
+    if (!e.shiftKey) {
+      if (survivalEngine) survivalEngine.player.isSprinting = false;
+    }
+
+    updatePlayerMovement();
+  });
+
+  function updatePlayerMovement() {
+    if (!survivalEngine) return;
+    let dx = 0;
+    let dy = 0;
+    if (activeKeys.has("w") || activeKeys.has("arrowup")) dy -= 1;
+    if (activeKeys.has("s") || activeKeys.has("arrowdown")) dy += 1;
+    if (activeKeys.has("a") || activeKeys.has("arrowleft")) dx -= 1;
+    if (activeKeys.has("d") || activeKeys.has("arrowright")) dx += 1;
+
+    survivalEngine.player.vx = dx;
+    survivalEngine.player.vy = dy;
+  }
+
+  // Mouse clicks on canvas
+  if (survivalCanvas) {
+    survivalCanvas.addEventListener("mousedown", (e) => {
+      if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
+
+      const rect = survivalCanvas.getBoundingClientRect();
+      const cellSize = survivalRenderer.baseTileSize * survivalRenderer.zoom;
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+
+      const halfW = survivalCanvas.width / 2;
+      const halfH = survivalCanvas.height / 2;
+      const worldX = survivalRenderer.cameraX + (screenX - halfW) / cellSize;
+      const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
+
+      if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
+        survivalEngine.placeStructure(survivalEngine.buildPiece, worldX, worldY);
+      } else {
+        survivalEngine.handleWorldClick(worldX, worldY);
+      }
+    });
+
+    survivalCanvas.addEventListener("mousemove", (e) => {
+      if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
+      if (survivalEngine.isBuildMode) {
+        const rect = survivalCanvas.getBoundingClientRect();
+        const cellSize = survivalRenderer.baseTileSize * survivalRenderer.zoom;
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const halfW = survivalCanvas.width / 2;
+        const halfH = survivalCanvas.height / 2;
+        survivalEngine.buildPreviewX = Math.round(survivalRenderer.cameraX + (screenX - halfW) / cellSize);
+        survivalEngine.buildPreviewY = Math.round(survivalRenderer.cameraY + (screenY - halfH) / cellSize);
+        const tile = survivalEngine.worldManager.getTile(survivalEngine.buildPreviewX, survivalEngine.buildPreviewY);
+        survivalEngine.isBuildPreviewValid = !tile.isWater && !tile.isBlocked;
+      }
+    });
+
+    survivalCanvas.addEventListener("wheel", (e) => {
+      if (!isSurvivalTabActive || !survivalEngine) return;
+      e.preventDefault();
+      // Cycle hotbar slots with mouse wheel
+      if (e.deltaY > 0) {
+        survivalEngine.activeHotbarIndex = (survivalEngine.activeHotbarIndex + 1) % 8;
+      } else {
+        survivalEngine.activeHotbarIndex = (survivalEngine.activeHotbarIndex + 7) % 8;
+      }
+    }, { passive: false });
+  }
+}
+
+function initSurvivalUI() {
+  // Fullscreen button
+  btnToggleFullscreen.addEventListener("click", () => {
+    const container = document.getElementById("survival-game-container");
+    if (!document.fullscreenElement) {
+      container?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+
+  // Sound toggle
+  btnToggleAudio.addEventListener("click", () => {
+    const isMuted = GameAudio.toggleMute();
+    const icon = document.getElementById("audio-icon");
+    if (icon) icon.textContent = isMuted ? "🔊" : "🔇";
+  });
+
+  // Modals open/close
+  btnOpenInventory.addEventListener("click", toggleInventoryModal);
+  btnOpenPause.addEventListener("click", togglePauseModal);
+
+  btnCloseInventory.addEventListener("click", () => modalInventory.classList.add("hidden"));
+  btnCloseDialogue.addEventListener("click", () => {
+    modalDialogue.classList.add("hidden");
+    if (survivalEngine) survivalEngine.activeDialogueNPC = null;
+  });
+  btnCloseChest.addEventListener("click", () => {
+    modalChest.classList.add("hidden");
+    if (survivalEngine) survivalEngine.activeChest = null;
+  });
+  btnClosePause.addEventListener("click", () => modalPause.classList.add("hidden"));
+  btnResumeGame.addEventListener("click", () => modalPause.classList.add("hidden"));
+
+  // Save / Load / Reset
+  btnSaveGame.addEventListener("click", () => {
+    if (survivalEngine) {
+      const saveData = {
+        seed: survivalEngine.worldManager.seed,
+        player: survivalEngine.player,
+        inventory: survivalEngine.inventory,
+        hotbar: survivalEngine.hotbar,
+        placedStructures: survivalEngine.placedStructures,
+        time: survivalEngine.worldTime,
+      };
+      localStorage.setItem("rts_survival_save_v1", JSON.stringify(saveData));
+      alert("World & Player Progress Saved successfully!");
+    }
+  });
+
+  btnLoadGame.addEventListener("click", () => {
+    const raw = localStorage.getItem("rts_survival_save_v1");
+    if (raw && survivalEngine) {
+      try {
+        const data = JSON.parse(raw);
+        survivalEngine.player = { ...survivalEngine.player, ...data.player };
+        survivalEngine.inventory = data.inventory || survivalEngine.inventory;
+        survivalEngine.hotbar = data.hotbar || survivalEngine.hotbar;
+        survivalEngine.placedStructures = data.placedStructures || [];
+        modalPause.classList.add("hidden");
+        survivalEngine.addFloatingText("Game Loaded!", survivalEngine.player.x, survivalEngine.player.y - 1, "#38bdf8");
+      } catch (err) {
+        alert("Failed to load save data.");
+      }
+    } else {
+      alert("No saved world found in storage.");
+    }
+  });
+
+  btnResetGame.addEventListener("click", () => {
+    if (confirm("Start a brand new procedurally generated survival world?")) {
+      const newSeed = Math.floor(Math.random() * 1000000);
+      survivalEngine = new SurvivalEngine(newSeed);
+      modalPause.classList.add("hidden");
+    }
+  });
+
+  btnRespawn.addEventListener("click", () => {
+    survivalEngine?.respawnPlayer();
+    modalGameOver.classList.add("hidden");
+  });
+
+  // Crafting category tabs
+  const craftTabs = document.querySelectorAll(".craft-tab-btn");
+  craftTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      craftTabs.forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      activeCraftCategory = (tab as HTMLElement).dataset.category || "tools";
+      renderCraftingList();
+    });
+  });
+}
+
+function toggleInventoryModal() {
+  const isHidden = modalInventory.classList.contains("hidden");
+  if (isHidden) {
+    renderInventoryGrids();
+    renderCraftingList();
+    modalInventory.classList.remove("hidden");
+  } else {
+    modalInventory.classList.add("hidden");
+  }
+}
+
+function togglePauseModal() {
+  modalPause.classList.toggle("hidden");
+}
+
+function renderInventoryGrids() {
+  if (!survivalEngine) return;
+  modalInventoryGrid.innerHTML = "";
+  modalHotbarGrid.innerHTML = "";
+
+  // 20 Backpack slots
+  survivalEngine.inventory.forEach((slot, idx) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = "inv-slot";
+
+    if (slot.item) {
+      const def = ITEM_CATALOG[slot.item];
+      slotEl.innerHTML = `
+        <span class="slot-item-icon">${def.icon}</span>
+        ${slot.count > 1 ? `<span class="slot-item-count">${slot.count}</span>` : ""}
+      `;
+    }
+
+    slotEl.addEventListener("click", () => {
+      // Swap or transfer item with active hotbar slot
+      if (survivalEngine) {
+        const activeHot = survivalEngine.hotbar[survivalEngine.activeHotbarIndex];
+        const temp = { ...slot };
+        survivalEngine.inventory[idx] = { ...activeHot };
+        survivalEngine.hotbar[survivalEngine.activeHotbarIndex] = temp;
+        renderInventoryGrids();
+      }
+    });
+
+    modalInventoryGrid.appendChild(slotEl);
+  });
+
+  // 8 Hotbar slots
+  survivalEngine.hotbar.forEach((slot, idx) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = `inv-slot ${idx === survivalEngine?.activeHotbarIndex ? "active" : ""}`;
+
+    if (slot.item) {
+      const def = ITEM_CATALOG[slot.item];
+      slotEl.innerHTML = `
+        <span class="slot-item-icon">${def.icon}</span>
+        ${slot.count > 1 ? `<span class="slot-item-count">${slot.count}</span>` : ""}
+      `;
+    }
+
+    slotEl.addEventListener("click", () => {
+      if (survivalEngine) {
+        survivalEngine.activeHotbarIndex = idx;
+        renderInventoryGrids();
+      }
+    });
+
+    modalHotbarGrid.appendChild(slotEl);
+  });
+}
+
+function renderCraftingList() {
+  if (!survivalEngine) return;
+  craftRecipesList.innerHTML = "";
+
+  const recipes = CRAFTING_RECIPES.filter((r) => r.category === activeCraftCategory);
+
+  recipes.forEach((rec) => {
+    const def = ITEM_CATALOG[rec.result];
+    const canCraft = rec.ingredients.every((ing) => survivalEngine?.hasItem(ing.item, ing.count));
+    const card = document.createElement("div");
+    card.className = "recipe-card";
+
+    const reqsStr = rec.ingredients
+      .map((ing) => `${ing.count} ${ITEM_CATALOG[ing.item]?.name || ing.item}`)
+      .join(", ");
+
+    card.innerHTML = `
+      <div class="recipe-info">
+        <span class="recipe-icon">${def?.icon || "🛠️"}</span>
+        <div>
+          <div class="recipe-name">${rec.name}</div>
+          <div class="recipe-reqs">Requires: ${reqsStr} ${rec.requiresStation ? `• (${rec.requiresStation})` : ""}</div>
+        </div>
+      </div>
+      <button class="btn-craft" ${canCraft ? "" : "disabled"}>Craft</button>
+    `;
+
+    const craftBtn = card.querySelector(".btn-craft")!;
+    craftBtn.addEventListener("click", () => {
+      if (survivalEngine && survivalEngine.craftRecipe(rec)) {
+        renderInventoryGrids();
+        renderCraftingList();
+      }
+    });
+
+    craftRecipesList.appendChild(card);
+  });
+}
+
+function openDialogueModal(npc: NPC) {
+  dialogueNpcName.textContent = `Village Elder & Merchant`;
+  dialogueNpcText.textContent = `"Welcome, traveler! Between Oakvale and the next villages (Riverwood, Sunhaven, Pinecrest) lies dangerous open wilderness. Take provisions or barter with us!"`;
+
+  barterTradeList.innerHTML = "";
+
+  const trades = [
+    { give: "wood", giveCount: 5, get: "bread", getCount: 2 },
+    { give: "stone", giveCount: 4, get: "seeds", getCount: 6 },
+    { give: "iron_ore", giveCount: 2, get: "iron_axe", getCount: 1 },
+    { give: "berries", giveCount: 8, get: "cooked_meat", getCount: 2 },
+  ];
+
+  trades.forEach((trade) => {
+    const row = document.createElement("div");
+    row.className = "barter-row";
+    const canTrade = survivalEngine ? survivalEngine.hasItem(trade.give as ItemId, trade.giveCount) : false;
+
+    row.innerHTML = `
+      <div class="barter-details">
+        <span>Give ${trade.giveCount} ${ITEM_CATALOG[trade.give as ItemId]?.icon} ${ITEM_CATALOG[trade.give as ItemId]?.name}</span>
+        <span>➔</span>
+        <span>Receive ${trade.getCount} ${ITEM_CATALOG[trade.get as ItemId]?.icon} ${ITEM_CATALOG[trade.get as ItemId]?.name}</span>
+      </div>
+      <button class="btn-craft" ${canTrade ? "" : "disabled"}>Trade</button>
+    `;
+
+    const tradeBtn = row.querySelector("button")!;
+    tradeBtn.addEventListener("click", () => {
+      if (survivalEngine && survivalEngine.hasItem(trade.give as ItemId, trade.giveCount)) {
+        survivalEngine.removeItem(trade.give as ItemId, trade.giveCount);
+        survivalEngine.addItemToInventory(trade.get as ItemId, trade.getCount);
+        GameAudio.playCraft();
+        survivalEngine.addFloatingText("Trade Complete!", survivalEngine.player.x, survivalEngine.player.y - 1, "#34d399");
+        openDialogueModal(npc);
+      }
+    });
+
+    barterTradeList.appendChild(row);
+  });
+
+  modalDialogue.classList.remove("hidden");
+}
+
+function openChestModal(chest: PlacedStructure) {
+  if (!survivalEngine) return;
+  modalChestGrid.innerHTML = "";
+  modalChestPlayerGrid.innerHTML = "";
+
+  if (!chest.chestStorage) {
+    chest.chestStorage = Array.from({ length: 16 }, () => ({ item: null, count: 0 }));
+  }
+
+  // Render 16 chest slots
+  chest.chestStorage.forEach((slot: InventorySlot, idx: number) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = "inv-slot";
+    if (slot.item) {
+      const def = ITEM_CATALOG[slot.item];
+      slotEl.innerHTML = `<span class="slot-item-icon">${def.icon}</span><span class="slot-item-count">${slot.count}</span>`;
+    }
+
+    slotEl.addEventListener("click", () => {
+      // Transfer to player inventory
+      if (slot.item && survivalEngine) {
+        if (survivalEngine.addItemToInventory(slot.item, slot.count)) {
+          slot.item = null;
+          slot.count = 0;
+          openChestModal(chest);
+        }
+      }
+    });
+    modalChestGrid.appendChild(slotEl);
+  });
+
+  // Render player backpack slots
+  survivalEngine.inventory.forEach((slot: InventorySlot, idx: number) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = "inv-slot";
+    if (slot.item) {
+      const def = ITEM_CATALOG[slot.item];
+      slotEl.innerHTML = `<span class="slot-item-icon">${def.icon}</span><span class="slot-item-count">${slot.count}</span>`;
+    }
+
+    slotEl.addEventListener("click", () => {
+      // Transfer into first empty chest slot
+      if (slot.item && chest.chestStorage) {
+        const emptySlot = chest.chestStorage.find((s: InventorySlot) => !s.item);
+        if (emptySlot) {
+          emptySlot.item = slot.item;
+          emptySlot.count = slot.count;
+          slot.item = null;
+          slot.count = 0;
+          openChestModal(chest);
+        }
+      }
+    });
+    modalChestPlayerGrid.appendChild(slotEl);
+  });
+
+  modalChest.classList.remove("hidden");
+}
+
+// Initial auto-start on page load (support ?tab=game or hash #game)
+const urlParams = new URLSearchParams(window.location.search);
+const initialTab = urlParams.get("tab") || (window.location.hash ? window.location.hash.replace("#", "") : null);
+if (initialTab && ["game", "settlement", "houses", "terrain", "assets-map"].includes(initialTab)) {
+  switchTab(initialTab as any);
+} else {
+  switchTab("game");
+}
+
 

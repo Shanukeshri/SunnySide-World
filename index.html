@@ -24,23 +24,28 @@
         </div>
       </div>
 
-        <button id="tab-settlement" class="tab-btn active" role="tab" aria-selected="true" aria-controls="settlement-view">
-          <span class="tab-icon">🏘️</span>
-          <span>Village Generator</span>
-        </button>
-        <button id="tab-houses" class="tab-btn" role="tab" aria-selected="false" aria-controls="houses-view">
-          <span class="tab-icon">🏠</span>
-          <span>Houses</span>
-        </button>
-        <button id="tab-terrain" class="tab-btn" role="tab" aria-selected="false" aria-controls="terrain-view">
-          <span class="tab-icon">🌍</span>
-          <span>Terrain & Biome</span>
-        </button>
-        <button id="tab-assets-map" class="tab-btn" role="tab" aria-selected="false" aria-controls="assets-map-view">
-          <span class="tab-icon">🗺️</span>
-          <span>Assets Map</span>
-        </button>
-      </nav>
+        <nav class="tab-nav">
+          <button id="tab-settlement" class="tab-btn active" role="tab" aria-selected="true" aria-controls="settlement-view">
+            <span class="tab-icon">🏘️</span>
+            <span>Village Generator</span>
+          </button>
+          <button id="tab-game" class="tab-btn" role="tab" aria-selected="false" aria-controls="game-view">
+            <span class="tab-icon">⚔️</span>
+            <span>Survival Game</span>
+          </button>
+          <button id="tab-houses" class="tab-btn" role="tab" aria-selected="false" aria-controls="houses-view">
+            <span class="tab-icon">🏠</span>
+            <span>Houses</span>
+          </button>
+          <button id="tab-terrain" class="tab-btn" role="tab" aria-selected="false" aria-controls="terrain-view">
+            <span class="tab-icon">🌍</span>
+            <span>Terrain & Biome</span>
+          </button>
+          <button id="tab-assets-map" class="tab-btn" role="tab" aria-selected="false" aria-controls="assets-map-view">
+            <span class="tab-icon">🗺️</span>
+            <span>Assets Map</span>
+          </button>
+        </nav>
 
       <!-- Right Controls (only shown on Atlas Map tab) -->
       <div class="header-right" id="atlas-controls">
@@ -265,6 +270,8 @@
             <span class="settlement-badge" id="stat-trees-badge">Trees: <strong>0</strong></span>
             <span class="settlement-badge" id="stat-water-badge">Water: <strong>No</strong></span>
             <span class="settlement-badge" id="stat-decor-badge">Scatter: <strong>0</strong></span>
+            <span class="settlement-badge" id="stat-wildlife-badge" style="border-color: #34d399; color: #a7f3d0;">Wildlife: <strong id="stat-wildlife-count">0</strong></span>
+            <span class="settlement-badge" id="stat-villagers-badge" style="border-color: #f59e0b; color: #fde68a;">Villagers: <strong id="stat-villagers-count">0</strong></span>
           </div>
           <div class="settlement-stats-right">
             <span class="settlement-badge status-valid" id="stat-validation-badge">
@@ -280,7 +287,7 @@
             <canvas id="settlement-canvas"></canvas>
           </div>
           <div class="settlement-viewport-hint">
-            <span>🖱️ Drag to Pan &bull; 🖲️ Scroll to Zoom &bull; 16×16 Logical Grid</span>
+            <span>🎮 WASD to Move &bull; 🦘 [Space] Jump &bull; 🐾 [E] Pet &bull; 🌾 [F] Feed &bull; 🖱️ Drag to Pan &bull; 🖲️ Scroll to Zoom</span>
           </div>
         </div>
 
@@ -301,6 +308,286 @@
         </footer>
       </div>
     </div><!-- /settlement-view -->
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- VIEW: FULL SCREEN SURVIVAL SANDBOX GAME         -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="game-view" class="view-panel">
+      <!-- Full-screen Canvas Container -->
+      <div class="survival-game-container" id="survival-game-container">
+        <canvas id="survival-game-canvas"></canvas>
+
+        <!-- TOP HUD -->
+        <header class="game-hud-top">
+          <!-- Left: Survival Meters -->
+          <div class="survival-bars-card">
+            <!-- Health -->
+            <div class="stat-bar-group" title="Player Health (Starvation or monster damage drains health)">
+              <div class="stat-label-row">
+                <span class="stat-icon">❤️</span>
+                <span class="stat-name">Health</span>
+                <span class="stat-val" id="hud-hp-val">100/100</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill bar-hp" id="hud-hp-bar" style="width: 100%;"></div>
+              </div>
+            </div>
+
+            <!-- Hunger -->
+            <div class="stat-bar-group" title="Player Hunger (Drains slowly; restored by berries, bread, meat)">
+              <div class="stat-label-row">
+                <span class="stat-icon">🍗</span>
+                <span class="stat-name">Hunger</span>
+                <span class="stat-val" id="hud-hunger-val">100/100</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill bar-hunger" id="hud-hunger-bar" style="width: 100%;"></div>
+              </div>
+            </div>
+
+            <!-- Stamina -->
+            <div class="stat-bar-group" title="Stamina (Consumed by sprint [Shift]; recovers automatically)">
+              <div class="stat-label-row">
+                <span class="stat-icon">⚡</span>
+                <span class="stat-name">Stamina</span>
+                <span class="stat-val" id="hud-stamina-val">100/100</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill bar-stamina" id="hud-stamina-bar" style="width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center: World Clock & Realm Villages Badge -->
+          <div class="world-status-card">
+            <div class="clock-display">
+              <span class="clock-icon" id="hud-clock-icon">☀️</span>
+              <span class="clock-time" id="hud-clock-time">08:30 AM</span>
+              <span class="clock-phase-badge" id="hud-clock-phase">Day 1 &bull; Midday</span>
+            </div>
+            <div class="village-realm-badge" id="hud-village-badge" title="Discovered Villages across the Realm (Gap between villages is 2 to 4 village equivalents, max 4)">
+              <span>🏘️ Villages Discovered: <strong id="hud-villages-count">1/4</strong></span>
+              <span class="badge-sub" id="hud-nearest-village">Current: Oakvale</span>
+            </div>
+          </div>
+
+          <!-- Right: Action Buttons & Utilities -->
+          <div class="game-hud-actions">
+            <button id="btn-toggle-fullscreen" class="hud-action-btn" title="Toggle Fullscreen (⛶)">
+              <span>⛶</span>
+              <span class="btn-text">Fullscreen</span>
+            </button>
+            <button id="btn-toggle-audio" class="hud-action-btn" title="Toggle Sound">
+              <span id="audio-icon">🔊</span>
+              <span class="btn-text">Sound</span>
+            </button>
+            <button id="btn-open-inventory" class="hud-action-btn primary-hud-btn" title="Inventory & Crafting (I / C)">
+              <span>🎒</span>
+              <span class="btn-text">Inventory [I]</span>
+            </button>
+            <button id="btn-open-pause" class="hud-action-btn" title="Help & Menu (ESC)">
+              <span>⚙️</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- TOP RIGHT: RADAR / COMPASS & QUEST TRACKER -->
+        <aside class="game-side-hud">
+          <!-- Village Compass / Radar Widget -->
+          <div class="radar-card" id="radar-card">
+            <div class="radar-header">
+              <span>🧭 Realm Navigator</span>
+              <span class="radar-badge">2-4x Gap Rule</span>
+            </div>
+            <div class="radar-viewport">
+              <canvas id="radar-canvas" width="140" height="140"></canvas>
+            </div>
+            <div class="radar-legend" id="radar-village-list">
+              <div class="radar-village-item active">
+                <span class="rv-dot green"></span>
+                <span class="rv-name">Oakvale (Starter)</span>
+                <span class="rv-dist">Here</span>
+              </div>
+              <div class="radar-village-item">
+                <span class="rv-dot gray"></span>
+                <span class="rv-name">Riverwood</span>
+                <span class="rv-dist">~100m ↗</span>
+              </div>
+              <div class="radar-village-item">
+                <span class="rv-dot gray"></span>
+                <span class="rv-name">Sunhaven</span>
+                <span class="rv-dist">~120m ↘</span>
+              </div>
+              <div class="radar-village-item">
+                <span class="rv-dot gray"></span>
+                <span class="rv-name">Pinecrest</span>
+                <span class="rv-dist">~110m ↖</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quest & Objective Tracker -->
+          <div class="quest-card">
+            <div class="quest-header">
+              <span>📜 Objectives</span>
+            </div>
+            <div class="quest-list" id="quest-list-items"></div>
+          </div>
+        </aside>
+
+        <!-- BOTTOM HUD: ACTION PROMPT & 8-SLOT HOTBAR -->
+        <footer class="game-hud-bottom">
+          <!-- Center Action Tooltip Prompt -->
+          <div class="action-prompt-pill hidden" id="game-action-prompt">
+            <span class="prompt-key">[E]</span>
+            <span class="prompt-desc">Pet Cow</span>
+          </div>
+
+          <!-- 8-Slot Quick Hotbar -->
+          <div class="hotbar-wrapper">
+            <div class="hotbar-grid" id="hotbar-slots-container"></div>
+            <div class="hotbar-key-hints">
+              <span>Keys 1-8 or Scroll to select item &bull; Left-click to use/chop/attack &bull; [F] Eat/Feed</span>
+            </div>
+          </div>
+        </footer>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- MODAL 1: INVENTORY & CRAFTING OVERLAY [I / C] -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="game-modal-overlay hidden" id="modal-inventory">
+          <div class="survival-modal-box">
+            <div class="modal-header">
+              <div class="modal-title-wrap">
+                <span class="modal-icon">🎒</span>
+                <h2>Backpack & Crafting</h2>
+              </div>
+              <button class="modal-close-btn" id="btn-close-inventory">&times;</button>
+            </div>
+
+            <div class="modal-two-columns">
+              <!-- Left: Player Inventory Slots -->
+              <div class="modal-col inventory-col">
+                <h3>Backpack (20 Slots)</h3>
+                <div class="inv-grid-20" id="modal-inventory-grid"></div>
+
+                <div class="inv-hotbar-preview">
+                  <h4>Active Hotbar</h4>
+                  <div class="inv-hotbar-grid" id="modal-hotbar-grid"></div>
+                </div>
+              </div>
+
+              <!-- Right: Crafting Workshop -->
+              <div class="modal-col crafting-col">
+                <div class="crafting-tabs-row">
+                  <button class="craft-tab-btn active" data-category="tools">Tools & Weapons</button>
+                  <button class="craft-tab-btn" data-category="survival">Survival & Food</button>
+                  <button class="craft-tab-btn" data-category="building">Shelter & Base</button>
+                </div>
+                <div class="craft-recipes-list" id="craft-recipes-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- MODAL 2: NPC DIALOGUE & BARTER TRADE [E]      -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="game-modal-overlay hidden" id="modal-dialogue">
+          <div class="survival-modal-box dialogue-box">
+            <div class="modal-header">
+              <div class="modal-title-wrap">
+                <span class="modal-icon">🧑‍🌾</span>
+                <h2 id="dialogue-npc-name">Village Merchant</h2>
+              </div>
+              <button class="modal-close-btn" id="btn-close-dialogue">&times;</button>
+            </div>
+            <div class="dialogue-body">
+              <p class="dialogue-text" id="dialogue-npc-text">
+                "Greetings, traveler! Welcome to our village. Between here and the next village lies vast wilderness and dangerous wildlife. Would you care to trade some materials?"
+              </p>
+              <div class="barter-trade-section">
+                <h3>Barter Goods</h3>
+                <div class="barter-trade-list" id="barter-trade-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- MODAL 3: STORAGE CHEST [E]                    -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="game-modal-overlay hidden" id="modal-chest">
+          <div class="survival-modal-box">
+            <div class="modal-header">
+              <div class="modal-title-wrap">
+                <span class="modal-icon">📦</span>
+                <h2>Storage Chest</h2>
+              </div>
+              <button class="modal-close-btn" id="btn-close-chest">&times;</button>
+            </div>
+            <div class="modal-two-columns">
+              <div class="modal-col">
+                <h3>Chest Contents (16 Slots)</h3>
+                <div class="inv-grid-16" id="modal-chest-grid"></div>
+              </div>
+              <div class="modal-col">
+                <h3>Your Backpack</h3>
+                <div class="inv-grid-20" id="modal-chest-player-grid"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- MODAL 4: PAUSE MENU & CONTROLS GUIDE [ESC]    -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="game-modal-overlay hidden" id="modal-pause">
+          <div class="survival-modal-box pause-box">
+            <div class="modal-header">
+              <h2>Game Paused</h2>
+              <button class="modal-close-btn" id="btn-close-pause">&times;</button>
+            </div>
+            <div class="pause-body">
+              <div class="guide-section">
+                <h3>Controls & Survival Guide</h3>
+                <ul class="guide-list">
+                  <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Arrows</kbd> — Move character</li>
+                  <li><kbd>Shift</kbd> (Hold) — Sprint (Consumes Stamina)</li>
+                  <li><kbd>Left Click</kbd> — Attack with weapon / Chop tree / Mine rock</li>
+                  <li><kbd>1</kbd> to <kbd>8</kbd> — Select Hotbar tool/item</li>
+                  <li><kbd>E</kbd> — Interact (Pet wildlife, Talk to villagers, Open chest/door)</li>
+                  <li><kbd>F</kbd> — Feed nearby wildlife (Wheat/Berries) or Eat selected food</li>
+                  <li><kbd>I</kbd> or <kbd>C</kbd> — Open Backpack & Crafting Workshop</li>
+                  <li><kbd>B</kbd> — Toggle Building Placement Mode (Walls, Campfire, Chest)</li>
+                  <li><kbd>Space</kbd> — Jump / Hop</li>
+                  <li><kbd>ESC</kbd> — Pause / Help menu</li>
+                </ul>
+              </div>
+
+              <div class="pause-actions-row">
+                <button id="btn-resume-game" class="btn-primary-action">Resume Game</button>
+                <button id="btn-save-game" class="btn-secondary-action">💾 Save World</button>
+                <button id="btn-load-game" class="btn-secondary-action">📂 Load Save</button>
+                <button id="btn-reset-game" class="btn-secondary-action" style="border-color:#ef4444; color:#f87171;">New World</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- MODAL 5: GAME OVER / RESPAWN                  -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="game-modal-overlay hidden" id="modal-gameover">
+          <div class="survival-modal-box death-box">
+            <h1 class="death-title">YOU HAVE FALLEN</h1>
+            <p class="death-desc">The wilderness claims the unprepared. Keep your hunger replenished and stay close to campfires at night.</p>
+            <button id="btn-respawn" class="btn-primary-action death-respawn-btn">Respawn at Village</button>
+          </div>
+        </div>
+
+      </div><!-- /survival-game-container -->
+    </div><!-- /game-view -->
 
 
   </div><!-- /app -->

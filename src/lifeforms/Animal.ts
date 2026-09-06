@@ -1,0 +1,226 @@
+import { LivingEntity } from './LivingEntity';
+import { SpeciesConfig } from './types';
+import { EnvironmentDetector } from './EnvironmentDetector';
+import { generateRandom, randomRange } from './rng';
+
+export class Animal extends LivingEntity {
+  private stateTimer: number = 0;
+  private eatingElapsedTime: number = 0;
+  private isHeadingToFood: boolean = false;
+
+  constructor(id: number, config: SpeciesConfig, initialX: number, initialY: number) {
+    super(id, config, initialX, initialY);
+    // Initial random idle state
+    this.enterIdleState();
+  }
+
+  /**
+   * Throttled AI Decision Tick (called at 5-10 Hz by LifeformManager - Section 32 & 33).
+   * Section 27: Strict Priority Hierarchy:
+   *   PETTED (highest)
+   *   EATING
+   *   WANDER
+   *   IDLE (lowest)
+   */
+  public updateAI(dt: number, detector: EnvironmentDetector): void {
+    if (this.behaviorState === 'DEAD') {
+      return;
+    }
+
+    // 1. Tick Petting Cooldown (Section 25: prevents spamming)
+    if (this.interaction.pettingCooldown > 0) {
+      this.interaction.pettingCooldown = Math.max(0, this.interaction.pettingCooldown - dt);
+    }
+
+    // 2. Section 21 & 22: PETTED State (highest priority)
+    if (this.interaction.isPetted) {
+      this.interaction.pettedTimer -= dt;
+      if (this.interaction.pettedTimer <= 0) {
+        this.interaction.isPetted = false;
+        this.enterIdleState();
+      }
+      this.behaviorState = 'PETTED';
+      this.clearTarget();
+      return;
+    }
+
+    // 3. Section 18: Hunger Progression
+    this.needs.hunger = Math.min(
+      this.needs.maxHunger,
+      this.needs.hunger + this.needs.hungerRate * dt
+    );
+
+    // 4. Section 16 & 17: EATING State & Eating Animation
+    if (this.behaviorState === 'EATING') {
+      this.stateTimer -= dt;
+      this.eatingElapsedTime += dt;
+
+      // Section 17: Eating visual oscillation (baseY - smallOffset ... baseY + smallOffset)
+      // Visual only: logical world position is completely untouched!
+      this.anim.eatingBobOffset = Math.sin(this.eatingElapsedTime * 8.0) * 2.2;
+
+      if (this.stateTimer <= 0) {
+        // Section 2: generateRandom(id) deciding whether to continue eating
+        const continueEatingChance = this.needs.hunger > 30 ? 0.35 : 0.0;
+        const willContinue = generateRandom(this.id) < continueEatingChance;
+
+        if (willContinue) {
+          // Continue eating another short cycle
+          this.stateTimer = this.config.eatingDuration * 0.6;
+          this.needs.hunger = Math.max(0, this.needs.hunger - 25);
+        } else {
+          // Finish eating
+          this.anim.eatingBobOffset = 0;
+          this.eatingElapsedTime = 0;
+          this.needs.hunger = Math.max(0, this.needs.hunger - 60);
+          this.isHeadingToFood = false;
+          this.enterIdleState();
+        }
+      }
+      return;
+    }
+
+    // 5. Section 15: Grass Detection when hungry
+    if (
+      this.needs.hunger >= this.needs.hungerThreshold &&
+      !this.isHeadingToFood &&
+      this.behaviorState !== 'PETTED'
+    ) {
+      const foodPos = detector.findNearbyGrass(this.position.x, this.position.y, 6.0);
+      if (foodPos) {
+        this.isHeadingToFood = true;
+        this.behaviorState = 'WANDER';
+        this.setTarget(foodPos.x, foodPos.y);
+        return;
+      }
+    }
+
+    // 6. Section 9 & 10: Idle / Wander State Machine with generateRandom(id)
+    this.stateTimer -= dt;
+
+    if (this.behaviorState === 'IDLE') {
+      if (this.stateTimer <= 0) {
+        // Section 9: The decision comes from generateRandom(animal.id).
+        // Possible result: remain idle or start wandering.
+        // This prevents every animal from constantly moving.
+        const shouldWander = generateRandom(this.id) < 0.65;
+        if (shouldWander) {
+          this.enterWanderState(detector);
+        } else {
+          // Remain idle for another short period
+          this.enterIdleState();
+        }
+      }
+    } else if (this.behaviorState === 'WANDER') {
+      if (this.stateTimer <= 0 && !this.isHeadingToFood) {
+        // Wandering timed out: return to IDLE
+        this.clearTarget();
+        this.enterIdleState();
+      }
+    }
+  }
+
+  /**
+   * Section 9: Enter IDLE state with randomized duration using generateRandom(this.id).
+   */
+  private enterIdleState(): void {
+    this.behaviorState = 'IDLE';
+    this.clearTarget();
+    this.isHeadingToFood = false;
+    this.anim.eatingBobOffset = 0;
+    this.stateTimer = randomRange(
+      this.id,
+      this.config.idleDurationMin,
+      this.config.idleDurationMax
+    );
+  }
+
+  /**
+   * Section 10: Wandering
+   * Choose random nearby target 3–7 tiles away using generateRandom(this.id).
+   */
+  private enterWanderState(detector: EnvironmentDetector): void {
+    const attempts = 8;
+    const minWanderDist = 3.0; // Section 10: 3–7 tiles away
+    const maxWanderDist = Math.min(7.0, Math.max(3.5, this.config.wanderRadius));
+
+    for (let i = 0; i < attempts; i++) {
+      const angle = generateRandom(this.id) * Math.PI * 2;
+      const dist = randomRange(this.id, minWanderDist, maxWanderDist);
+      const targetX = this.movement.wanderOriginX + Math.cos(angle) * dist;
+      const targetY = this.movement.wanderOriginY + Math.sin(angle) * dist;
+
+      if (detector.isWalkable(targetX, targetY, Boolean(this.config.isAquatic), Boolean(this.config.isAquatic))) {
+        this.behaviorState = 'WANDER';
+        this.stateTimer = randomRange(
+          this.id,
+          this.config.wanderDurationMin,
+          this.config.wanderDurationMax
+        );
+        this.setTarget(targetX, targetY);
+        return;
+      }
+    }
+
+    // If no valid spot found, stay idle a bit longer
+    this.enterIdleState();
+  }
+
+  /**
+   * Triggered when entity reaches its destination.
+   */
+  protected onTargetReached(): void {
+    if (this.isHeadingToFood) {
+      // Reached the grass: begin eating!
+      this.behaviorState = 'EATING';
+      this.stateTimer = this.config.eatingDuration;
+      this.eatingElapsedTime = 0;
+      this.isHeadingToFood = false;
+    } else {
+      // Finished regular wander: transition to IDLE
+      this.enterIdleState();
+    }
+  }
+
+  /**
+   * Triggered when path is blocked by collision (Section 12).
+   */
+  protected onMovementBlocked(): void {
+    this.isHeadingToFood = false;
+    this.enterIdleState();
+  }
+
+  /**
+   * Section 20, 21, 22, 25, 27: Pet interaction
+   * Cancels current movement or eating immediately and enters PETTED state.
+   */
+  public pet(): boolean {
+    if (!this.interaction.canPet || this.interaction.pettingCooldown > 0) {
+      return false;
+    }
+
+    // Section 27 Priority: EATING / WANDER cancelled, transitions to PETTED
+    this.behaviorState = 'PETTED';
+    this.interaction.isPetted = true;
+    this.interaction.pettedTimer = this.interaction.pettedDuration;
+    this.interaction.pettingCooldown = 4.0; // Section 25: cooldown to prevent spamming
+    this.interaction.heartsEmitted = true;
+    this.isHeadingToFood = false;
+    this.anim.eatingBobOffset = 0;
+    this.clearTarget();
+    return true;
+  }
+
+  /**
+   * Section 26: Feeding interaction
+   * Player feeds animal: reduces hunger and triggers small happy jumps + hearts.
+   */
+  public feed(): boolean {
+    if (!this.interaction.canFeed) return false;
+    this.needs.hunger = Math.max(0, this.needs.hunger - 45);
+    this.interaction.heartsEmitted = true;
+    // Animal performs 3 small-heighted fast jumps in gratitude
+    this.triggerPetJumps(5.5, 0.15);
+    return true;
+  }
+}
