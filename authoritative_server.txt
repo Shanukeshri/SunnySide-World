@@ -1,998 +1,622 @@
-build the game as server-authoritative from day one, even while it is single-player.
+What is happening currently
 
-The key idea is:
+Right now, your game is essentially a client-side simulation.
 
-The browser never decides what actually happened. It only sends intent/input. The Render server runs the simulation and tells the browser what happened.
+The browser contains the game world and runs most of the gameplay logic:
 
-That gives you almost the same architecture in single-player and multiplayer.
+Browser
+│
+├── Map
+├── Player
+├── Animals
+├── NPCs
+├── Resources
+├── Movement
+├── AI
+├── Interactions
+├── Combat
+└── Rendering
 
-NOTE : Maintain the game logic and everything acheived till now.
+The browser knows the current state of the game and changes it directly.
 
-1. The architecture we want
+For example, when the player moves:
 
-Eventually:
+Keyboard input
+      ↓
+Player movement logic
+      ↓
+Player position changes
+      ↓
+Renderer displays new position
 
-                    BROWSER
-                       │
-                input / commands
-                       │
-                 WebSocket
-                       │
-                       ▼
-              ┌─────────────────┐
-              │  RENDER SERVER  │
-              │                 │
-              │ Node.js         │
-              │ Socket.io       │
-              │                 │
-              │ Game Simulation  │
-              └────────┬────────┘
-                       │
-                 authoritative
-                    state
-                       │
-                       ▼
-                    BROWSER
-                       │
-                    Renderer
+This is extremely responsive because there is essentially no network delay involved.
 
-For single-player:
+The problem appears when you move toward multiplayer.
 
-Browser ───────→ Render
-                  │
-                  │ Player #1
-                  │ Animals
-                  │ NPCs
-                  │ World
-                  │ Randomness
-                  │ Combat
-                  │ Resources
-                  │
-                  └──────→ Browser
+If the browser is allowed to decide:
 
-For multiplayer:
+"My player is here."
+"My cow is here."
+"I hit this enemy."
+"I collected this item."
 
-                 Render
-                   │
-          authoritative world
-                   │
-       ┌───────────┼───────────┐
-       ↓           ↓           ↓
-     Player A    Player B    Player C
+then every other client would have to trust that client.
 
-The game server doesn't care whether there is one player or 100 players.
+That creates consistency and cheating problems.
 
-That's the property we want.
+What happened when you made the server authoritative
 
-2. First: separate your game into three layers
+The architecture became:
 
-This is the most important implementation step.
-
-Layer A — Simulation
-
-This is the actual game.
-
-GameState
-EntitySystem
-PlayerSystem
-AnimalSystem
-NPCSystem
-CombatSystem
-ResourceSystem
-SpawnSystem
-CraftingSystem
-BuildingSystem
-SurvivalSystem
-WorldSystem
-
-These systems should contain game rules.
-
-Example:
-
-AnimalSystem.update()
-
-could decide:
-
-Should this animal wander?
-Should it eat?
-Should it flee?
-Should it approach the player?
-Layer B — Networking
-
-This translates between:
-
-Client → Server
-
-and:
-
-Server → Client
-
-For example:
-
-player:input
-animal:interaction
-inventory:request
-building:place
-
-and server outputs:
-
-player:update
-entity:update
-entity:spawn
-entity:destroy
-item:pickup
-combat:result
-Layer C — Rendering
-
-Your existing Next.js rendering/game client belongs here.
-
-Server state
-     ↓
-Client state
-     ↓
-Renderer
-     ↓
-Canvas/WebGL/etc.
-
-The renderer should never be responsible for deciding game truth.
-
-3. The biggest change to your current game
-
-Right now you may have logic like:
-
-Player clicks tree
-       ↓
-Client checks tree
-       ↓
-Client decreases tree HP
-       ↓
-Client gives wood
-
-Don't do that.
-
-Instead:
-
-Player clicks tree
-       ↓
-Client sends command
-       ↓
+Browser
+   │
+   │ "I want to move right"
+   ▼
 Server
-       ↓
-validates action
-       ↓
-tree HP decreases
-       ↓
-wood generated
-       ↓
-server updates state
-       ↓
-client receives result
-       ↓
-renderer displays it
+   │
+   │ simulate movement
+   ▼
+Server state
+   │
+   │ send new position
+   ▼
+Browser
+   │
+   ▼
+Renderer
 
-The client becomes much more like a game terminal.
+This is correct from an authority perspective, but it introduces latency.
 
-4. Commands vs state
+Suppose your player is here:
 
-This distinction is extremely useful.
+Client: X = 100
+Server: X = 100
 
-Client sends commands
+You press right.
 
-For example:
+Instead of immediately moving:
 
-MOVE
-ATTACK
-INTERACT
-PICKUP
-DROP_ITEM
-CRAFT
-BUILD
-PET
-FEED
-EQUIP
-USE_ITEM
+X = 101
 
-These mean:
+the client waits:
 
-"I want to do this."
-
-They do not mean:
-
-"This definitely happened."
-
-5. Server validates commands
-
-Example:
-
-Client:
-
-ATTACK tree_928
-
-Server checks:
-
-Does tree exist?
-Is player alive?
-Is player close enough?
-Does player have an axe?
-Is the axe usable?
-Is the player allowed to attack right now?
-
-Then:
-
-VALID
+input
  ↓
-apply damage
+network
  ↓
-possibly destroy tree
+server
  ↓
-generate drops
+simulation
  ↓
-update state
-
-Or:
-
-INVALID
+network
  ↓
-ignore/reject
-
-This prevents cheating later.
-
-6. Your generateRandom() becomes server-owned
-
-This is especially relevant to what we discussed earlier.
-
-Have:
-
-generateRandom(entityId)
-
-inside the simulation/server layer.
-
-For example:
-
-AnimalSystem
-    ↓
-generateRandom(animal.id)
-    ↓
-choose next behavior
-
-The browser doesn't request random numbers.
-
-It doesn't decide:
-
-"cow should wander left."
-
-The server decides that.
-
-7. Create a real GameState
-
-Don't let individual React components own gameplay state.
-
-Have one conceptual state:
-
-GameState
-│
-├── world
-│
-├── players
-│
-├── animals
-│
-├── npcs
-│
-├── enemies
-│
-├── resources
-│
-├── items
-│
-├── structures
-│
-├── crops
-│
-└── time
-
-For example:
-
-GameState
-{
-    worldTime,
-    players,
-    entities,
-    droppedItems,
-    structures,
-    crops
-}
-
-The exact implementation can be optimized later.
-
-8. Every entity gets a unique ID
-
-You already wanted this for generateRandom().
-
-Make it universal.
-
-player_1
-cow_183
-tree_928
-npc_45
-item_712
-rock_91
-
-Internally you can simply use numeric IDs if that's more efficient:
-
-1
-183
-928
-45
-712
-91
-
-But the important property is:
-
-An entity's identity is stable.
-
-That lets the server say:
-
-entity 183 changed
-
-instead of sending the whole world.
-
-9. Use entity state machines
-
-This is particularly useful for your animals/NPCs.
-
-Example:
-
-Cow #183
-
-IDLE
-WANDERING
-EATING
-FLEEING
-PETTED
-FOLLOWING
-
-Server decides transitions.
-
-Example:
-
-WANDERING
-   ↓
-find grass
-   ↓
-EATING
-   ↓
-finished
-   ↓
-IDLE
-
-Pet:
-
-ANY NORMAL STATE
-      ↓
-    PETTED
-      ↓
-pause
-      ↓
-heart event
-      ↓
-previous state
-
-The client only displays the resulting state.
-
-10. Separate simulation state from animation
-
-This is extremely important for smoothness.
-
-Server:
-
-cow.position = (100, 250)
-cow.state = EATING
-
-Client:
-
-render cow
-play eating animation
-bob up/down
-
-The server should not continuously send:
-
-y = 250.1
-y = 250.2
-y = 250.3
-y = 250.4
-
-for an eating animation.
-
-Instead:
-
-Server:
-cow state = EATING
-
-Client:
-
-play eating animation
-
-Same with:
-
-❤️ heart
-player hop
-particles
-screen shake
-
-Those are presentation effects.
-
-11. Create an event system
-
-The server can produce events such as:
-
-PLAYER_JOINED
-PLAYER_LEFT
-
-ENTITY_SPAWNED
-ENTITY_DESTROYED
-
-ITEM_PICKED_UP
-
-TREE_HIT
-TREE_DESTROYED
-
-ANIMAL_PETTED
-ANIMAL_FED
-
-NPC_DIALOGUE
-
-PLAYER_DAMAGED
-ENTITY_DIED
-
-ITEM_CRAFTED
-BUILDING_PLACED
-
-Then networking can translate those into Socket.io messages.
-
-For example:
-
-AnimalSystem
-     ↓
-ANIMAL_PETTED
-     ↓
-Game event
-     ↓
-Socket.io
-     ↓
 client
+ ↓
+render
 
-Client receives:
+Even if that only takes a small amount of time, movement can feel sluggish.
 
-animal:petted
+And because your game is top-down and movement happens constantly, you'll notice this immediately.
 
-and plays:
+What we want instead
 
-❤️
-animal pause
-player hop
-12. Don't synchronize everything
+We want to combine the responsiveness of the client with the authority of the server.
 
-This is how you keep the game fast.
+The architecture becomes:
 
-Imagine 500 entities.
+                  CLIENT
+                    │
+             input #101
+                    │
+          ┌─────────┴─────────┐
+          │                   │
+          ▼                   ▼
+   Local prediction        Server
+          │                   │
+          ▼                   ▼
+     render instantly      validate
+                              │
+                              ▼
+                         authoritative
+                            state
+                              │
+                              ▼
+                           Client
 
-Don't do:
+The client doesn't wait for the server to tell it what to do.
 
-500 entities × every frame
+It predicts what should happen.
 
-Instead, synchronize only meaningful changes.
+The server independently performs the same simulation and eventually confirms or corrects that prediction.
+
+The fundamental concept
+
+There are now two versions of the state.
+
+1. Predicted client state
+
+What the client currently believes should be happening.
+
+predictedState
+2. Authoritative server state
+
+What the server has confirmed actually happened.
+
+serverState
+
+The renderer primarily uses the predicted state so the game feels instantaneous.
+
+The server periodically tells the client:
+
+"This is what I believe the actual state is."
+
+The client compares the two.
+
+Example: moving right
+
+Suppose:
+
+Player position = 100
+
+You press right.
+
+The client immediately does:
+
+Input #101
+moveX = 1
+
+local simulation
+      ↓
+position = 101
+
+The renderer immediately shows:
+
+Player → 101
+
+At the same time, the client sends:
+
+Input #101
+moveX = 1
+
+through Socket.io.
+
+The server receives it.
+
+It performs:
+
+Input #101
+      ↓
+validate
+      ↓
+simulate
+      ↓
+position = 101
+
+Then sends back:
+
+serverTick: 5821
+lastProcessedInput: 101
+position: 101
+
+The client sees:
+
+predicted = 101
+server = 101
+
+Everything matches.
+
+Nothing noticeable happens.
+
+What if they don't match?
+
+Suppose the client predicted:
+
+101
+
+but the server says:
+
+100.8
+
+That's a small discrepancy.
+
+You don't want:
+
+101
+ ↓
+SNAP
+ ↓
+100.8
+
+because the player will see a tiny visual jerk.
+
+Instead, the client can smoothly reconcile toward the authoritative position.
+
+For a larger error:
+
+Client: 150
+Server: 102
+
+the client needs a stronger correction.
+
+This is called server reconciliation.
+
+Why do we need sequence numbers?
+
+Because the client may have several inputs waiting for the server.
 
 For example:
 
-entity 183
-state changed:
-WANDERING → EATING
+101 → right
+102 → right
+103 → right
+104 → up-right
+105 → right
 
-or:
+The server might currently have processed only:
 
-entity 928
-destroyed
+101
+102
+103
 
-or:
+and sends:
 
-player 1
-position changed
-13. Use a server tick
+lastProcessedInput = 103
 
-The server should have its own simulation loop.
+The client knows:
+
+101 ✓
+102 ✓
+103 ✓
+
+104 pending
+105 pending
+
+So when it receives the authoritative state corresponding to input 103, it can:
+
+1. Accept server state
+2. Take inputs 104 and 105
+3. Replay them locally
+4. Produce the current predicted state
 
 Conceptually:
 
-while (serverRunning) {
+Server confirmed state
+        │
+        ▼
+Input 104
+        │
+        ▼
+Input 105
+        │
+        ▼
+Current predicted state
 
-    collectInputs()
+This is what keeps the local player responsive without sacrificing server authority.
 
-    updatePlayers()
+What happens to other players?
 
-    updateAnimals()
+This is slightly different.
 
-    updateNPCs()
+You should not locally predict other players' movement based on their raw inputs.
 
-    updateEnemies()
+Instead, the server sends their state:
 
-    updateResources()
+Player B
+position
+velocity
+direction
+animation/state
+server timestamp
 
-    updateWorld()
+Your client receives it and interpolates.
 
-    processEvents()
+For example:
 
-    broadcastChanges()
-}
+Server snapshot #1
+Player B = (100,100)
 
-Don't tie this to React rendering.
+Server snapshot #2
+Player B = (110,100)
 
-The server has its own clock.
+Your renderer smoothly displays:
 
-14. Client rendering has its own loop
+100
+101
+102
+103
+104
+...
+110
 
-The browser can run:
+rather than visibly jumping:
 
-requestAnimationFrame()
-
-at whatever FPS the device can manage.
+100 → 110
 
 So:
 
-SERVER
-simulation
-20–60 updates/sec
-       │
-       │ state
-       ▼
-CLIENT
-render
-60+ FPS
+YOUR PLAYER
+→ prediction + reconciliation
 
-The client interpolates movement between received server states.
+OTHER PLAYERS
+→ interpolation
 
-That's how you make network movement look smooth.
+This distinction is important.
 
-15. Client prediction for the player
+Now apply this to your animals
 
-For the player's own movement, eventually you don't want:
-
-press W
- ↓
-wait for server
- ↓
-receive position
- ↓
-move character
-
-because it feels laggy.
-
-Instead:
-
-press W
- ↓
-client predicts movement immediately
- ↓
-server receives input
- ↓
-server simulates movement
- ↓
-server sends authoritative position
- ↓
-client reconciles
-
-This gives you responsive controls while keeping the server authoritative.
-
-16. Your single-player mode can use exactly the same path
-
-This is the clever part.
-
-Don't create:
-
-SinglePlayerGame
-
-and separately:
-
-MultiplayerGame
-
-Instead:
-
-                 Game Server
-                     │
-             ┌───────┴───────┐
-             │               │
-         Player 1         Player 2
-
-Single-player:
-
-                 Game Server
-                     │
-                  Player 1
-
-Multiplayer:
-
-                 Game Server
-                     │
-          ┌──────────┼──────────┐
-       Player 1    Player 2    Player 3
-
-Same simulation.
-
-17. This means even single-player uses the network
-
-Your local experience would effectively be:
-
-Browser
-  │
-  │ WebSocket
-  ▼
-Render server
-  │
-  │ simulate
-  ▼
-Browser
-
-There will be some latency because you're going over the network.
-
-For a game, that's not necessarily ideal if your server is geographically far away.
-
-So there are two possible approaches.
-
-Approach A — true remote authoritative single-player
-Browser → Render → Browser
-
-Maximum consistency with multiplayer.
-
-Approach B — local authoritative simulation
-Browser
- ↓
-same GameSystems
- ↓
-local GameState
-
-Then multiplayer moves those systems to the server.
-
-But since your explicit goal is:
-
-authoritative server even in single-player
-
-I'd use Approach A for the architecture you're trying to learn/build.
-
-For your portfolio project, it also makes the multiplayer transition much more genuine.
-
-18. But don't send Server Actions into this loop
-
-Your architecture should be:
-
-                   Next.js
-                      │
-             ┌────────┴────────┐
-             │                 │
-       Server Actions       UI/pages
-             │
-          Database
-
-and separately:
-
-                 Node.js
-                    │
-                Socket.io
-                    │
-             Game Simulation
-
-Server Actions are for:
-
-save
-load
-authentication
-database operations
-settings
-
-Socket.io is for:
-
-live gameplay
-19. Persistence should NOT happen every tick
-
-Don't do:
-
-game tick
- ↓
-database write
-
-That would be terrible.
-
-Instead:
-
-Game State
-    │
-    ├── simulation
-    │
-    └── persistence events
-              ↓
-          periodically
-              ↓
-           database
+Your animal simulation remains server-authoritative.
 
 For example:
 
-Player builds house
-       ↓
-server updates state
-       ↓
-house exists immediately
-       ↓
-persistence queue
-       ↓
-database save
-20. World generation
+Cow #183
 
-Your procedural map generation can remain deterministic.
+The server decides:
 
-worldSeed
-    +
-coordinates
-    +
-generation rules
-        ↓
-world
+state = WANDERING
+direction = southeast
+speed = 1
 
-The server owns the canonical world.
+It can send enough information for the client to smoothly reproduce/interpolate the movement.
 
-The client can potentially generate visual terrain locally from the same seed, but anything mutable is server authority.
+The client doesn't need to ask:
 
-Example:
+"Where should cow #183 move?"
 
-Tree generated at (100,200)
+every frame.
 
-doesn't necessarily need to be sent.
+Your generateRandom() fits here
 
-But:
+This remains on the server for gameplay randomness.
 
-Player chopped tree #928
+For example:
 
-does.
+Animal #183
+      ↓
+generateRandom(183)
+      ↓
+0.72
+      ↓
+choose wandering direction
+      ↓
+update animal
 
-21. Your network messages should be small
+The server then communicates the meaningful result.
 
-Eventually something conceptually like:
+You don't send:
 
-Client → Server
+random = 0.72
+
+unless there's actually a reason to.
+
+You send something more useful:
+
+animal #183
+state = WANDERING
+direction = SE
+
+This keeps the network traffic small.
+
+What stays client-side?
+
+A lot.
+
+The client should still handle things that don't affect game truth:
+
+Rendering
+Camera
+Animation
+Particles
+Screen effects
+Sound
+UI
+Visual interpolation
+Visual prediction
+Local input
+
+For example, when you pet an animal:
+
+The server decides:
+
+Player is close enough
+Animal can be petted
+Pet action is valid
+Animal enters PETTED state
+
+Then the client can immediately/appropriately display:
+
+animal stops
+❤️
+player small hop
+animal animation
+
+Those visual effects don't need to be synchronized frame-by-frame.
+
+What stays server-side?
+
+Anything that determines actual game state:
+
+Player health
+Player position authority
+Animal position authority
+NPC AI
+Enemy AI
+Combat
+Damage
+Inventory
+Items
+Loot
+Resource destruction
+Crafting
+Building
+Spawning
+World modifications
+Survival stats
+Game time
+Gameplay randomness
+
+So the rule becomes:
+
+Client predicts; server decides.
+
+The final architecture
+
+Eventually your game should look like this:
+
+                         ┌───────────────┐
+                         │    CLIENT     │
+                         │               │
+                         │ Input         │
+                         │ Prediction    │
+                         │ Interpolation │
+                         │ Rendering     │
+                         │ Animation     │
+                         └───────┬───────┘
+                                 │
+                           Socket.io
+                                 │
+                        commands / inputs
+                                 │
+                                 ▼
+                         ┌───────────────┐
+                         │ GAME SERVER   │
+                         │               │
+                         │ Game Loop     │
+                         │ Validation    │
+                         │ Game State    │
+                         │ AI            │
+                         │ Combat        │
+                         │ Spawning      │
+                         │ Randomness    │
+                         └───────┬───────┘
+                                 │
+                         authoritative
+                              state
+                                 │
+                                 ▼
+                              CLIENT
+
+And for multiplayer:
+
+                       GAME SERVER
+                            │
+              ┌─────────────┼─────────────┐
+              │             │             │
+              ▼             ▼             ▼
+           Client A      Client B      Client C
+What we actually need to implement
+
+I'd implement it in this order.
+
+Phase 1 — Input system
+
+Instead of directly changing state from keyboard input:
+
+Keyboard
+   ↓
+Input object
+
+Create structured inputs:
 
 {
-    type: "input",
-    sequence: 183,
-    movement: { x: 1, y: 0 }
+    sequence: 101,
+    moveX: 1,
+    moveY: 0,
+    actions: []
 }
+Phase 2 — Server simulation
 
-Server:
+The server consumes those inputs:
 
-Server → Client
+Input
+ ↓
+GameSystem
+ ↓
+GameState
 
-{
-    type: "state",
-    sequence: 183,
-    entities: [...]
-}
+The server remains authoritative.
 
-Or event:
+Phase 3 — Client prediction
 
-{
-    type: "animal:petted",
-    entityId: 183
-}
+The same input is immediately applied locally:
 
-Don't send enormous JSON blobs every frame.
+Input
+ ↓
+Local GameSystem
+ ↓
+PredictedState
+ ↓
+Renderer
 
-Later, if necessary, you can optimize serialization further.
+No waiting.
 
-22. Interest management comes later
-
-When the world gets large, a player doesn't need:
-
-every entity in the entire world
-
-They need entities near them.
-
-Conceptually:
-
-WORLD
-
-+--------------------------------------+
-|                                      |
-|        Player                        |
-|           ↓                          |
-|       [visible region]               |
-|                                      |
-|                          animals     |
-|                                      |
-+--------------------------------------+
-
-Server only sends relevant updates.
-
-This becomes very important when multiplayer grows.
-
-23. Your final project structure
-
-I'd aim toward something roughly like:
-
-project/
-│
-├── app/
-│   ├── pages
-│   ├── components
-│   └── server-actions
-│
-├── game/
-│   ├── core/
-│   │   ├── GameState
-│   │   ├── GameLoop
-│   │   ├── Entity
-│   │   ├── EventBus
-│   │   └── Random
-│   │
-│   ├── systems/
-│   │   ├── PlayerSystem
-│   │   ├── AnimalSystem
-│   │   ├── NPCSystem
-│   │   ├── CombatSystem
-│   │   ├── ResourceSystem
-│   │   ├── SpawnSystem
-│   │   ├── CraftingSystem
-│   │   ├── BuildingSystem
-│   │   └── SurvivalSystem
-│   │
-│   ├── entities/
-│   │   ├── Player
-│   │   ├── Animal
-│   │   ├── NPC
-│   │   ├── Enemy
-│   │   └── Resource
-│   │
-│   └── world/
-│       ├── generation
-│       ├── terrain
-│       └── modifications
-│
-├── client/
-│   ├── renderer
-│   ├── input
-│   ├── interpolation
-│   └── effects
-│
-└── server/
-    ├── socket
-    ├── rooms
-    ├── game-server
-    └── networking
-
-You don't have to restructure everything immediately. This is the destination architecture.
-
-24. The implementation order I'd use
-
-Don't try to implement all of this at once.
-
-Step 1 — Extract game state
-
-Take your existing game and identify:
-
-What is actual game state?
-
-Move it into GameState.
-
-Step 2 — Extract systems
-
-Take existing logic and turn it into:
-
-PlayerSystem
-AnimalSystem
-NPCSystem
-ResourceSystem
-...
-Step 3 — Make randomness server-owned
-
-Implement:
-
-generateRandom(entityId)
-
-in the simulation layer.
-
-Step 4 — Create Node.js game server
-
-Run:
-
-Node.js
-+
-Socket.io
-
-on Render.
-
-Step 5 — Move simulation to server
-
-Move:
-
-animals
-NPCs
-resources
-combat
-spawning
-world time
-
-to the server.
-
-Step 6 — Make the browser a client
-
-Browser sends:
-
-commands/input
+Phase 4 — Server acknowledgements
 
 Server sends:
 
-state/events
-Step 7 — Add interpolation
+serverTick
+lastProcessedInput
+authoritativeState
+Phase 5 — Reconciliation
 
-Make server-controlled entities look smooth.
+Client:
 
-Step 8 — Add client prediction
+authoritative state
+        +
+unacknowledged inputs
+        ↓
+re-simulate
+        ↓
+predicted state
+Phase 6 — Entity interpolation
 
-Start with player movement.
+For:
 
-Step 9 — Add persistence
+animals
+NPCs
+other players
+enemies
 
-Use your Next.js Server Actions/database for:
+smoothly interpolate between server updates.
 
-save/load
-Step 10 — Multiplayer
+Phase 7 — Delta/state synchronization
 
-At this point multiplayer becomes surprisingly straightforward:
+Don't repeatedly send the entire world.
 
-Single player:
+Send:
 
-Client A
-   ↕
-Game Server
+entity changed
+entity spawned
+entity destroyed
+player state changed
+event happened
+Phase 8 — Multiplayer rooms/worlds
 
+Once the single-player version works:
 
-Multiplayer:
+World #1
+ ├── Player A
+ ├── Player B
+ └── Player C
 
-Client A ─┐
-Client B ─┼─ Game Server
-Client C ─┘
+The exact same simulation can handle all of them.
 
-You don't need a separate "multiplayer game engine."
+So the transition you're making is NOT
+Client authoritative
+        ↓
+Server authoritative
 
-The most important rule
+followed by going back to client authority.
 
-From now on, whenever you implement a gameplay feature, ask:
+It is:
 
-"Who owns the truth?"
+Client-only
+    ↓
+Server-authoritative + client prediction
+    ↓
+Server authoritative truth
++
+Client responsive prediction
 
-For your architecture, the answer should almost always be:
+That's the sweet spot.
 
-Server.
-
-For example:
-
-Feature	Authority
-Player position	Server
-Player health	Server
-Hunger	Server
-Animal AI	Server
-NPC AI	Server
-Spawning	Server
-Random loot	Server
-Resource HP	Server
-Tree destroyed	Server
-Inventory	Server
-Crafting	Server
-Building	Server
-Combat	Server
-World time	Server
-World modifications	Server
-Animation frame	Client
-Particles	Client
-Heart effect	Client
-Camera	Client
-UI	Client
-Rendering	Client
-
-That's the foundation I'd establish before adding multiplayer. Once this boundary is correct, adding the second player is mostly a networking problem rather than a complete rewrite of your game.
+The server remains the ultimate source of truth, but the client doesn't have to wait for that truth before making the game feel responsive.
