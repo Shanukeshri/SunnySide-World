@@ -1360,7 +1360,8 @@ function setupNetworkClientHandlers() {
       if (state === "CONNECTED") {
         hudServerDot.style.background = "#22c55e";
         hudServerDot.style.boxShadow = "0 0 8px #22c55e";
-        hudServerStatus.textContent = `Authoritative Server: Online (Port 4000 • 20Hz)`;
+        const displayHost = networkClient?.serverUrl ? networkClient.serverUrl.replace(/^https?:\/\//, "") : "Online";
+        hudServerStatus.textContent = `Authoritative Server: Online (${displayHost} • 20Hz)`;
         hudServerStatus.style.color = "#4ade80";
       } else if (state === "CONNECTING") {
         hudServerDot.style.background = "#eab308";
@@ -1419,6 +1420,76 @@ function setupNetworkClientHandlers() {
       });
     }
 
+    // Synchronize wildlife animals from authoritative server
+    if (sync.animals) {
+      const activeIds = new Set(sync.animals.map((a) => a.id));
+      survivalEngine.animals = survivalEngine.animals.filter((a: any) => activeIds.has(a.id));
+      for (const sa of sync.animals) {
+        let existing = survivalEngine.animals.find((a: any) => a.id === sa.id);
+        if (!existing) {
+          const cfg = (SPECIES_CONFIGS as any)[sa.species] || SPECIES_CONFIGS["cow"];
+          existing = new Animal(sa.id, cfg, sa.x, sa.y);
+          survivalEngine.animals.push(existing);
+        }
+        existing.health = sa.health;
+        existing.direction = sa.direction;
+        existing.behaviorState = sa.behaviorState as any;
+      }
+    }
+
+    // Synchronize village NPCs from authoritative server
+    if (sync.npcs) {
+      const activeIds = new Set(sync.npcs.map((n) => n.id));
+      survivalEngine.npcs = survivalEngine.npcs.filter((n: any) => activeIds.has(n.id));
+      for (const sn of sync.npcs) {
+        let existing = survivalEngine.npcs.find((n: any) => n.id === sn.id);
+        if (!existing) {
+          const cfg = (SPECIES_CONFIGS as any)["villager"] || SPECIES_CONFIGS["cow"];
+          existing = new NPC(sn.id, cfg, sn.x, sn.y, sn.x, sn.y, sn.role as any);
+          survivalEngine.npcs.push(existing);
+        }
+        existing.direction = sn.direction;
+        existing.behaviorState = sn.behaviorState as any;
+      }
+    }
+
+    // Synchronize hostile enemies from authoritative server
+    if (sync.enemies) {
+      const activeIds = new Set(sync.enemies.map((e) => e.id));
+      survivalEngine.enemies = survivalEngine.enemies.filter((e: any) => activeIds.has(e.id));
+      for (const se of sync.enemies) {
+        let existing = survivalEngine.enemies.find((e: any) => e.id === se.id);
+        if (!existing) {
+          existing = {
+            id: se.id,
+            type: se.enemyType,
+            name: se.name,
+            x: se.x,
+            y: se.y,
+            vx: se.vx,
+            vy: se.vy,
+            direction: se.direction,
+            health: se.health,
+            maxHealth: se.maxHealth,
+            damage: se.damage,
+            speed: se.speed,
+            state: se.state,
+            attackCooldown: se.attackCooldown,
+            patrolTimer: se.patrolTimer,
+            hurtTimer: se.hurtTimer,
+            deathTimer: se.deathTimer,
+            isAlive: se.isAlive,
+          };
+          survivalEngine.enemies.push(existing);
+        } else {
+          existing.health = se.health;
+          existing.isAlive = se.isAlive;
+          existing.direction = se.direction;
+          existing.state = se.state;
+        }
+      }
+    }
+
     // Synchronize dropped items
     if (sync.droppedItems) {
       survivalEngine.droppedItems = sync.droppedItems as any;
@@ -1472,8 +1543,8 @@ function ensureSurvivalGameLoaded() {
     initSurvivalUI();
     resizeSurvivalCanvas();
 
-    // Initialize Network Client for authoritative server
-    networkClient = new NetworkClient("http://localhost:4000");
+    // Initialize Network Client for authoritative server (auto-detects Render or localhost)
+    networkClient = new NetworkClient();
     (window as any).networkClient = networkClient;
     setupNetworkClientHandlers();
     networkClient.connect("Explorer", "mophair");
@@ -1528,9 +1599,10 @@ function survivalGameLoop(now: number) {
     const isOnline = networkClient && networkClient.connectionState === "CONNECTED";
 
     if (isOnline) {
-      // Authoritative Online Mode:
-      // Server runs truth (collision, needs, combat, AI).
-      // Client updates local cosmetic timers, particles, and smooth prediction.
+      // 1. Authoritative Online Continuous Movement with Local Prediction (Phase 1 & 3)
+      updatePlayerContinuousMovement(dt);
+
+      // 2. Client updates local cosmetic timers, particles, and smooth prediction
       (survivalEngine as any).updateParticles(dt);
       if (survivalEngine.player.swingTimer > 0) survivalEngine.player.swingTimer -= dt;
       if (survivalEngine.player.hopTimer > 0) {
@@ -1544,7 +1616,35 @@ function survivalGameLoop(now: number) {
       if (survivalEngine.player.rollTimer > 0) survivalEngine.player.rollTimer -= dt;
       if (survivalEngine.player.doingTimer > 0) survivalEngine.player.doingTimer -= dt;
 
-      // Update terrain chunk loading around player's predicted position
+      // 3. Smooth Entity Interpolation at 60 FPS (Phase 6 of authoritative_server.txt)
+      if (networkClient) {
+        // Wildlife animals
+        for (const a of survivalEngine.animals) {
+          const pos = networkClient.interpolator.getInterpolatedPosition(a.id, a.position.x, a.position.y);
+          a.position.x = pos.x;
+          a.position.y = pos.y;
+        }
+        // Village NPCs
+        for (const n of survivalEngine.npcs) {
+          const pos = networkClient.interpolator.getInterpolatedPosition(n.id, n.position.x, n.position.y);
+          n.position.x = pos.x;
+          n.position.y = pos.y;
+        }
+        // Hostile enemies
+        for (const e of survivalEngine.enemies) {
+          const pos = networkClient.interpolator.getInterpolatedPosition(e.id, e.x, e.y);
+          e.x = pos.x;
+          e.y = pos.y;
+        }
+        // Remote multiplayer players
+        for (const rp of survivalEngine.remotePlayers) {
+          const pos = networkClient.interpolator.getInterpolatedPosition(rp.id, rp.x, rp.y);
+          rp.x = pos.x;
+          rp.y = pos.y;
+        }
+      }
+
+      // 4. Update terrain chunk loading around player's predicted position
       survivalEngine.worldManager.updatePlayerLocation(survivalEngine.player.x, survivalEngine.player.y);
     } else {
       // Standalone / Offline Fallback Mode: run complete local simulation
@@ -1816,15 +1916,69 @@ function renderRadarMiniMap() {
   });
 }
 
-function initSurvivalInputs() {
-  const activeKeys = new Set<string>();
+const activeSurvivalKeys = new Set<string>();
 
+export function updatePlayerContinuousMovement(dt: number = 0.025) {
+  if (!survivalEngine) return;
+  let dx = 0;
+  let dy = 0;
+  if (activeSurvivalKeys.has("w") || activeSurvivalKeys.has("arrowup")) dy -= 1;
+  if (activeSurvivalKeys.has("s") || activeSurvivalKeys.has("arrowdown")) dy += 1;
+  if (activeSurvivalKeys.has("a") || activeSurvivalKeys.has("arrowleft")) dx -= 1;
+  if (activeSurvivalKeys.has("d") || activeSurvivalKeys.has("arrowright")) dx += 1;
+
+  survivalEngine.player.vx = dx;
+  survivalEngine.player.vy = dy;
+
+  if (networkClient && networkClient.connectionState === "CONNECTED") {
+    if (dx !== 0 || dy !== 0) {
+      const input = networkClient.prediction.predictMovement(
+        dx,
+        dy,
+        survivalEngine.player.isSprinting,
+        survivalEngine.player.isSwimming,
+        dt,
+        (x, y) => (survivalEngine as any).canMoveTo(x, y)
+      );
+      survivalEngine.player.x = networkClient.prediction.predictedX;
+      survivalEngine.player.y = networkClient.prediction.predictedY;
+
+      if (dx > 0) {
+        survivalEngine.player.facing = "RIGHT";
+        survivalEngine.player.direction = "RIGHT";
+      } else if (dx < 0) {
+        survivalEngine.player.facing = "LEFT";
+        survivalEngine.player.direction = "LEFT";
+      } else if (dy > 0) {
+        survivalEngine.player.direction = "DOWN";
+      } else if (dy < 0) {
+        survivalEngine.player.direction = "UP";
+      }
+
+      networkClient.sendInput(input.vx, input.vy, input.isSprinting, input.seq);
+      (survivalEngine.player as any)._wasMoving = true;
+    } else if ((survivalEngine.player as any)._wasMoving) {
+      (survivalEngine.player as any)._wasMoving = false;
+      const input = networkClient.prediction.predictMovement(
+        0,
+        0,
+        false,
+        survivalEngine.player.isSwimming,
+        dt,
+        (x, y) => (survivalEngine as any).canMoveTo(x, y)
+      );
+      networkClient.sendInput(0, 0, false, input.seq);
+    }
+  }
+}
+
+function initSurvivalInputs() {
   window.addEventListener("keydown", (e) => {
     if (!isSurvivalTabActive) return;
     if (e.target instanceof HTMLInputElement) return;
 
     const key = e.key.toLowerCase();
-    activeKeys.add(key);
+    activeSurvivalKeys.add(key);
 
     if (e.shiftKey) {
       if (survivalEngine) survivalEngine.player.isSprinting = true;
@@ -1885,7 +2039,7 @@ function initSurvivalInputs() {
       e.preventDefault();
     }
 
-    updatePlayerMovement();
+    updatePlayerContinuousMovement(0.025);
   });
 
   window.addEventListener("keyup", (e) => {
@@ -1893,54 +2047,14 @@ function initSurvivalInputs() {
     if (e.target instanceof HTMLInputElement) return;
 
     const key = e.key.toLowerCase();
-    activeKeys.delete(key);
+    activeSurvivalKeys.delete(key);
 
     if (!e.shiftKey) {
       if (survivalEngine) survivalEngine.player.isSprinting = false;
     }
 
-    updatePlayerMovement();
+    updatePlayerContinuousMovement(0.025);
   });
-
-  function updatePlayerMovement() {
-    if (!survivalEngine) return;
-    let dx = 0;
-    let dy = 0;
-    if (activeKeys.has("w") || activeKeys.has("arrowup")) dy -= 1;
-    if (activeKeys.has("s") || activeKeys.has("arrowdown")) dy += 1;
-    if (activeKeys.has("a") || activeKeys.has("arrowleft")) dx -= 1;
-    if (activeKeys.has("d") || activeKeys.has("arrowright")) dx += 1;
-
-    survivalEngine.player.vx = dx;
-    survivalEngine.player.vy = dy;
-
-    if (networkClient && networkClient.connectionState === "CONNECTED") {
-      const input = networkClient.prediction.predictMovement(
-        dx,
-        dy,
-        survivalEngine.player.isSprinting,
-        survivalEngine.player.isSwimming,
-        0.025,
-        (x, y) => (survivalEngine as any).canMoveTo(x, y)
-      );
-      survivalEngine.player.x = networkClient.prediction.predictedX;
-      survivalEngine.player.y = networkClient.prediction.predictedY;
-
-      if (dx > 0) {
-        survivalEngine.player.facing = "RIGHT";
-        survivalEngine.player.direction = "RIGHT";
-      } else if (dx < 0) {
-        survivalEngine.player.facing = "LEFT";
-        survivalEngine.player.direction = "LEFT";
-      } else if (dy > 0) {
-        survivalEngine.player.direction = "DOWN";
-      } else if (dy < 0) {
-        survivalEngine.player.direction = "UP";
-      }
-
-      networkClient.sendInput(input.vx, input.vy, input.isSprinting, input.seq);
-    }
-  }
 
   // Mouse clicks on canvas
   if (survivalCanvas) {

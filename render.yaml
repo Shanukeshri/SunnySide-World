@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sunnyside-rts-game
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORLD_SEED
+        value: "42891"
+      - key: TICK_RATE
+        value: "20"

@@ -18,6 +18,29 @@ import { GameEvent } from "../game/core/EventBus";
 
 export type ConnectionState = "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "OFFLINE";
 
+export function resolveServerUrl(customUrl?: string): string {
+  if (customUrl) return customUrl;
+
+  if (typeof window !== "undefined") {
+    // 1. Check for URL query parameter: ?server=https://...
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryServer = params.get("server");
+      if (queryServer) return queryServer;
+    } catch {
+      // ignore
+    }
+
+    // 2. In production (on Render) or when served on custom host, connect to current origin
+    if (window.location.hostname !== "localhost" || window.location.port !== "3000") {
+      return window.location.origin;
+    }
+  }
+
+  // 3. Fallback to Vite env or local Node server port 4000
+  return (import.meta as any).env?.VITE_SERVER_URL || "http://localhost:4000";
+}
+
 export class NetworkClient {
   public socket: Socket | null = null;
   public connectionState: ConnectionState = "DISCONNECTED";
@@ -37,8 +60,8 @@ export class NetworkClient {
   private syncListeners: ((sync: ServerSyncMessage) => void)[] = [];
   private stateChangeListeners: ((state: ConnectionState) => void)[] = [];
 
-  constructor(serverUrl = "http://localhost:4000") {
-    this.serverUrl = serverUrl;
+  constructor(serverUrl?: string) {
+    this.serverUrl = resolveServerUrl(serverUrl);
     this.prediction = new ClientPrediction();
     this.interpolator = new EntityInterpolator(80); // 80ms interpolation buffer
   }
