@@ -25,6 +25,8 @@ import {
 import { SurvivalRenderer } from "./game/SurvivalRenderer";
 import { GameAudio } from "./game/GameAudio";
 import { ItemId, Recipe, PlacedStructure, InventorySlot } from "./game/GameTypes";
+import { NetworkClient } from "./client/NetworkClient";
+import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -1344,6 +1346,121 @@ const modalChestGrid = document.getElementById("modal-chest-grid")!;
 const modalChestPlayerGrid = document.getElementById("modal-chest-player-grid")!;
 
 let activeCraftCategory = "tools";
+let networkClient: NetworkClient | null = null;
+
+const hudServerStatus = document.getElementById("hud-server-status");
+const hudServerDot = document.getElementById("hud-server-dot");
+const hudPlayerCount = document.getElementById("hud-player-count");
+
+function setupNetworkClientHandlers() {
+  if (!networkClient) return;
+
+  networkClient.onStateChange((state) => {
+    if (hudServerDot && hudServerStatus) {
+      if (state === "CONNECTED") {
+        hudServerDot.style.background = "#22c55e";
+        hudServerDot.style.boxShadow = "0 0 8px #22c55e";
+        hudServerStatus.textContent = `Authoritative Server: Online (Port 4000 • 20Hz)`;
+        hudServerStatus.style.color = "#4ade80";
+      } else if (state === "CONNECTING") {
+        hudServerDot.style.background = "#eab308";
+        hudServerDot.style.boxShadow = "0 0 6px #eab308";
+        hudServerStatus.textContent = "Authoritative Server: Connecting...";
+        hudServerStatus.style.color = "#facc15";
+      } else {
+        hudServerDot.style.background = "#f97316";
+        hudServerDot.style.boxShadow = "0 0 6px #f97316";
+        hudServerStatus.textContent = "Local Authoritative Mode (Standalone)";
+        hudServerStatus.style.color = "#fb923c";
+      }
+    }
+  });
+
+  networkClient.onSync((sync) => {
+    if (!survivalEngine) return;
+
+    if (hudPlayerCount) {
+      const total = 1 + (sync.otherPlayers?.length || 0);
+      hudPlayerCount.textContent = `👥 ${total} Online`;
+    }
+
+    // Synchronize local player authoritative stats
+    if (sync.player) {
+      survivalEngine.player.health = sync.player.health;
+      survivalEngine.player.maxHealth = sync.player.maxHealth;
+      survivalEngine.player.hunger = sync.player.hunger;
+      survivalEngine.player.maxHunger = sync.player.maxHunger;
+      survivalEngine.player.stamina = sync.player.stamina;
+      survivalEngine.player.maxStamina = sync.player.maxStamina;
+      survivalEngine.player.isDead = sync.player.isDead;
+      survivalEngine.player.isSwimming = sync.player.isSwimming;
+      survivalEngine.player.direction = sync.player.direction;
+      survivalEngine.player.facing = sync.player.facing;
+      survivalEngine.inventory = sync.player.inventory;
+      survivalEngine.hotbar = sync.player.hotbar;
+    }
+
+    if (sync.worldTime) {
+      survivalEngine.worldTime = sync.worldTime;
+    }
+    if (sync.placedStructures) {
+      survivalEngine.placedStructures = sync.placedStructures as any;
+    }
+
+    // Synchronize remote players with interpolated positions
+    if (sync.otherPlayers) {
+      survivalEngine.remotePlayers = sync.otherPlayers.map((op) => {
+        const pos = networkClient!.interpolator.getInterpolatedPosition(op.id, op.x, op.y);
+        return {
+          ...op,
+          x: pos.x,
+          y: pos.y,
+        };
+      });
+    }
+
+    // Synchronize dropped items
+    if (sync.droppedItems) {
+      survivalEngine.droppedItems = sync.droppedItems as any;
+    }
+  });
+
+  networkClient.onEvent((ev) => {
+    if (!survivalEngine) return;
+
+    if (ev.type === "TREE_HIT") {
+      GameAudio.playChop();
+      (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#a16207");
+    } else if (ev.type === "ROCK_HIT") {
+      GameAudio.playMine();
+      (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#94a3b8");
+    } else if (ev.type === "ANIMAL_PETTED" || ev.type === "ANIMAL_FED") {
+      GameAudio.playHeartChime();
+      (survivalEngine as any).emitHeart(ev.payload.x, ev.payload.y);
+    } else if (ev.type === "PLAYER_DAMAGED") {
+      GameAudio.playHurt();
+    } else if (ev.type === "ITEM_PICKED_UP") {
+      GameAudio.playPickup();
+    } else if (ev.type === "ITEM_CRAFTED") {
+      GameAudio.playCraft();
+    } else if (ev.type === "BUILDING_PLACED") {
+      GameAudio.playBuild();
+    } else if (ev.type === "FLOATING_TEXT") {
+      survivalEngine.addFloatingText(ev.payload.text, ev.payload.x, ev.payload.y, ev.payload.color);
+    } else if (ev.type === "AUDIO_TRIGGER") {
+      const s = ev.payload.sound;
+      if (s === "chop") GameAudio.playChop();
+      else if (s === "mine") GameAudio.playMine();
+      else if (s === "hurt") GameAudio.playHurt();
+      else if (s === "jump") GameAudio.playJump();
+      else if (s === "craft") GameAudio.playCraft();
+      else if (s === "build") GameAudio.playBuild();
+      else if (s === "pickup") GameAudio.playPickup();
+      else if (s === "eat") GameAudio.playEat();
+      else if (s === "heart") GameAudio.playHeartChime();
+    }
+  });
+}
 
 function ensureSurvivalGameLoaded() {
   if (!isSurvivalInitialized) {
@@ -1354,6 +1471,13 @@ function ensureSurvivalGameLoaded() {
     initSurvivalInputs();
     initSurvivalUI();
     resizeSurvivalCanvas();
+
+    // Initialize Network Client for authoritative server
+    networkClient = new NetworkClient("http://localhost:4000");
+    (window as any).networkClient = networkClient;
+    setupNetworkClientHandlers();
+    networkClient.connect("Explorer", "mophair");
+
     isSurvivalInitialized = true;
   }
 }
@@ -1401,10 +1525,33 @@ function survivalGameLoop(now: number) {
   lastSurvivalTime = now;
 
   if (survivalEngine && survivalRenderer && survivalCanvas) {
-    // 1. Simulation Update
-    survivalEngine.update(dt);
+    const isOnline = networkClient && networkClient.connectionState === "CONNECTED";
 
-    // 2. Render World & Entities
+    if (isOnline) {
+      // Authoritative Online Mode:
+      // Server runs truth (collision, needs, combat, AI).
+      // Client updates local cosmetic timers, particles, and smooth prediction.
+      (survivalEngine as any).updateParticles(dt);
+      if (survivalEngine.player.swingTimer > 0) survivalEngine.player.swingTimer -= dt;
+      if (survivalEngine.player.hopTimer > 0) {
+        survivalEngine.player.hopTimer -= dt;
+        const progress = Math.max(0, Math.min(1, 1 - survivalEngine.player.hopTimer / 0.55));
+        survivalEngine.player.hopOffset = Math.sin(progress * Math.PI) * 0.55;
+      } else {
+        survivalEngine.player.hopOffset = 0;
+      }
+      if (survivalEngine.player.hurtTimer > 0) survivalEngine.player.hurtTimer -= dt;
+      if (survivalEngine.player.rollTimer > 0) survivalEngine.player.rollTimer -= dt;
+      if (survivalEngine.player.doingTimer > 0) survivalEngine.player.doingTimer -= dt;
+
+      // Update terrain chunk loading around player's predicted position
+      survivalEngine.worldManager.updatePlayerLocation(survivalEngine.player.x, survivalEngine.player.y);
+    } else {
+      // Standalone / Offline Fallback Mode: run complete local simulation
+      survivalEngine.update(dt);
+    }
+
+    // 2. Render World & Entities (Local + Remote Multiplayer Players)
     survivalRenderer.render(survivalCanvas, survivalEngine);
 
     // 3. Update HUD & Radar
@@ -1686,18 +1833,24 @@ function initSurvivalInputs() {
     // Hotbar quick keys 1-8
     if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(key)) {
       if (survivalEngine) {
-        survivalEngine.activeHotbarIndex = parseInt(key, 10) - 1;
+        const idx = parseInt(key, 10) - 1;
+        survivalEngine.activeHotbarIndex = idx;
+        networkClient?.sendAction({ type: "SELECT_HOTBAR", index: idx });
       }
     }
 
     // Interact [E]
     if (key === "e") {
+      networkClient?.sendAction({ type: "INTERACT" });
       survivalEngine?.handleInteractKey();
     }
 
     // Feed / Eat [F]
     if (key === "f") {
+      networkClient?.sendAction({ type: "FEED" });
+      networkClient?.sendAction({ type: "EAT" });
       survivalEngine?.handleFeedKey();
+      survivalEngine?.eatActiveFood();
     }
 
     // Inventory / Crafting [I / C]
@@ -1724,6 +1877,7 @@ function initSurvivalInputs() {
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
         survivalEngine.jump();
+        networkClient?.sendAction({ type: "JUMP" });
       }
     }
 
@@ -1759,6 +1913,33 @@ function initSurvivalInputs() {
 
     survivalEngine.player.vx = dx;
     survivalEngine.player.vy = dy;
+
+    if (networkClient && networkClient.connectionState === "CONNECTED") {
+      const input = networkClient.prediction.predictMovement(
+        dx,
+        dy,
+        survivalEngine.player.isSprinting,
+        survivalEngine.player.isSwimming,
+        0.025,
+        (x, y) => (survivalEngine as any).canMoveTo(x, y)
+      );
+      survivalEngine.player.x = networkClient.prediction.predictedX;
+      survivalEngine.player.y = networkClient.prediction.predictedY;
+
+      if (dx > 0) {
+        survivalEngine.player.facing = "RIGHT";
+        survivalEngine.player.direction = "RIGHT";
+      } else if (dx < 0) {
+        survivalEngine.player.facing = "LEFT";
+        survivalEngine.player.direction = "LEFT";
+      } else if (dy > 0) {
+        survivalEngine.player.direction = "DOWN";
+      } else if (dy < 0) {
+        survivalEngine.player.direction = "UP";
+      }
+
+      networkClient.sendInput(input.vx, input.vy, input.isSprinting, input.seq);
+    }
   }
 
   // Mouse clicks on canvas
@@ -1777,8 +1958,19 @@ function initSurvivalInputs() {
       const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
 
       if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
+        networkClient?.sendAction({
+          type: "BUILD",
+          pieceId: survivalEngine.buildPiece,
+          wx: worldX,
+          wy: worldY,
+        });
         survivalEngine.placeStructure(survivalEngine.buildPiece, worldX, worldY);
       } else {
+        networkClient?.sendAction({
+          type: "CLICK",
+          wx: worldX,
+          wy: worldY,
+        });
         survivalEngine.handleWorldClick(worldX, worldY);
       }
     });
@@ -1808,6 +2000,7 @@ function initSurvivalInputs() {
       } else {
         survivalEngine.activeHotbarIndex = (survivalEngine.activeHotbarIndex + 7) % 8;
       }
+      networkClient?.sendAction({ type: "SELECT_HOTBAR", index: survivalEngine.activeHotbarIndex });
     }, { passive: false });
   }
 }
@@ -1890,6 +2083,7 @@ function initSurvivalUI() {
   });
 
   btnRespawn.addEventListener("click", () => {
+    networkClient?.sendAction({ type: "RESPAWN" });
     survivalEngine?.respawnPlayer();
     modalGameOver.classList.add("hidden");
   });
@@ -2003,6 +2197,7 @@ function renderCraftingList() {
 
     const craftBtn = card.querySelector(".btn-craft")!;
     craftBtn.addEventListener("click", () => {
+      networkClient?.sendAction({ type: "CRAFT", recipeId: rec.id });
       if (survivalEngine && survivalEngine.craftRecipe(rec)) {
         renderInventoryGrids();
         renderCraftingList();

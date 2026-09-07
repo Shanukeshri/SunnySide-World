@@ -5,13 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host",
+    "server": "tsx src/server/index.ts",
+    "dev:all": "concurrently -k -p \"[{name}]\" -n \"CLIENT,SERVER\" -c \"cyan,magenta\" \"vite --port 3000 --host\" \"tsx src/server/index.ts\"",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "phaser": "^3.88.2"
+    "phaser": "^3.88.2",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@types/node": "^26.4.1",
+    "concurrently": "^10.0.5",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.3",
     "vite": "^6.2.0"
   }

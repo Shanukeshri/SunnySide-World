@@ -372,6 +372,7 @@ export class SurvivalEngine {
   public particles: HeartParticle[] = [];
   public woodChips: WoodChipParticle[] = [];
   public floatingTexts: FloatingText[] = [];
+  public remotePlayers: any[] = [];
 
   // Day / Night World Clock
   public worldTime: WorldTime = {

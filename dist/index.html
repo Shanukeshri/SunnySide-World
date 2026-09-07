@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-CRTbth3j.js"></script>
+  <script type="module" crossorigin src="/assets/index-Ca0K1a7d.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-BexjgZsY.css">
 </head>
 <body>
@@ -369,6 +369,13 @@
             <div class="village-realm-badge" id="hud-village-badge" title="Discovered Villages across the Realm (Gap between villages is 2 to 4 village equivalents, max 4)">
               <span>🏘️ Villages Discovered: <strong id="hud-villages-count">1/4</strong></span>
               <span class="badge-sub" id="hud-nearest-village">Current: Oakvale</span>
+            </div>
+            <!-- Authoritative Server Status & Multiplayer Presence -->
+            <div class="server-status-badge" id="hud-server-badge" style="display:flex;align-items:center;gap:6px;background:rgba(15,23,42,0.85);padding:4px 10px;border-radius:9999px;border:1px solid rgba(56,189,248,0.25);font-size:11px;font-family:'JetBrains Mono',monospace;color:#94a3b8;margin-top:4px;">
+              <span class="server-dot" id="hud-server-dot" style="width:8px;height:8px;border-radius:50%;background:#eab308;display:inline-block;box-shadow:0 0 6px #eab308;"></span>
+              <span id="hud-server-status">Authoritative Server: Connecting...</span>
+              <span style="opacity:0.4;">|</span>
+              <span id="hud-player-count">👥 1 Online</span>
             </div>
           </div>
 

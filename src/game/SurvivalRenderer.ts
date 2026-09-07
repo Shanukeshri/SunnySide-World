@@ -849,6 +849,73 @@ export class SurvivalRenderer {
       },
     });
 
+    // 6.8 Other Connected Players (Multiplayer)
+    if (engine.remotePlayers && engine.remotePlayers.length > 0) {
+      for (const rp of engine.remotePlayers) {
+        depthList.push({
+          yOrder: rp.y + 0.5,
+          draw: () => {
+            const screen = worldToScreen(rp.x, rp.y);
+            const playerCenterX = screen.sx + cellSize / 2;
+            const groundY = screen.sy + cellSize / 2;
+            const isFacingLeft = rp.facing === "LEFT" || rp.direction === "LEFT";
+            const isTool = !!rp.activeHeldItem;
+
+            let action = "IDLE";
+            if (rp.isDead) action = "DEATH";
+            else if (rp.hurtTimer > 0) action = "HURT";
+            else if (rp.swingTimer > 0) action = "AXE";
+            else if (rp.isSwimming) action = "SWIMMING";
+            else if (rp.vx !== 0 || rp.vy !== 0) action = rp.isSprinting ? "RUN" : "WALK";
+
+            const remoteEntity: any = {
+              position: { x: rp.x, y: rp.y },
+              species: "player",
+              type: "PLAYER",
+              isActive: true,
+              behaviorState: rp.isDead ? "DEAD" : "WALK",
+              hairstyle: rp.hairstyle || "curlyhair",
+              anim: {
+                action,
+                currentFrame: Math.floor(Date.now() / 110) % 8,
+                flipX: isFacingLeft,
+                jumpOffset: (rp.hopOffset || 0) * 24,
+                eatingBobOffset: 0,
+                deathAlpha: 1.0,
+                hasTool: isTool,
+                showTool: isTool,
+              },
+            };
+
+            this.lifeformRenderer.renderEntity(
+              ctx,
+              remoteEntity,
+              cellSize,
+              false,
+              playerCenterX,
+              groundY,
+              1.0,
+              action
+            );
+
+            // Name Tag Badge
+            ctx.save();
+            ctx.font = "bold 11px 'Outfit', sans-serif";
+            ctx.textAlign = "center";
+            const tagText = rp.name || "Explorer";
+            const tagW = ctx.measureText(tagText).width + 12;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+            ctx.beginPath();
+            ctx.roundRect(playerCenterX - tagW / 2, groundY - cellSize * 1.5, tagW, 16, 4);
+            ctx.fill();
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillText(tagText, playerCenterX, groundY - cellSize * 1.5 + 12);
+            ctx.restore();
+          },
+        });
+      }
+    }
+
     // Execute depth-sorted drawing
     depthList.sort((a, b) => a.yOrder - b.yOrder);
     depthList.forEach((item) => item.draw());
