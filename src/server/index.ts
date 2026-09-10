@@ -120,6 +120,13 @@ const gameServer = new GameServer(SEED, TICK_RATE);
 gameServer.attachSocketIO(io);
 gameServer.start();
 
+// Ping/Pong latency measurement (used by NetworkClient.startPingMeasurement)
+io.on("connection", (socket) => {
+  socket.on("ping", (callback) => {
+    if (typeof callback === "function") callback();
+  });
+});
+
 // Handle graceful shutdown
 function shutdown() {
   console.log("\n[Server] Shutting down gracefully...");

@@ -47,9 +47,12 @@ export class PlayerSystem {
   }
 
   private updatePlayerMovement(player: PlayerEntityState, dt: number): void {
+    // Fix 7: Use same conceptual foot reference point for swimming detection as collision uses.
+    // Previously swimming used top-left tile (floor(x), floor(y)) while collision used
+    // foot position (x+0.5, y+0.65), causing inconsistent behavior around water edges.
     const curTile = this.gameState.worldManager.getTile(
-      Math.floor(player.x),
-      Math.floor(player.y)
+      Math.floor(player.x + 0.5),
+      Math.floor(player.y + 0.65)
     );
     player.isSwimming = curTile.isWater;
 

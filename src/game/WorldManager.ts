@@ -302,10 +302,11 @@ export class WorldManager {
       }
     }
 
-    // Mark house footprints as blocked: rectangle equal to length of base and exactly half height (bottom half)
+    // Mark house footprints as blocked: block from row 1 to end (skip row 0 = roof/overhang).
+    // This ensures the visually solid upper walls are walkable-blocked, while the top
+    // row (transparent canopy/roof) is not blocked. The doorway tile remains walkable.
     for (const house of data.houses) {
-      const baseStartY = Math.floor(house.footprintH / 2);
-      for (let dy = baseStartY; dy < house.footprintH; dy++) {
+      for (let dy = 1; dy < house.footprintH; dy++) {
         for (let dx = 0; dx < house.footprintW; dx++) {
           const wx = startX + house.x + dx;
           const wy = startY + house.y + dy;
@@ -324,6 +325,19 @@ export class WorldManager {
           this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
         }
       }
+
+      // Fix 6: Mark visually solid farm objects as blocked
+      // Previously trough, crate, and chest were fully walkable despite appearing solid.
+      const SOLID_FARM_OBJECTS = [
+        'farm_trough', 'farm_waterbowl',
+        'farm_crate_01', 'farm_crate_02',
+        'farm_chest_closed',
+      ];
+      for (const obj of data.farmObjects) {
+        if (SOLID_FARM_OBJECTS.includes(obj.id)) {
+          this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
+        }
+      }
     }
 
     // Mark wells as blocked
@@ -337,10 +351,12 @@ export class WorldManager {
       const wy = startY + t.y;
       const w = t.footprintW || 2;
       const h = t.footprintH || 2;
-      // Mark trunk base as blocked (bottom row), allowing player to walk behind canopy
+      // Fix 4 (village trees): Block both bottom tiles of the tree footprint.
+      // For a 2-wide tree: block (trunkX, trunkY) and (trunkX+1, trunkY) — the full bottom row.
       const trunkY = wy + h - 1;
-      const trunkX = wx + Math.floor(w / 2);
+      const trunkX = wx;
       this.getTile(trunkX, trunkY).isBlocked = true;
+      this.getTile(trunkX + 1, trunkY).isBlocked = true;
       if (w > 2) {
         this.getTile(trunkX - 1, trunkY).isBlocked = true;
       }
@@ -581,8 +597,10 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          // Mark only tree trunk base (bottom-center of 2x2 footprint) as blocked.
-          // Use chunk.tiles directly (tx+1, ty+1 always within bounds since tx < CHUNK_SIZE-1)
+          // Fix 4: Block BOTH bottom tiles of the 2×2 tree footprint.
+          // Previously only (tx+1, ty+1) was blocked, causing the player to
+          // walk through the left side of tree trunks visually.
+          chunk.tiles[ty + 1][tx].isBlocked = true;
           chunk.tiles[ty + 1][tx + 1].isBlocked = true;
           continue;
         }

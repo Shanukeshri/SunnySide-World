@@ -57,6 +57,10 @@ export interface ServerInitMessage {
   placedStructures: StructureEntityState[];
   droppedItems: DroppedItemEntityState[];
   quests: Quest[];
+  /** Room the player was placed in (if multiplayer) */
+  roomId?: string;
+  /** Invite code to share with friends (only sent to room owner) */
+  inviteCode?: string;
 }
 
 export interface ServerSyncMessage {
@@ -73,3 +77,71 @@ export interface ServerSyncMessage {
   placedStructures?: StructureEntityState[];
   events: GameEvent[];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multiplayer Room / Invite messages (spec items 19-23)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Client: create a new hosted world room */
+export interface ClientHostWorldMessage {
+  name: string;
+  hairstyle: string;
+  token?: string;
+}
+
+/** Client: join a room using an invite code */
+export interface ClientJoinWorldMessage {
+  inviteCode: string;
+  name: string;
+  hairstyle: string;
+  token?: string;
+}
+
+/** Client: invite another player (by their socket/session id) to your current room */
+export interface ClientInvitePlayerMessage {
+  targetSessionId: string;
+}
+
+/** Client: accept a pending invite */
+export interface ClientAcceptInviteMessage {
+  inviteId: string;
+}
+
+/** Client: decline a pending invite */
+export interface ClientDeclineInviteMessage {
+  inviteId: string;
+}
+
+/** Server → target player: you've been invited */
+export interface ServerInviteReceivedMessage {
+  inviteId: string;
+  fromName: string;
+  fromSessionId: string;
+  roomId: string;
+}
+
+/** Server → inviter: the invite was accepted or declined */
+export interface ServerInviteResponseMessage {
+  inviteId: string;
+  accepted: boolean;
+  byName: string;
+}
+
+/** Server → joining player: room successfully joined, follow with full init */
+export interface ServerRoomJoinedMessage {
+  roomId: string;
+  inviteCode: string;
+  ownerName: string;
+}
+
+/** Server → all room members: a player left the room */
+export interface ServerPlayerLeftRoomMessage {
+  playerId: EntityId;
+  name: string;
+}
+
+/** Server: simple error response */
+export interface ServerErrorMessage {
+  message: string;
+}
+

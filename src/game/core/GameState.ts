@@ -18,6 +18,7 @@ import {
 } from "./Entity";
 import { EventBus } from "./EventBus";
 import { WorldTime, Quest, ItemId } from "../GameTypes";
+import { WALK_SPEED, SPRINT_SPEED } from "../MovementConstants";
 import { setMasterSeed } from "./Random";
 
 export class GameState {
@@ -165,8 +166,8 @@ export class GameState {
       vy: 0,
       direction: "DOWN",
       facing: "RIGHT",
-      speed: 3.8,
-      sprintSpeed: 5.6,
+      speed: WALK_SPEED,
+      sprintSpeed: SPRINT_SPEED,
       isSprinting: false,
       isSwimming: false,
       health: 100,

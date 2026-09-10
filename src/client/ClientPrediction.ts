@@ -1,10 +1,15 @@
 /**
  * ClientPrediction.ts - Client-Side Movement Prediction & Reconciliation
- * 
+ *
  * Implements Section 15 of authoritative_server.txt:
  * Immediately predicts local player movement for instantaneous responsive controls (0ms feel),
  * stores pending inputs, and reconciles position against authoritative server updates.
+ *
+ * Fix 3: Uses shared MovementConstants so client and server always use identical speed values,
+ * preventing continuous prediction/reconciliation divergence.
  */
+
+import { WALK_SPEED, SPRINT_SPEED, SWIM_MULTIPLIER } from "../game/MovementConstants";
 
 export interface PendingInput {
   seq: number;
@@ -55,8 +60,8 @@ export class ClientPrediction {
       normVy /= len;
     }
 
-    let speed = isSprinting ? 5.6 : 3.8;
-    if (isSwimming) speed *= 0.65;
+    let speed = isSprinting ? SPRINT_SPEED : WALK_SPEED;
+    if (isSwimming) speed *= SWIM_MULTIPLIER;
 
     const nextX = this.predictedX + normVx * speed * dt;
     const nextY = this.predictedY + normVy * speed * dt;
@@ -110,8 +115,8 @@ export class ClientPrediction {
 
     // 3. Re-simulate pending inputs from server authoritative baseline
     for (const input of this.pendingInputs) {
-      let speed = input.isSprinting ? 5.6 : 3.8;
-      if (isSwimming) speed *= 0.65;
+      let speed = input.isSprinting ? SPRINT_SPEED : WALK_SPEED;
+      if (isSwimming) speed *= SWIM_MULTIPLIER;
 
       const nextX = replayedX + input.vx * speed * input.dt;
       const nextY = replayedY + input.vy * speed * input.dt;

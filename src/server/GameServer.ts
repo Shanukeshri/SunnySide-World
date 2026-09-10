@@ -1,10 +1,11 @@
 /**
  * GameServer.ts - Authoritative Game Server Simulation & Room Manager
  *
- * Implements Sections 1, 2, 4, 6, 10, 11, 12, 13, 17, 26, 33 of implementation_spec.txt:
+ * Implements Sections 1, 2, 4, 6, 10, 11, 12, 13, 17, 19-23, 26, 33 of implementation_spec.txt:
  * Runs the single canonical authoritative 20 Hz simulation loop with all 10 game systems,
  * receives and validates client inputs/commands, manages player reconnection tokens,
- * and broadcasts state snapshots (over Socket.IO or embedded local transport).
+ * broadcasts state snapshots (over Socket.IO or embedded local transport),
+ * and manages multiplayer World Rooms with invite → accept → join flow.
  */
 
 import type { Server as SocketIOServer, Socket } from "socket.io";
@@ -24,12 +25,22 @@ import { WorldSystem } from "../game/systems/WorldSystem";
 import { PersistenceManager } from "./persistence/PersistenceManager";
 import { CRAFTING_RECIPES } from "../game/SurvivalEngine";
 import { PlayerEntityState } from "../game/core/Entity";
+import { WorldRoom } from "./WorldRoom";
 import {
   ClientJoinMessage,
   ClientInputMessage,
   ClientActionMessage,
+  ClientHostWorldMessage,
+  ClientJoinWorldMessage,
+  ClientInvitePlayerMessage,
+  ClientAcceptInviteMessage,
+  ClientDeclineInviteMessage,
   ServerInitMessage,
   ServerSyncMessage,
+  ServerInviteReceivedMessage,
+  ServerInviteResponseMessage,
+  ServerRoomJoinedMessage,
+  ServerErrorMessage,
 } from "./networking/Protocol";
 
 export interface ITransportSocket {
@@ -70,6 +81,16 @@ export class GameServer {
   private lastStructuresLength = -1;
   private lastDroppedItemsLength = -1;
 
+  // ─── Room / Multiplayer management (spec items 19-23) ──────────────────────
+  /** All active WorldRoom instances, keyed by roomId */
+  public rooms = new Map<string, WorldRoom>();
+  /** Invite code → roomId reverse lookup */
+  private inviteCodeToRoom = new Map<string, string>();
+  /** Which room each socket belongs to (sessionId → roomId). Non-room singletons absent. */
+  private socketToRoom = new Map<string, string>();
+  /** Pending invites: inviteId → { roomId, fromSessionId } */
+  private pendingInvites = new Map<string, { roomId: string; fromSessionId: string; fromName: string }>();
+
   constructor(seed = 42891, tickRate = 20) {
     this.eventBus = new EventBus();
     this.gameState = new GameState(seed, this.eventBus);
@@ -107,22 +128,56 @@ export class GameServer {
   public registerSocket(socket: ITransportSocket): void {
     this.socketMap.set(socket.id, socket);
 
+    // ── Single-player / default join ──────────────────────────────────────────
     socket.on("join", (data: ClientJoinMessage) => {
       this.handlePlayerJoin(socket, data);
     });
 
+    // ── Input routing (single-player OR room player) ───────────────────────────
     socket.on("input", (data: ClientInputMessage) => {
-      const player = this.gameState.getPlayer(socket.id);
-      if (player) {
-        this.playerSystem.processInput(player, data);
+      const roomId = this.socketToRoom.get(socket.id);
+      if (roomId) {
+        const room = this.rooms.get(roomId);
+        const player = room?.gameState.getPlayer(socket.id);
+        if (player) room!.playerSystem.processInput(player, data);
+      } else {
+        const player = this.gameState.getPlayer(socket.id);
+        if (player) this.playerSystem.processInput(player, data);
       }
     });
 
+    // ── Action routing ────────────────────────────────────────────────────────
     socket.on("action", (action: ClientActionMessage) => {
-      const player = this.gameState.getPlayer(socket.id);
-      if (player) {
-        this.handlePlayerAction(player, action);
+      const roomId = this.socketToRoom.get(socket.id);
+      if (roomId) {
+        const room = this.rooms.get(roomId);
+        const player = room?.gameState.getPlayer(socket.id);
+        if (player) this.handleRoomPlayerAction(room!, player, action);
+      } else {
+        const player = this.gameState.getPlayer(socket.id);
+        if (player) this.handlePlayerAction(player, action);
       }
+    });
+
+    // ── Multiplayer room events (spec items 20-23) ────────────────────────────
+    socket.on("hostWorld", (data: ClientHostWorldMessage) => {
+      this.handleHostWorld(socket, data);
+    });
+
+    socket.on("joinWorld", (data: ClientJoinWorldMessage) => {
+      this.handleJoinWorld(socket, data);
+    });
+
+    socket.on("invitePlayer", (data: ClientInvitePlayerMessage) => {
+      this.handleInvitePlayer(socket, data);
+    });
+
+    socket.on("acceptInvite", (data: ClientAcceptInviteMessage) => {
+      this.handleAcceptInvite(socket, data);
+    });
+
+    socket.on("declineInvite", (data: ClientDeclineInviteMessage) => {
+      this.handleDeclineInvite(socket, data);
     });
 
     socket.on("disconnect", () => {
@@ -294,6 +349,31 @@ export class GameServer {
     console.log(`[GameServer] Player disconnected: ${sessionId}`);
     this.socketMap.delete(sessionId);
 
+    // ── Room cleanup ──────────────────────────────────────────────────────────
+    const roomId = this.socketToRoom.get(sessionId);
+    if (roomId) {
+      this.socketToRoom.delete(sessionId);
+      const room = this.rooms.get(roomId);
+      if (room) {
+        room.removeSocket(sessionId);
+        // Grace period: keep player entity for 30s to allow reconnect
+        const timer = setTimeout(() => {
+          room.gameState.removePlayer(sessionId);
+          // Destroy empty room
+          if (room.isEmpty && room.gameState.players.size === 0) {
+            room.stop();
+            this.rooms.delete(roomId);
+            this.inviteCodeToRoom.delete(room.inviteCode);
+            console.log(`[GameServer] Room ${roomId} destroyed (empty after grace period)`);
+          }
+          this.disconnectTimers.delete(sessionId);
+        }, 30000);
+        this.disconnectTimers.set(sessionId, timer);
+      }
+      return;
+    }
+
+    // ── Single-player cleanup ─────────────────────────────────────────────────
     const token = this.playerTokenMap.get(sessionId);
 
     if (token) {
@@ -542,6 +622,332 @@ export class GameServer {
       };
 
       socket.emit("sync", syncMsg);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Room / Invite Handlers (spec items 20-23)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * spec item 20: Create Game — Server creates a WorldRoom and enters owner.
+   */
+  private handleHostWorld(socket: ITransportSocket, data: ClientHostWorldMessage): void {
+    const name = data?.name || `Explorer_${socket.id.substring(0, 4)}`;
+    const hairstyle = data?.hairstyle || "style_01";
+    const token = data?.token;
+
+    // Create a fresh room using the global world seed
+    const room = new WorldRoom(this.gameState.seed, 20, socket.id);
+    room.start();
+    this.rooms.set(room.roomId, room);
+    this.inviteCodeToRoom.set(room.inviteCode, room.roomId);
+    this.socketToRoom.set(socket.id, room.roomId);
+
+    const player = room.addPlayer(socket, name, hairstyle);
+    if (token) {
+      this.tokenPlayerMap.set(token, player);
+      this.playerTokenMap.set(socket.id, token);
+    }
+
+    const otherPlayers = Array.from(room.gameState.players.values()).filter(
+      (p) => p.sessionId !== socket.id,
+    );
+
+    const initMsg: ServerInitMessage = {
+      playerId: player.id,
+      sessionId: socket.id,
+      seed: room.gameState.seed,
+      worldTime: room.gameState.worldTime,
+      player,
+      otherPlayers,
+      placedStructures: room.gameState.placedStructures,
+      droppedItems: room.gameState.droppedItems,
+      quests: room.gameState.quests,
+      roomId: room.roomId,
+      inviteCode: room.inviteCode, // Only owner gets this
+    };
+
+    socket.emit("init", initMsg);
+    console.log(`[GameServer] Player ${name} hosted room ${room.roomId} (code: ${room.inviteCode})`);
+  }
+
+  /**
+   * spec item 22: Join screen — player enters invite code to join a room.
+   */
+  private handleJoinWorld(socket: ITransportSocket, data: ClientJoinWorldMessage): void {
+    const { inviteCode, name = `Explorer_${socket.id.substring(0, 4)}`, hairstyle = "style_01", token } = data;
+
+    const roomId = this.inviteCodeToRoom.get(inviteCode?.toUpperCase());
+    if (!roomId) {
+      const err: ServerErrorMessage = { message: `No world found with code "${inviteCode}". Check the code and try again.` };
+      socket.emit("error", err);
+      return;
+    }
+
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      const err: ServerErrorMessage = { message: "World no longer exists." };
+      socket.emit("error", err);
+      return;
+    }
+
+    this.socketToRoom.set(socket.id, room.roomId);
+    const player = room.addPlayer(socket, name, hairstyle);
+    if (token) {
+      this.tokenPlayerMap.set(token, player);
+      this.playerTokenMap.set(socket.id, token);
+    }
+
+    const otherPlayers = Array.from(room.gameState.players.values()).filter(
+      (p) => p.sessionId !== socket.id,
+    );
+
+    const initMsg: ServerInitMessage = {
+      playerId: player.id,
+      sessionId: socket.id,
+      seed: room.gameState.seed,
+      worldTime: room.gameState.worldTime,
+      player,
+      otherPlayers,
+      placedStructures: room.gameState.placedStructures,
+      droppedItems: room.gameState.droppedItems,
+      quests: room.gameState.quests,
+      roomId: room.roomId,
+      // Note: inviteCode is NOT sent to joining players
+    };
+
+    socket.emit("init", initMsg);
+    console.log(`[GameServer] Player ${name} joined room ${room.roomId}`);
+  }
+
+  /**
+   * spec item 21: Invite — owner sends an invite to another connected player.
+   */
+  private handleInvitePlayer(socket: ITransportSocket, data: ClientInvitePlayerMessage): void {
+    const roomId = this.socketToRoom.get(socket.id);
+    if (!roomId) {
+      socket.emit("error", { message: "You are not in a room. Host a world first." } as ServerErrorMessage);
+      return;
+    }
+
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+
+    const targetSocket = this.socketMap.get(data?.targetSessionId);
+    if (!targetSocket) {
+      socket.emit("error", { message: "Player not found or not connected." } as ServerErrorMessage);
+      return;
+    }
+
+    const inviterPlayer = room.gameState.getPlayer(socket.id);
+    const fromName = inviterPlayer?.name || "Unknown";
+
+    const inviteId = `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    this.pendingInvites.set(inviteId, { roomId, fromSessionId: socket.id, fromName });
+
+    const inviteMsg: ServerInviteReceivedMessage = {
+      inviteId,
+      fromName,
+      fromSessionId: socket.id,
+      roomId,
+    };
+
+    targetSocket.emit("inviteReceived", inviteMsg);
+    console.log(`[GameServer] ${fromName} invited ${data.targetSessionId} (inviteId: ${inviteId})`);
+  }
+
+  /**
+   * spec item 23: Accept invite — player joins the room they were invited to.
+   */
+  private handleAcceptInvite(socket: ITransportSocket, data: ClientAcceptInviteMessage): void {
+    const invite = this.pendingInvites.get(data?.inviteId);
+    if (!invite) {
+      socket.emit("error", { message: "Invite not found or already expired." } as ServerErrorMessage);
+      return;
+    }
+
+    this.pendingInvites.delete(data.inviteId);
+    const room = this.rooms.get(invite.roomId);
+    if (!room) {
+      socket.emit("error", { message: "The world no longer exists." } as ServerErrorMessage);
+      return;
+    }
+
+    // Find current player name from global state (if already in single-player)
+    const existingGlobalPlayer = this.gameState.getPlayer(socket.id);
+    const name = existingGlobalPlayer?.name || `Explorer_${socket.id.substring(0, 4)}`;
+    const hairstyle = existingGlobalPlayer?.hairstyle || "style_01";
+
+    // Remove from global state if present
+    if (existingGlobalPlayer) {
+      this.gameState.removePlayer(socket.id);
+    }
+
+    this.socketToRoom.set(socket.id, room.roomId);
+    const player = room.addPlayer(socket, name, hairstyle);
+
+    const otherPlayers = Array.from(room.gameState.players.values()).filter(
+      (p) => p.sessionId !== socket.id,
+    );
+
+    const initMsg: ServerInitMessage = {
+      playerId: player.id,
+      sessionId: socket.id,
+      seed: room.gameState.seed,
+      worldTime: room.gameState.worldTime,
+      player,
+      otherPlayers,
+      placedStructures: room.gameState.placedStructures,
+      droppedItems: room.gameState.droppedItems,
+      quests: room.gameState.quests,
+      roomId: room.roomId,
+    };
+
+    socket.emit("init", initMsg);
+
+    // Notify the inviter
+    const inviterSocket = this.socketMap.get(invite.fromSessionId);
+    if (inviterSocket) {
+      const resp: ServerInviteResponseMessage = {
+        inviteId: data.inviteId,
+        accepted: true,
+        byName: player.name,
+      };
+      inviterSocket.emit("inviteResponse", resp);
+    }
+
+    console.log(`[GameServer] ${player.name} accepted invite and joined room ${room.roomId}`);
+  }
+
+  /**
+   * spec item 23: Decline invite.
+   */
+  private handleDeclineInvite(socket: ITransportSocket, data: ClientDeclineInviteMessage): void {
+    const invite = this.pendingInvites.get(data?.inviteId);
+    if (!invite) return;
+
+    this.pendingInvites.delete(data.inviteId);
+
+    const inviterSocket = this.socketMap.get(invite.fromSessionId);
+    if (inviterSocket) {
+      const globalPlayer = this.gameState.getPlayer(socket.id);
+      const resp: ServerInviteResponseMessage = {
+        inviteId: data.inviteId,
+        accepted: false,
+        byName: globalPlayer?.name || "Another player",
+      };
+      inviterSocket.emit("inviteResponse", resp);
+    }
+  }
+
+  /**
+   * Handles game actions for players inside a WorldRoom.
+   * Delegates to the same logic as single-player but uses room-scoped systems.
+   */
+  private handleRoomPlayerAction(room: WorldRoom, player: PlayerEntityState, action: ClientActionMessage): void {
+    if (player.isDead && action.type !== "RESPAWN") return;
+
+    switch (action.type) {
+      case "HIT": {
+        room.combatSystem.performPlayerHit(player);
+        break;
+      }
+      case "CLICK": {
+        const { wx, wy } = action as any;
+        player.swingTimer = 0.25;
+        for (const animal of room.gameState.animals) {
+          if (animal.behaviorState === "DEAD") continue;
+          if (
+            Math.hypot(wx - animal.x, wy - animal.y) < 1.3 &&
+            Math.hypot(player.x - animal.x, player.y - animal.y) <= 3.2
+          ) {
+            animal.health -= 15;
+            room.animalSystem.scareAnimal(animal, player.x, player.y);
+            room.combatSystem.useActiveToolDurability(player);
+            if (animal.health <= 0) {
+              animal.behaviorState = "DEAD";
+              room.gameState.spawnDroppedItem("raw_meat", 2, animal.x, animal.y);
+              room.markDroppedItemsDirty();
+            }
+            return;
+          }
+        }
+        const res = room.gameState.worldManager.getResourceAt(wx, wy, 1.4);
+        if (res && !res.isDepleted) {
+          room.resourceSystem.harvestResource(player, res);
+          room.markDroppedItemsDirty();
+          return;
+        }
+        room.combatSystem.performPlayerHit(player);
+        break;
+      }
+      case "JUMP":
+      case "ROLL": {
+        room.playerSystem.jump(player);
+        break;
+      }
+      case "INTERACT": {
+        for (const npc of room.gameState.npcs) {
+          if (Math.hypot(player.x - npc.x, player.y - npc.y) < 2.4) {
+            room.npcSystem.interactWithNPC(npc, player.id);
+            return;
+          }
+        }
+        for (const animal of room.gameState.animals) {
+          if (Math.hypot(player.x - animal.x, player.y - animal.y) < 2.2) {
+            if (room.animalSystem.petAnimal(animal, player.x, player.y)) {
+              player.hopTimer = 0.35;
+              return;
+            }
+          }
+        }
+        break;
+      }
+      case "PET": {
+        const animalId = (action as any).animalId;
+        if (animalId) {
+          const animal = room.gameState.animals.find((a) => a.id === animalId);
+          if (animal && Math.hypot(player.x - animal.x, player.y - animal.y) < 2.5) {
+            if (room.animalSystem.petAnimal(animal, player.x, player.y)) player.hopTimer = 0.35;
+          }
+        }
+        break;
+      }
+      case "EAT": {
+        room.survivalSystem.eatActiveFood(player);
+        break;
+      }
+      case "CRAFT": {
+        const recipe = CRAFTING_RECIPES.find((r) => r.id === (action as any).recipeId);
+        if (recipe) room.craftingSystem.craftRecipe(player, recipe);
+        break;
+      }
+      case "BUILD": {
+        room.buildingSystem.placeStructure(player, (action as any).pieceId, (action as any).wx, (action as any).wy);
+        room.markStructuresDirty();
+        break;
+      }
+      case "SELECT_HOTBAR": {
+        const idx = (action as any).index;
+        if (idx >= 0 && idx < player.hotbar.length) {
+          player.activeHotbarIndex = idx;
+          player.activeHeldItem = player.hotbar[idx]?.item || null;
+        }
+        break;
+      }
+      case "TOGGLE_DOOR": {
+        const struct = room.gameState.placedStructures.find((s) => s.id === (action as any).structId);
+        if (struct) {
+          room.buildingSystem.toggleDoor(struct);
+          room.markStructuresDirty();
+        }
+        break;
+      }
+      case "RESPAWN": {
+        room.combatSystem.respawnPlayer(player);
+        break;
+      }
     }
   }
 }

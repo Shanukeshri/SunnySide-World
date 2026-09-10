@@ -1,0 +1,346 @@
+RESEARCH 2 — AVAILABLE PRE-MADE UI ASSETS IN THE REPO
+======================================================
+
+This document catalogs every pre-existing UI asset across all asset packs
+and maps them to replaceable self-drawn game UI elements.
+
+================================================================
+ASSET SOURCE 1: Sunnyside World Asset Pack V2.1
+Path: Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/
+Total: 73 individual PNG files — tiny pixel-art sprites (7-15px native)
+================================================================
+
+--- HEALTH / STAT BARS ---
+
+Asset                   | Native Size | Purpose
+------------------------|-------------|----------------------------------
+redbar_00.png           | 15x7 px     | Red bar — empty (0%)
+redbar_01.png           | 15x7 px     | Red bar — segment 1
+redbar_02.png           | 15x7 px     | Red bar — segment 2
+redbar_03.png           | 15x7 px     | Red bar — segment 3
+redbar_04.png           | 15x7 px     | Red bar — segment 4
+redbar_05.png           | 15x7 px     | Red bar — segment 5
+redbar_06.png           | 15x7 px     | Red bar — full (100%)
+greenbar_00.png         | 15x7 px     | Green bar — empty
+greenbar_01.png         | 15x7 px     | Green bar — segment 1
+greenbar_02.png         | 15x7 px     | Green bar — segment 2
+greenbar_03.png         | 15x7 px     | Green bar — segment 3
+greenbar_04.png         | 15x7 px     | Green bar — segment 4
+greenbar_05.png         | 15x7 px     | Green bar — segment 5
+greenbar_06.png         | 15x7 px     | Green bar — full
+greenbar_06-1.png       | 15x7 px     | Green bar — full (variant)
+bluebar_00.png          | 15x7 px     | Blue bar — empty
+bluebar_01.png          | 15x7 px     | Blue bar — segment 1
+bluebar_02.png          | 15x7 px     | Blue bar — segment 2
+bluebar_03.png          | 15x7 px     | Blue bar — segment 3
+bluebar_04.png          | 15x7 px     | Blue bar — segment 4
+bluebar_05.png          | 15x7 px     | Blue bar — full
+
+HOW TO USE BARS:
+  - Use redbar_00 as empty track background
+  - Tile redbar_01 through redbar_05 horizontally for fill
+  - Use redbar_06 as the right cap
+  - Frame index formula: frameIdx = Math.floor(percentage * 6)
+  - Scale by integer multiplier (3x or 4x) for crisp pixel art
+
+--- INVENTORY / ITEM SLOTS ---
+
+Asset                   | Purpose
+------------------------|--------------------------------------------------
+itemdisc_01.png         | Item slot disc background (circular style 1)
+itemdisc_02.png         | Item slot disc background (circular style 2)
+selectbox_tl.png        | Top-left corner of selection box
+selectbox_tr.png        | Top-right corner of selection box
+selectbox_bl.png        | Bottom-left corner of selection box
+selectbox_br.png        | Bottom-right corner of selection box
+select_dots.png         | Selection dot indicator (small)
+select_dots_large.png   | Selection dot indicator (large)
+indicator.png           | Generic tile/position indicator
+
+HOTBAR USAGE:
+  Use itemdisc_01 or itemdisc_02 as hotbar slot background.
+  Overlay selectbox_tl/tr/bl/br (all 4 corners) on the active slot for selection indicator.
+
+--- TOOL / WEAPON ICONS ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+axe.png                 | Axe tool icon
+pickaxe.png             | Pickaxe tool icon
+shovel.png              | Shovel tool icon
+hammer.png              | Hammer / build tool icon
+sword.png               | Sword weapon icon
+rod.png                 | Fishing rod icon
+rod alt.png             | Fishing rod alternate pose
+basket.png              | Gathering / harvest basket
+plant.png               | Farming / planting icon
+water.png               | Watering can icon
+search.png              | Search / magnify glass icon
+sandtimer.png           | Sand timer / hourglass (8x11 px)
+stopwatch.png           | Stopwatch / countdown icon
+plan alt.png            | Map / blueprint icon
+playercount.png         | Player count / multiplayer icon
+hammer.png              | Hammer / crafting icon
+
+--- NAVIGATION / ARROWS ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+arrow_left.png          | Left arrow button
+arrow_right.png         | Right arrow button
+arrow_up.png            | Up arrow button
+arrow_up-1.png          | Up arrow alternate
+
+--- NPC EXPRESSIONS / CHAT BUBBLES ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+expression_alerted.png  | Alert / exclamation bubble (!)
+expression_attack.png   | Attack / combat bubble
+expression_chat.png     | Dialogue / speech bubble
+expression_confused.png | Confused bubble (?)
+expression_confused-1.png | Confused alternate
+expression_love.png     | Love / heart bubble
+expression_stress.png   | Stress / upset bubble
+expression_working.png  | Working / busy bubble
+
+USAGE: Draw these above NPC heads during interaction or patrol states.
+
+--- HAPPINESS METER ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+happiness_01.png        | Unhappy face
+happiness_02.png        | Neutral face
+happiness_03.png        | Happy face
+happiness_04.png        | Very happy face
+
+--- LABELS / TEXT CONTAINERS (3-piece stretchable strip) ---
+
+Asset                   | Native Size | Purpose
+------------------------|-------------|----------------------------------
+label_left.png          | 4x13 px     | Left end-cap of label strip
+label_middle.png        | ~4x13 px    | Tileable middle fill of label
+label_right.png         | ~4x13 px    | Right end-cap of label strip
+
+USAGE: Combine label_left + N copies of label_middle + label_right to make
+any width label. Use for the action prompt pill, NPC name tags, hotkey hints.
+
+--- CURSORS ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+cursor_01.png           | Default arrow cursor
+cursor_02.png           | Pointer / select cursor
+cursor_03.png           | Hand cursor
+cursor_04.png           | Attack / action cursor
+cursor_05.png           | Crosshair cursor
+
+--- ACTION BUTTONS ---
+
+Asset                   | Purpose
+------------------------|----------------------------------
+confirm.png             | Confirm / OK / checkmark button
+cancel.png              | Cancel / X / close button
+
+
+================================================================
+ASSET SOURCE 2: DEMO MegaCozy UI Pack (doboui)
+Path: assets/DEMO_MegaCozyUIPack_doboui - copia/
+Style: Pixel-art cozy RPG — multiple color variants
+================================================================
+
+--- CONTAINERS / PANELS ---
+Use as HUD card backgrounds, modal windows, sidebar panels.
+
+Folder                          | Assets                        | Colors Available
+--------------------------------|-------------------------------|------------------
+Containers/WoodenContainers/    | WoodenContainer1-6.png        | Natural wood, 6 shape variants
+Containers/SimpleColorContainers| SimpleColorContainer1_*.png   | blue, cream, gray, green, marine,
+                                |                               | pink, purple, red, wood, yellow
+Containers/RopeContainers/      | RopeContainer1_*.png          | Same 10 color variants
+Containers/NotebookContainers/  | NotebookContainer1_*.png      | gray, green, marine, pink,
+                                |                               | purple, red, wood, yellow
+Containers/PromoContainers/     | PromoContainer1_*.png         | Same color variants
+Containers/DoubleStripeContainer| —                             | Double-stripe bordered panels
+Containers/FramedContainers/    | —                             | Frame-bordered containers
+Containers/CozyPicnicContainers/| —                             | Picnic-style wicker containers
+
+HOW TO USE:
+  CSS: background-image with border-image 9-slice scaling
+  Canvas: draw center region scaled, then overlay corners/edges at native size
+
+--- FRAMES (for item highlights / selected slots) ---
+
+Asset                           | Colors
+--------------------------------|--------------------------------------------
+Frames/Frame1_*.png             | blue, cream, gray, green, marine, pink, purple, red, wood, yellow
+Frames/EmptyWoodenFrame.png     | Natural wood border frame
+Frames/GoldenFrameELements/     | GoldenCorner (1).png through (4).png — 4 corners of golden frame
+
+--- MODAL / DIALOG BOX ---
+
+Asset                           | Purpose
+--------------------------------|--------------------------------------------------
+Modals/WoodenModals/WoodenModal.png | Full wooden modal dialog background panel
+
+USAGE: Replace .survival-modal-box CSS with this as border-image or canvas draw.
+
+--- ITEM SLOTS / INVENTORY ---
+
+Asset                                                   | Purpose
+--------------------------------------------------------|----------------------------------
+Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png  | Default inventory slot BG
+Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png    | Active/hovered slot BG
+
+USAGE: Replace .hotbar-slot and .inventory-slot CSS divs with these sprite backgrounds.
+
+--- PROGRESS BARS ---
+
+Asset                                                   | Purpose
+--------------------------------------------------------|----------------------------------
+ProgressBars/ProgressBar/ProgressBarFill1_wood.png      | Wooden-style progress bar fill
+ProgressBars/SteppedProgressBar/SteppedProgressBarFill1_marine.png | 3-segment stepped bar seg 1
+ProgressBars/SteppedProgressBar/SteppedProgressBarFill2_marine.png | Segment 2
+ProgressBars/SteppedProgressBar/SteppedProgressBarFill3_marine.png | Segment 3
+
+--- LABELS ---
+
+Asset                       | Purpose
+----------------------------|----------------------------------
+Labels/Label1_blue.png      | Blue label chip
+Labels/Label1_green.png     | Green label chip
+Labels/Label1_yellow.png    | Yellow label chip
+
+--- HEADERS ---
+
+Asset                       | Purpose
+----------------------------|----------------------------------
+Headers/Header1_green.png   | Green header banner strip
+
+--- ICONS (16px pixel art) ---
+
+Asset                                       | Purpose
+--------------------------------------------|----------------------------------
+Icons/IconsFlat_16px/IconFlat1.png          | Flat icon 1
+Icons/IconsFlat_16px/IconFlat9.png          | Flat icon 9
+Icons/IconsFlat_16px/IconFlat10.png         | Flat icon 10
+Icons/IconsOutline_16px/Icon9.png           | Outline icon 9
+Icons/IconsOutline_16px/Icon11.png          | Outline icon 11
+Icons/IconsOutline_16px/Icon12.png          | Outline icon 12
+Icons/IconsOutline_16px/Icon15.png          | Outline icon 15
+Icons/IconsOutline_16px/Icon30.png          | Outline icon 30
+Icons/IconsOutline_16px/Icon49.png          | Outline icon 49
+Icons/IconsOutline_16px/Icon51.png          | Outline icon 51
+
+--- TOGGLES ---
+
+Asset               | Purpose
+--------------------|----------------------------------
+Toggles/Toggle1.png | Toggle button style 1
+Toggles/Toggle3.png | Toggle button style 3
+Toggles/Toggle4.png | Toggle button style 4
+Toggles/Toggle7.png | Toggle button style 7
+Toggles/Toggle8.png | Toggle button style 8
+
+
+================================================================
+ASSET SOURCE 3: Pixel Inventory Diary UI (Free Demo)
+Path: assets/PixelInventoryDiaryUI_FreeDemo/
+================================================================
+
+Asset                               | Purpose
+------------------------------------|------------------------------------------
+UI_Elements_Demo/UI_Panel_ItemArea.png   | Inventory item area background
+UI_Elements_Demo/UI_Panel_Slot.png       | Single inventory slot background
+UI_Elements_Demo/UI_Panel_DetailView.png | Item detail / tooltip panel
+UI_Elements_Demo/UI_Button_Pink.png      | Pink action button
+UI_Elements_Demo/UI_Progress_BG.png      | Progress bar background track
+UI_Elements_Demo/UI_Progress_Fill_Pink.png | Progress bar pink fill
+UI_Elements_Demo/UI_Icon_Deco_Friendship.png | Decorative icon
+Icons_Demo/UI_Icon_Cake.png              | Food/cake icon
+Icons_Demo/UI_Icon_Headphones.png        | Audio settings icon
+Icons_Demo/UI_Icon_SingleRose.png        | Decorative rose
+
+
+================================================================
+ASSET SOURCE 4: Sunnyside 9-Slice Box Sprites (Gamemaker format)
+Path: Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/w_box_9slice_*/
+================================================================
+
+Piece               | Asset folder          | Purpose
+--------------------|----------------------|------------------------------------------
+Top-left corner     | w_box_9slice_tl/      | Fixed corner (do not scale)
+Top-right corner    | w_box_9slice_tr/      | Fixed corner (do not scale)
+Bottom-left corner  | w_box_9slice_bl/      | Fixed corner (do not scale)
+Bottom-right corner | w_box_9slice_br/      | Fixed corner (do not scale)
+Top center          | w_box_9slice_tc/      | Stretch horizontally for any width
+Bottom center       | w_box_9slice_bc/      | Stretch horizontally for any width
+Left center         | w_box_9slice_lc/      | Stretch vertically for any height
+Right center        | w_box_9slice_rc/      | Stretch vertically for any height
+Center fill         | w_box_9slice_c/       | Scale to fill interior area
+
+USAGE:
+  These 9 pieces compose a complete 9-slice panel that scales to any size.
+  Use for: HUD survival-bars-card, quest-card, radar-card, hotbar wrapper,
+  inventory modal, NPC dialogue box.
+  Each folder contains a .png file inside it — use that PNG directly.
+
+
+================================================================
+MAPPING: Current CSS UI Elements -> Pre-Made Asset Replacements
+================================================================
+
+Current UI Element              | Current Method              | Replace With
+--------------------------------|-----------------------------|---------------------------------
+Health bar (.bar-hp)            | CSS gradient red div        | redbar_00 to redbar_06 strip
+Hunger bar (.bar-hunger)        | CSS gradient orange div     | redbar_* or greenbar_* strip
+Stamina bar (.bar-stamina)      | CSS gradient blue div       | bluebar_00 to bluebar_05 strip
+.survival-bars-card container   | CSS backdrop-filter glass   | WoodenContainer1.png or w_box_9slice_* set
+.radar-card container           | CSS dark backdrop-filter    | WoodenContainer2.png
+.quest-card container           | CSS dark backdrop-filter    | WoodenContainer3.png
+.survival-modal-box (inventory) | CSS gradient modal          | WoodenModal.png or WoodenContainer4.png
+.survival-modal-box (dialogue)  | CSS gradient modal          | WoodenModal.png
+.hotbar-slot (inactive)         | CSS border + background     | SlotDefaultl1_cream.png
+.hotbar-slot.active             | CSS bright border           | SlotHover1_cream.png
+Hotbar slot selection indicator | CSS border glow             | selectbox_tl + tr + bl + br corners
+.game-hud-actions buttons       | CSS gradient buttons        | confirm.png, cancel.png
+Item icons — axe                | Emoji fallback              | axe.png (Sunnyside UI)
+Item icons — pickaxe            | Emoji fallback              | pickaxe.png
+Item icons — sword              | Emoji fallback              | sword.png
+Item icons — shovel             | Emoji fallback              | shovel.png
+Item icons — hammer             | Emoji fallback              | hammer.png
+Item icons — fishing rod        | Emoji fallback              | rod.png
+NPC expression bubbles          | Not present (text only)     | expression_chat.png, expression_alerted.png, etc.
+.action-prompt-pill             | CSS pill div                | label_left + label_middle(tiled) + label_right
+
+
+================================================================
+IMPLEMENTATION NOTES
+================================================================
+
+1. IMAGE RENDERING — ALL pixel-art sprites must use:
+   CSS:    image-rendering: pixelated;
+   Canvas: ctx.imageSmoothingEnabled = false;
+
+2. SCALE — Never scale to non-integer multiples. Use 2x, 3x, or 4x.
+   Native sprite sizes are 7-16px — at 3x = 21-48px which fits most HUD elements.
+
+3. 9-SLICE CONTAINERS — For scalable containers:
+   CSS border-image approach:
+     border-image: url('path/to/container.png') 4 fill / 4px / 0 stretch;
+   Canvas draw approach:
+     Draw 9 sub-images manually (TL, TC*stretch, TR, LC*stretch, C*fill, RC*stretch, BL, BC*stretch, BR)
+
+4. PROGRESS BAR COMPOSITING:
+   To draw a bar at percentage P (0.0 to 1.0):
+     frameIdx = Math.floor(P * 6)  -- gives 0 through 6
+   Or: draw redbar_00 as the empty background track,
+       tile redbar_01 through redbar_05 for the fill region,
+       place redbar_06 as the right end cap.
+
+5. LABEL STRIPS (action prompt, name tags):
+   Measure text width, then:
+     draw label_left at x=0
+     tile label_middle from x=4 to x=textWidth+8
+     draw label_right at x=textWidth+8

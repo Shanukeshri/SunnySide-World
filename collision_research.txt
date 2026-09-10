@@ -1,0 +1,604 @@
+DEEP COLLISION RESEARCH — SUNNYSIDE SURVIVAL GAME
+==================================================
+Generated from source-level analysis of:
+  WorldManager.ts, SurvivalEngine.ts, PlayerSystem.ts,
+  ClientPrediction.ts, SurvivalRenderer.ts, SettlementGenerator.ts
+
+===========================================================
+SECTION 1: COLLISION ARCHITECTURE OVERVIEW
+===========================================================
+
+There are TWO separate collision systems running in parallel.
+They must agree — when they diverge, the player jitters/snaps.
+
+  A) TILE-BASED (isBlocked flag on WorldTile)
+     - Stored per-chunk (16x16 chunks)
+     - Checked via getTile(floor(px), floor(py)).isBlocked
+     - Only set at WORLD GENERATION time (and on build/destroy)
+     - Cannot be changed at runtime by NPCs, animals, or movement
+
+  B) STRUCTURE-BASED (isBlockedByStructure — runtime list check)
+     - Checks placedStructures[] array at runtime every frame
+     - Only applies to player-placed wood_wall and closed wood_door
+     - Bounding box: 0.62 tile radius from structure center
+     - Does NOT use tile isBlocked — is a separate spatial check
+
+  Player's FOOT HITBOX (used by both systems):
+     footX = player.x + 0.5
+     footY = player.y + 0.65
+     rx = 0.22, ry = 0.16 (a very small ellipse — 0.44 tiles wide, 0.32 tall)
+
+  Four corner test points:
+     (footX-0.22, footY-0.16)   top-left
+     (footX+0.22, footY-0.16)   top-right
+     (footX-0.22, footY+0.16)   bottom-left
+     (footX+0.22, footY+0.16)   bottom-right
+
+  player.x represents the TOP-LEFT of the player's tile occupancy.
+  So foot center is (player.x+0.5, player.y+0.65) — bottom-center of sprite.
+
+
+===========================================================
+SECTION 2: WHAT GETS isBlocked = TRUE — COMPLETE MAP
+===========================================================
+
+-----------------------------------------------------------
+2A. WATER TILES (generateWildernessTile L506-513)
+-----------------------------------------------------------
+  Trigger:    noiseWater(x, y) > 0.65
+  isBlocked:  true
+  isWater:    true (player.isSwimming activated on current tile)
+  
+  IMPORTANT: isSwimming uses getTile(floor(player.x), floor(player.y)).isWater
+  This is the TILE the player's top-left corner is in — NOT the foot hitbox tile.
+  Player transitions to swimming mode one tile early (before foot hitbox touches water).
+
+  Sand tiles (waterVal > 0.61): isBlocked = false, isWater = false — fully walkable.
+
+-----------------------------------------------------------
+2B. HIGHWAY / ROAD TILES (generateWildernessTile L490-498)
+-----------------------------------------------------------
+  Trigger:    isPointOnHighway(x, y) returns true
+  isBlocked:  false — roads are ALWAYS walkable
+  isRoad:     true
+
+-----------------------------------------------------------
+2C. ALL GRASS TILES (generateWildernessTile L541-547)
+-----------------------------------------------------------
+  All 6 variants (grass_textured_01 through 06): isBlocked = false.
+  Jungle grass (variants 04-06): isBlocked = false.
+
+-----------------------------------------------------------
+2D. VILLAGE TILE LAYER (stampVillageIntoChunks L285-302)
+-----------------------------------------------------------
+  The village generator overwrites chunk tiles with village data.
+  Default rule: tile.isBlocked = vCell.isWater (only water cells stay blocked)
+  All village roads, grass, farms, and crops are isBlocked = false by default.
+
+-----------------------------------------------------------
+2E. HOUSE FOOTPRINTS (stampVillageIntoChunks L305-317)
+-----------------------------------------------------------
+  Blocked zone: ONLY the BOTTOM HALF of the house footprint.
+    startRow = Math.floor(house.footprintH / 2)
+    rows startRow..footprintH-1 are blocked, columns 0..footprintW-1
+
+  House sizes from HOUSE_CATALOG:
+    house_cottage_01   : 3x3 → rows 1,2 blocked (top row 0 walkable)
+    house_farmhouse_01 : 4x3 → rows 1,2 blocked
+    house_barn_01      : 3x3 → rows 1,2 blocked
+    house_workshop_01  : 4x3 → rows 1,2 blocked
+    house_tavern_01    : 3x3 → rows 1,2 blocked
+    house_shop_01      : 4x3 → rows 1,2 blocked
+    house_windmill_01  : 4x3 → rows 1,2 blocked
+    house_mansion_01   : 4x4 → rows 2,3 blocked (top 2 rows walkable!)
+    house_cabin_01     : 4x3 → rows 1,2 blocked
+    house_castle_01    : 3x4 → rows 2,3 blocked (top 2 rows walkable!)
+
+  VISUAL MISMATCH: The house sprite is drawn starting from (house.x, house.y)
+    with the wall at the top of the sprite. But row 0 (and for 4-high houses row 1)
+    are NOT blocked. A player walking south into a house will walk THROUGH the
+    visual wall until they reach the blocked zone.
+
+  DOOR EXCEPTION: The tile at (startX + house.door.x, startY + house.door.y)
+    stays walkable even if it falls in the blocked rows.
+    Door position is always: x=doorX (midpoint of house width), y=southEdgeY
+    (one tile below house footprint's southernmost row — so door is always
+    OUTSIDE the footprint, already on the ground tile below the house).
+    This means the door tile is grass/road, not part of the blocked zone anyway.
+    The door exception in code is therefore rarely triggered.
+
+-----------------------------------------------------------
+2F. FENCES (stampVillageIntoChunks L320-326)
+-----------------------------------------------------------
+  Source: data.farmObjects array from SettlementGenerator.
+
+  FENCE IDs ACTUALLY GENERATED (from SettlementGenerator L176-182):
+    fence_wood_h      → isBlocked = true  (horizontal fence segment)
+    fence_wood_v      → isBlocked = true  (vertical fence segment)
+    fence_wood_corner → isBlocked = true  (corner piece)
+    fence_wood_post   → isBlocked = true  (post)
+    fence_wood_gate   → isBlocked = FALSE (gate opening — walkable)
+
+  Matching logic: obj.id.startsWith('fence') && obj.id !== 'fence_wood_gate'
+  All 4 fence types start with 'fence_wood' → match correctly.
+  Gate 'fence_wood_gate' is correctly excluded.
+  No missing fence IDs — the list is complete and the matching works correctly.
+
+  VISUAL VS COLLISION NOTE:
+    Fence sprites are drawn as flat 16x16 tiles.
+    The fence collision covers the full tile (0,0)–(1,1).
+    The fence sprite is centered in that tile.
+    Collision is accurate for fences — no misalignment.
+
+-----------------------------------------------------------
+2G. WELLS (stampVillageIntoChunks L329-332)
+-----------------------------------------------------------
+  Each well occupies exactly 1 tile (footprintW=1, footprintH=1).
+  isBlocked = true on that single tile.
+  Well sprite rendered as 1.5x cellSize centered on tile — visually larger than
+  collision box. Player can walk within 0.5 tile of the well edge and appear
+  to clip into the visual overhang (no real problem, just visually tight).
+
+-----------------------------------------------------------
+2H. VILLAGE TREES (stampVillageIntoChunks L334-359)
+-----------------------------------------------------------
+  Village trees come from data.trees (SettlementGenerator PlacedObject type='tree').
+  All village trees have footprintW=2, footprintH=2.
+
+  Blocked tile calculation:
+    trunkY = wy + h - 1    → bottom row (wy+1 for h=2)
+    trunkX = wx + floor(w/2) → wx+1 for w=2
+
+  So ONLY tile (wx+1, wy+1) = bottom-RIGHT tile of 2x2 is blocked.
+
+  The remaining 3 tiles of the 2x2 footprint are walkable:
+    (wx, wy)   — top-left: WALKABLE  ← player walks right through this
+    (wx+1, wy) — top-right: WALKABLE ← player walks right through this
+    (wx, wy+1) — bottom-left: WALKABLE ← player walks through left side
+    (wx+1, wy+1) — BLOCKED (trunk)
+
+  VISUAL POSITION: Trees rendered from worldToScreen(res.x, res.y) = (wx, wy)
+    with sprite width = cellSize * 3.0 (3 tiles wide!) and height proportional.
+    The tree canopy visually spans roughly (wx-0.5, wy) to (wx+2.5, wy+2).
+    But collision is only at the single bottom-right tile.
+
+  PLAYER EXPERIENCE: Player can walk through tree from the LEFT, TOP, and
+    bottom-left. Only the bottom-right corner stops movement.
+
+-----------------------------------------------------------
+2I. WILDERNESS TREES (populateChunkResources L570-588)
+-----------------------------------------------------------
+  2x2 trees placed at (wx=chunk.chunkX*16+tx, wy=chunk.chunkY*16+ty).
+  Blocked tile: chunk.tiles[ty+1][tx+1] → offset is (tx+1, ty+1) in LOCAL chunk coords
+  which equals WORLD coords (wx+1, wy+1) — same as village trees, only bottom-right.
+
+  ADDITIONAL ISSUE: tx loops from 1 to CHUNK_SIZE-2 (1..14) in steps of 2.
+    So tx is always ODD. tx+1 is always EVEN.
+    tx+1 is never 0 or 15, so no out-of-bounds. This is safe.
+    But the blocked tile is at the EVEN column, while the tree resource
+    has x=wx (ODD column). This offset (blocked at wx+1 while tree origin is wx)
+    is a consistent 1-tile shift.
+
+  VISUAL POSITION: Renderer draws tree from worldToScreen(res.x, res.y) = (wx, wy).
+    Sprite width = cellSize * 3.0 — 3 tiles wide, centered at wx+0 to wx+3.
+    Shadow ellipse drawn at screen.sy + cellSize * 1.6 — matches wy+1.6 world Y.
+    Collision is at (wx+1, wy+1) — the bottom-center of the visual sprite.
+    This is CORRECT for the trunk, but 3 of 4 footprint tiles are still walkable.
+
+-----------------------------------------------------------
+2J. WILDERNESS ROCKS (populateChunkResources L590-608)
+-----------------------------------------------------------
+  1x1 rocks placed at (wx=tx, wy=ty) within chunk.
+  tile.isBlocked = true on exactly that 1 tile.
+  Rock sprite drawn at worldToScreen(res.x, res.y) with rockW = cellSize * 1.25.
+  Rock overhangs by 0.125 tiles on each side.
+  Collision = 1 tile box. Player can walk within 0.22 tiles of rock center
+  (due to foot hitbox rx=0.22) before being stopped.
+  Rock collision is ACCURATE — 1:1 with the single blocked tile.
+
+-----------------------------------------------------------
+2K. WILDERNESS BUSHES (populateChunkResources L610-626)
+-----------------------------------------------------------
+  Bush resources placed at (wx, wy), w=1, h=1.
+  NO tile.isBlocked set — bushes are fully walkable.
+  Player can walk through every bush sprite.
+  This is intentional (bushes are harvestable, not solid).
+
+-----------------------------------------------------------
+2L. VILLAGE CROPS / FARM CELLS (stampVillageIntoChunks L380-398)
+-----------------------------------------------------------
+  Farm cells added as ResourceNode type="crop", w=1, h=1.
+  NO tile.isBlocked set.
+  Crops are fully walkable.
+
+-----------------------------------------------------------
+2M. FARM OBJECTS / DECORATIONS (farmObjects array)
+-----------------------------------------------------------
+  Non-fence farmObjects (troughs, crates, chests, waterbowl, flowers, mushrooms):
+  Their IDs: farm_trough, farm_waterbowl, farm_crate_01, farm_crate_02,
+             farm_chest_closed, flowers_wild_01, flowers_wild_02,
+             mushrooms_deco_blue, mushrooms_deco_red, small_rock_01,
+             acorn_deco_01, truffle_deco_01
+
+  NONE of these set isBlocked! They are all walkable decorations.
+  Visually they appear solid (troughs, crates), but have ZERO collision.
+  Player walks through troughs and crates completely.
+
+-----------------------------------------------------------
+2N. PLAYER-PLACED STRUCTURES (BuildingSystem.ts + SurvivalEngine.ts)
+-----------------------------------------------------------
+  wood_wall:
+    tile.isBlocked = true (BuildingSystem L95, SurvivalEngine L1541)
+    isBlockedByStructure check: 0.62 bounding box from struct center
+    BOTH tile and structure checks fire → extra-solid.
+
+  wood_door (placed):
+    tile.isBlocked = true initially
+    On toggle: tile.isBlocked = !struct.isOpen (BuildingSystem L131)
+    isBlockedByStructure: only if !struct.isOpen
+
+  campfire:
+    No tile block. isBlockedByStructure skips campfire entirely.
+    Campfire is fully walkable — player walks through fire (intentional?).
+
+  chest:
+    No tile block. No isBlockedByStructure check.
+    Chest is fully walkable — player walks through chest.
+    Player interacts with chest via proximity E key, not collision.
+
+  workbench:
+    No tile block. No isBlockedByStructure.
+    Fully walkable.
+
+
+===========================================================
+SECTION 3: isBlockedByStructure — EXACT MATH
+===========================================================
+
+  Called for each of the 4 foot hitbox corners (inside canMoveTo loop).
+  Actually called once per corner = UP TO 4 TIMES per frame per player.
+  If ANY corner triggers it, movement is blocked.
+
+  Check (SurvivalEngine L792-802, PlayerSystem L205-222):
+    For each struct in placedStructures:
+      if struct.type === "wood_wall" OR (struct.type === "wood_door" AND !struct.isOpen):
+        sx = struct.x + 0.5
+        sy = struct.y + 0.5
+        if abs(footX - sx) < 0.62 AND abs(footY - sy) < 0.62: BLOCKED
+
+  BUG: The structure check uses (footX, footY) which is computed ONCE from
+  the candidate position (x, y). But the loop over pts[] iterates 4 corners.
+  The isBlockedByStructure call uses the SAME footX/footY for all 4 corners —
+  not the individual corner position. This means:
+    - If any one corner triggers isBlockedByStructure, all corners are considered blocked.
+    - The structure bounding box is tested against foot CENTER, not per-corner.
+  This is conservative (can block movement slightly earlier than expected for diagonal approaches)
+  but not a major collision accuracy issue.
+
+  BOUNDING BOX SIZE: 0.62 + 0.62 = 1.24 tiles total width.
+  Structure is 1 tile. So collision zone extends 0.62 tiles from the center
+  in each direction — covering the full tile plus 0.12 tile of bleed each side.
+  This makes wood walls feel SLIGHTLY wider than their visual tile.
+
+
+===========================================================
+SECTION 4: isSwimming DETECTION — MISMATCH WITH FOOT HITBOX
+===========================================================
+
+  SurvivalEngine L660: curTile = getTile(floor(player.x), floor(player.y))
+  PlayerSystem L50: curTile = getTile(floor(player.x), floor(player.y))
+
+  PROBLEM: Swimming is detected from the tile at the player's TOP-LEFT corner.
+  But collision is checked at (footX=x+0.5, footY=y+0.65).
+  
+  The player starts swimming (and gets slow) when their top-left corner (player.x, player.y)
+  enters a water tile. But the foot hitbox blocks movement when footY+0.16 = y+0.81
+  touches a water tile. So there's a ~0.65 tile gap where:
+    - The player is NOT yet swimming (top-left not in water)
+    - But movement IS blocked by water (foot hitbox touches it)
+
+  Conversely, a player standing at the edge of water might have:
+    - isSwimming = false (top-left on land tile)
+    - BUT some foot corners touching water (blocked from moving further in)
+  The player can be right at the shore without visually "swimming" but still
+  experiencing the slow movement effect only if top-left tip crosses the line.
+
+
+===========================================================
+SECTION 5: RENDERED SPRITE POSITION VS COLLISION POSITION
+===========================================================
+
+  Player sprite drawn at:
+    playerCenterX = screen.sx + cellSize/2   (= worldToScreen(p.x, p.y).sx + half tile)
+    groundY = screen.sy + cellSize/2
+
+  Player's FOOT in world space: (p.x + 0.5, p.y + 0.65)
+  Player's FOOT in screen space: worldToScreen(p.x + 0.5, p.y + 0.65)
+    = (screen.sx + cellSize/2, screen.sy + cellSize*0.65)
+
+  The character sprites are rendered so feet touch groundY = screen.sy + cellSize/2.
+  But the collision foot is at screen.sy + cellSize*0.65.
+  VISUAL vs COLLISION offset: collision foot is 0.15 * cellSize LOWER than the
+  visual ground reference. At zoom=2.2, cellSize=35.2, this = ~5.3 pixels lower.
+
+  This means the player's visual feet appear to be 5px ABOVE where the collision
+  actually happens. The player appears to stop 5px before a wall visually.
+
+  WILDERNESS TREE rendering:
+    Sprite origin: worldToScreen(res.x, res.y) → top-left of 2x2 footprint
+    Sprite width:  cellSize * 3.0 (3 tiles wide — overhangs 1 tile left!)
+    Drawing X:     screen.sx + (cellSize*2 - treeW) / 2
+                  = screen.sx + (cellSize*2 - cellSize*3.0) / 2
+                  = screen.sx - cellSize/2   ← drawn 0.5 tile to the LEFT of res.x!
+    Drawing Y:     screen.sy + cellSize*2 - treeH (bottom of 2-tile height)
+
+  The visual tree canopy extends 0.5 tile LEFT of res.x (the resource node).
+  But the blocked tile is at (res.x+1, res.y+1).
+  Net visual vs collision misalignment:
+    Left edge of tree sprite:  res.x - 0.5 tiles
+    Blocked tile center:       res.x + 1.5 tiles
+  Player can walk into the LEFT HALF of the tree sprite completely un-blocked.
+  The tree canopy visually overlaps tiles the player can freely walk through.
+
+  ROCK rendering:
+    rockW = rockH = cellSize * 1.25 (overhangs 0.125 tiles on each side)
+    Drawing X: screen.sx + (cellSize - rockW)/2 = screen.sx - 0.125*cellSize
+    The rock visual is 0.125 tiles wider than the blocked tile on each side.
+    This is minor — player collision matches the visual tile center closely.
+
+  VILLAGE TREE rendering (same code path as wilderness tree):
+    Village trees are ResourceNodes added in stampVillageIntoChunks.
+    Rendered identically — same 3x sprite width, same 0.5-tile left overhang.
+    Same visual/collision mismatch.
+
+
+===========================================================
+SECTION 6: JITTER — ALL ROOT CAUSES WITH EXACT CODE EVIDENCE
+===========================================================
+
+-----------------------------------------------------------
+6A. CAMERA LERP — NOT FRAME-RATE INDEPENDENT [HIGHEST PRIORITY]
+-----------------------------------------------------------
+  File: SurvivalRenderer.ts L251-252
+
+    this.cameraX += (targetCamX - this.cameraX) * 0.18;
+    this.cameraY += (targetCamY - this.cameraY) * 0.18;
+
+  render() is called every requestAnimationFrame (60Hz nominal).
+  0.18 is NOT multiplied by dt. On a 144Hz monitor this runs 2.4x faster than
+  intended. On 30Hz it runs 0.5x. The camera speed is entirely display-rate dependent.
+
+  At 60Hz: per-frame camera approaches target at 0.18 = 18% per frame.
+  At 120Hz: 0.18 per frame = 36% per second effective approach — camera
+    catches up too fast and oscillates by fractional pixels around target.
+
+  When player is standing still, camera should be locked to player exactly.
+  Instead it oscillates: frame 1: error=0.01, frame 2: error=0.0082,
+  frame 3: error=0.0067... this oscillation generates 1px jitter for 20+ frames.
+
+  CORRECT FIX:
+    Pass dt into render(canvas, engine, dt)
+    this.cameraX += (targetCamX - this.cameraX) * (1 - Math.exp(-10 * dt));
+
+-----------------------------------------------------------
+6B. render() RECEIVES NO dt [HIGH PRIORITY]
+-----------------------------------------------------------
+  File: main.ts L1850
+
+    survivalRenderer.render(survivalCanvas, survivalEngine);
+
+  The game loop has:
+    const dt = Math.min(0.08, (now - lastSurvivalTime) / 1000);  // L1705
+
+  This dt is NOT passed to render(). The renderer has no access to frame delta.
+  Without dt the camera lerp cannot be frame-rate independent.
+
+-----------------------------------------------------------
+6C. CAMERA TRACKS VISUAL POSITION (INCLUDES ERROR OFFSET) [HIGH PRIORITY]
+-----------------------------------------------------------
+  File: main.ts L2172-2174
+
+    const vis = networkClient.prediction.getVisualPosition();
+    survivalEngine.player.x = vis.x;  // = predictedX + errorOffsetX
+    survivalEngine.player.y = vis.y;  // = predictedY + errorOffsetY
+
+  Camera in SurvivalRenderer tracks engine.player.x/y:
+    const targetCamX = engine.player.x;  // SurvivalRenderer.ts L249
+
+  When the server sends an authoritative position correction:
+    ClientPrediction.reconcile() sets errorOffsetX/Y to the discrepancy.
+    On the same frame, getVisualPosition() returns predictedX + errorOffsetX.
+    player.x jumps by the full error amount.
+    Camera target jumps by the full error amount.
+    Next frame: errorOffset decays by exp(-18*dt) ≈ 0.74 at 60fps.
+    Camera chases this decaying target — creating a 100-150ms "camera shudder"
+    every time the server corrects position.
+
+  CORRECT FIX:
+    Store prediction.predictedX/Y separately from visual position.
+    Camera tracks predictedX/Y (stable, no error offset).
+    The CHARACTER SPRITE is drawn at vis.x, vis.y (with smooth error offset).
+    Camera and sprite origin separate.
+
+-----------------------------------------------------------
+6D. CLIENTPREDICTION — errorOffset accumulates without clearing [MEDIUM]
+-----------------------------------------------------------
+  File: ClientPrediction.ts L141-148
+
+    } else if (errorDist > 0.035) {
+      this.predictedX = replayedX;
+      this.predictedY = replayedY;
+      this.errorOffsetX = errorX;  // SET to full error each reconciliation
+      this.errorOffsetY = errorY;
+
+  If two reconciliations happen within the error decay window (50ms at 20Hz server),
+  the second call REPLACES errorOffsetX rather than adding to it.
+  The visual position jumps to predictedX + new errorOffsetX.
+  This is correct behavior but if server ticks are irregular (network variance),
+  the error offsets can differ frame-to-frame causing stuttering.
+
+-----------------------------------------------------------
+6E. DOUBLE-PROCESSING OF CLIENT INPUTS [HIGH PRIORITY — MOVEMENT JITTER]
+-----------------------------------------------------------
+  File: main.ts L1716, L1844-1847
+
+  In AUTHORITATIVE mode (networkClient connected):
+    updatePlayerContinuousMovement(dt) is ALWAYS called (L1716).
+    survivalEngine.update(dt) is NOT called.
+
+  In OFFLINE mode:
+    survivalEngine.update(dt) is called.
+
+  updatePlayerContinuousMovement calls prediction.predictMovement() which
+  advances player.x/y by (vx * speed * dt).
+  Then SurvivalEngine.canMoveTo is called from prediction.predictMovement.
+
+  PROBLEM: prediction.predictMovement uses SPEED = 5.6 (sprint) or 3.8 (walk).
+  SurvivalEngine.updatePlayerMovement (offline) uses player.speed = 3.8, player.sprintSpeed = ?
+
+  If these speed constants differ between client prediction and server simulation,
+  the client position diverges from server position every frame — triggering
+  constant reconciliation and constant small error offsets → jitter.
+
+  Check in SurvivalEngine and PlayerSystem: both use player.speed and player.sprintSpeed
+  from the player object. ClientPrediction hardcodes 3.8 and 5.6.
+  These must match exactly.
+
+-----------------------------------------------------------
+6F. ISSWIMMING SPEED DISCREPANCY [MEDIUM]
+-----------------------------------------------------------
+  ClientPrediction L59: if (isSwimming) speed *= 0.65
+  SurvivalEngine L669:  if (player.isSwimming) baseSpeed *= 0.65
+  PlayerSystem L74-76:  if (player.isSwimming) baseSpeed *= 0.65
+
+  These all match 0.65x. Good — no jitter from swimming speed.
+  BUT: isSwimming is detected differently:
+    Client: passed in from survivalEngine.player.isSwimming (detected by SurvivalEngine)
+    Server: detected in PlayerSystem from getTile(floor(player.x), floor(player.y)).isWater
+
+  If client and server detect isSwimming at different times (because of the
+  top-left-corner vs foot-hitbox discrepancy in Section 4), the swimming
+  slowdown applies on different frames — causing brief 0.65x vs 1.0x speed
+  divergence and triggering reconciliation.
+
+-----------------------------------------------------------
+6G. INPUT dt CAPPED DIFFERENTLY — SPEED DIVERGENCE [MEDIUM]
+-----------------------------------------------------------
+  Game loop: dt = Math.min(0.08, ...) — capped at 80ms (L1705)
+  updatePlayerContinuousMovement passes this dt to predictMovement.
+  PlayerSystem L70: inputDt = Math.max(0.001, Math.min(0.1, input.dt || dt))
+    — capped at 100ms on server, 80ms on client.
+
+  If the browser tab was backgrounded (browser throttles rAF to 1fps),
+  game loop fires with dt=0.08 (clamped). The server receives this as input.dt=0.08.
+  Server applies Math.min(0.1, 0.08) = 0.08. They match. Good.
+
+  But the server processes inputs at 20Hz (50ms tick). If client sends inputs
+  at 60Hz with dt~16ms each, the server may batch 3 inputs per tick.
+  The server re-applies all 3 with their individual dt values. Fine.
+  However network variance means sometimes 2 arrive, sometimes 4 — the total
+  accumulated dt per server tick varies. This directly causes position divergence.
+
+-----------------------------------------------------------
+6H. Math.floor IN worldToScreen — TILE SHIMMER [LOW-MEDIUM]
+-----------------------------------------------------------
+  SurvivalRenderer.ts L260-261:
+
+    sx: Math.floor(halfWidth + (wx - this.cameraX) * cellSize),
+    sy: Math.floor(halfHeight + (wy - this.cameraY) * cellSize),
+
+  Math.floor truncates toward negative infinity. When cameraX is fractional,
+  adjacent tiles produce screen coordinates:
+    tile(N):   floor(halfWidth + (N - cam) * cell) = S
+    tile(N+1): floor(halfWidth + (N+1 - cam) * cell) = S + floor(cell)
+  
+  If cell = 35.2 (zoom 2.2 * 16):
+    tile(N) screen = S
+    tile(N+1) screen = S + 35  (floor(35.2) = 35)
+  
+  Tile N is drawn with width = (S+35) - S + 1 = 36px (with the +1 overlap fix).
+  Tile N+1 is drawn at S+35 with width = (S+35+35) - (S+35) + 1 = 36px.
+  Gap between tiles: S+35 to S+35 (adjacent, no gap with +1 fix). OK.
+
+  But every ~5 tiles, floor(N * 35.2) vs N*35 accumulates an extra pixel.
+  At tile offset K: floor(K * 35.2) vs K * 35.
+  For K=5: 176 vs 175 — one tile is 1px wider than expected.
+  This creates a visible ripple of one tile being 1px wider every 5 tiles.
+  As camera moves, this ripple slides — visible as tile shimmer.
+
+  FIX: Use Math.round instead of Math.floor for sx, sy.
+  Math.round distributes the fractional error more evenly (±0.5px per tile)
+  instead of accumulating it in one direction.
+
+
+===========================================================
+SECTION 7: COLLISION ACCURACY SCORING BY OBJECT TYPE
+===========================================================
+
+  Object Type              | Visual Match | Notes
+  -------------------------|--------------|--------------------------------
+  Water tile               | EXACT        | 1:1 tile blocking, accurate
+  Sand shore               | EXACT        | walkable, no visual confusion
+  Road / highway           | EXACT        | walkable, no collision
+  House bottom half        | POOR         | top half (visual wall) is walkable
+  House door               | GOOD         | door tile walkable (though rarely matters)
+  Fence (h/v/corner/post)  | GOOD         | 1-tile blocking matches sprite
+  Fence gate               | EXACT        | correctly walkable
+  Well                     | OK           | 1-tile, sprite overhangs slightly
+  Village tree trunk       | POOR         | only 1/4 of 2x2 footprint blocked
+                           |              | player walks through left/top of tree
+  Wilderness tree trunk    | POOR         | same as village tree, identical code
+  Wilderness rock          | GOOD         | 1-tile, minor overhang is small
+  Wilderness bush          | EXACT        | walkable, matches intent
+  Farm crops               | EXACT        | walkable, matches intent
+  Farm decorations         | BAD          | troughs/crates fully walkable, look solid
+  Wood wall (placed)       | GOOD         | slight 0.12-tile bleed on sides
+  Wood door (closed)       | GOOD         | accurate tile + structure check
+  Campfire (placed)        | BAD          | fully walkable, looks like obstacle
+  Chest (placed)           | BAD          | fully walkable, looks like obstacle
+
+
+===========================================================
+SECTION 8: PRIORITIZED FIX LIST
+===========================================================
+
+PRIORITY 1 — CAUSES CONSTANT VISIBLE JITTER
+  Fix 1: Pass dt into render(); change camera lerp to exp decay.
+         SurvivalRenderer.ts: render(canvas, engine, dt)
+         main.ts L1850: survivalRenderer.render(survivalCanvas, survivalEngine, dt)
+         SurvivalRenderer.ts L251: 0.18 → (1 - Math.exp(-10 * dt))
+
+  Fix 2: Camera tracks prediction.predictedX/Y, not visual player.x/y.
+         In main.ts or SurvivalRenderer, expose prediction to renderer.
+         Camera = predictedX/Y; sprite drawn at visual x/y.
+
+PRIORITY 2 — CAUSES WRONG COLLISION WITH MAJOR OBJECTS
+  Fix 3: Block BOTH bottom-row tiles of 2x2 wilderness trees.
+         WorldManager.ts L584-586:
+           chunk.tiles[ty + 1][tx].isBlocked = true;      // add this
+           chunk.tiles[ty + 1][tx + 1].isBlocked = true;  // existing
+
+  Fix 4: Block BOTH bottom-row tiles of 2x2 village trees.
+         WorldManager.ts L342-346:
+           this.getTile(trunkX - 1, trunkY).isBlocked = true;  // add for ALL trees
+           this.getTile(trunkX, trunkY).isBlocked = true;      // existing
+
+  Fix 5: Add collision to farm decorations (troughs, crates, workbenches).
+         WorldManager.ts stampVillageIntoChunks: block tiles for solid farmObjects.
+         IDs that should block: farm_trough, farm_crate_01, farm_crate_02, farm_chest_closed
+
+PRIORITY 3 — CAUSES MINOR COLLISION FEEL ISSUES
+  Fix 6: Use Math.round instead of Math.floor in worldToScreen.
+         SurvivalRenderer.ts L260-261.
+
+  Fix 7: Verify ClientPrediction speed constants (3.8/5.6) match player.speed
+         and player.sprintSpeed exactly in SurvivalEngine and PlayerSystem.
+
+  Fix 8: Improve house top-half collision. Currently the visual wall of a house
+         is walkable in row 0 (and row 1 for 4-tall houses). Consider marking
+         at least 1 extra tile per house as blocked, or accepting as design.
+
+  Fix 9: isSwimming detection: use foot hitbox position (floor(player.x+0.5))
+         instead of floor(player.x) so swimming activates at the same point
+         collision blocks movement. Both SurvivalEngine.ts L660 and PlayerSystem.ts L50.
+

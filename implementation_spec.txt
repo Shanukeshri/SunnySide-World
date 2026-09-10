@@ -1,1452 +1,834 @@
-**Do not start by rebuilding the game**. Your material already describes most of the game systems and even an authoritative multiplayer implementation. The job now is to make the architecture consistent with the direction we just decided on: **responsive client prediction + server authority + Socket.IO**, while keeping single-player and multiplayer on the same simulation model.
+The immediate job is:
 
-You do NOT need to destroy or throw away what you have built so far. The plan is an incremental conversion/refactoring, not a rewri
+fix the collision/jitter problems,
+introduce the realtime server without breaking the existing game,
+make the player responsive through prediction,
+then add the first real multiplayer feature: invite → accept → join the same world.
 
-Your existing specification already has the major pieces: procedural chunked world generation, village generation, survival, Canvas rendering, wildlife AI, NPCs, a 20 Hz server loop, Socket.IO, client prediction, reconciliation, interpolation, and the entity/system architecture. 
+The collision research identifies the main current jitter causes and gives a prioritized fix list, particularly the camera lerp, camera following the visual prediction position, tree collision, and prediction speed consistency.
 
-# 1. First, define the final architecture
+PART A — Fix the current game first
 
-This is what we should build toward:
+Do these without changing the overall game architecture.
 
-```text
-                         ┌─────────────────────┐
-                         │       NEXT.JS       │
-                         │                     │
-                         │ UI                  │
-                         │ Menus               │
-                         │ Auth                │
-                         │ Server Actions      │
-                         │ Save / Load         │
-                         └──────────┬──────────┘
-                                    │
-                              Database
-                                   
-                                   
-                         ┌─────────────────────┐
-                         │    GAME SERVER      │
-                         │                     │
-                         │ Node.js             │
-                         │ Socket.IO           │
-                         │                     │
-                         │ GameState           │
-                         │ GameLoop            │
-                         │ Entity System       │
-                         │ Player System       │
-                         │ Animal System       │
-                         │ NPC System           │
-                         │ Combat              │
-                         │ Resources           │
-                         │ Spawning             │
-                         │ Random               │
-                         └──────────┬──────────┘
-                                    │
-                              WebSocket
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │      BROWSER        │
-                         │                     │
-                         │ Input               │
-                         │ Prediction          │
-                         │ Reconciliation      │
-                         │ Interpolation       │
-                         │ Canvas Renderer     │
-                         │ Phaser where needed │
-                         │ Audio               │
-                         │ UI                  │
-                         └─────────────────────┘
-```
+1. Fix camera jitter
 
-Your existing architecture already identifies `GameState`, `GameLoop`, `EventBus`, server systems, `NetworkClient`, `ClientPrediction`, and `EntityInterpolator`; we're essentially refining that architecture rather than inventing a new one. 
+Currently the camera interpolation is frame-rate dependent:
 
----
+cameraX += (targetCamX - cameraX) * 0.18;
+cameraY += (targetCamY - cameraY) * 0.18;
 
-# 2. Separate the game into SERVER and CLIENT
+Change the renderer to receive dt:
 
-This is the first actual implementation task.
+render(canvas, engine, dt)
 
-## SERVER owns
+and use:
 
-```text
-GameState
-World state
-Player authoritative state
-Animal state
-NPC state
-Enemy state
-Resource state
-Inventory
-Health
-Hunger
-Stamina
-Combat
-Damage
-Loot
-Crafting
-Building validation
-Resource destruction
-Spawning
-AI
-World time
-Gameplay randomness
-```
+const smoothing = 1 - Math.exp(-10 * dt);
 
-## CLIENT owns
+cameraX += (targetCamX - cameraX) * smoothing;
+cameraY += (targetCamY - cameraY) * smoothing;
 
-```text
-Input
-Predicted player movement
-Rendering
+The research identifies this as the highest-priority jitter source.
+
+2. Separate camera position from visual player position
+
+Currently reconciliation modifies the visual position, and the camera follows that visual position.
+
+That creates:
+
+server correction
+      ↓
+visual player jumps
+      ↓
+camera target jumps
+      ↓
+camera follows correction
+      ↓
+camera shudder
+
+Instead maintain:
+
+predictedPosition
+visualPosition
+
+The camera follows:
+
+predictedPosition
+
+while the player sprite uses:
+
+visualPosition
+
+So:
+
 Camera
-Animation
-Particles
-Sound
-UI
-Visual interpolation
-Visual effects
-```
-
-The existing specification already separates the authoritative server systems from the client prediction/interpolation layer. 
-
----
-
-# 3. Create one canonical GameState
-
-This is extremely important.
-
-You should have one clearly defined representation of the actual game state.
-
-Something conceptually like:
-
-```text
-GameState
-│
-├── world
-│   ├── seed
-│   ├── time
-│   └── chunks
-│
-├── players
-│
-├── animals
-│
-├── npcs
-│
-├── enemies
-│
-├── resources
-│
-├── droppedItems
-│
-├── structures
-│
-└── events
-```
-
-Every entity needs:
-
-```text
-id
-type
-position
-state
-```
-
-and then type-specific properties.
-
-Your existing design already calls for a base networked `Entity` structure and a `GameState` source of truth. 
-
----
-
-# 4. Make entity IDs universal
-
-You originally wanted `generateRandom(entityId)`.
-
-Keep that.
-
-Every entity gets a unique numeric ID:
-
-```text
-Player      1
-Cow         183
-Tree        928
-NPC         45
-Chicken     712
-Rock        91
-```
-
-Then:
-
-```text
-generateRandom(183)
-```
-
-is always associated with that cow.
-
-This ID should remain stable for the entity's lifetime.
-
----
-
-# 5. Make `generateRandom()` a simulation primitive
-
-Implement:
-
-```text
-generateRandom(entityId)
-```
-
-inside the game simulation.
-
-It should be used for:
-
-```text
-Animal wandering
-Animal decisions
-NPC behavior
-Spawn selection
-Loot
-Enemy behavior
-Resource respawn
-Random events
-```
-
-But **not** for cosmetic effects.
-
-Client can independently randomize:
-
-```text
-particle spread
-heart position
-animation variation
-visual effects
-```
-
-The server controls gameplay randomness.
-
----
-
-# 6. Implement the server Game Loop
-
-Your specification already defines a deterministic 20 Hz game loop. 
-
-Keep that.
-
-Conceptually:
-
-```text
-20 Hz
   ↓
-receive queued inputs
+stable predicted position
+
+Player sprite
   ↓
-PlayerSystem
-  ↓
-AnimalSystem
-  ↓
-NPCSystem
-  ↓
-CombatSystem
-  ↓
-ResourceSystem
-  ↓
-SpawnSystem
-  ↓
-SurvivalSystem
-  ↓
-BuildingSystem
-  ↓
-CraftingSystem
-  ↓
-generate events
-  ↓
-broadcast changes
-```
+predicted position + smooth correction
 
-Do **not** make this dependent on React or the browser rendering loop.
+This is specifically identified as another high-priority jitter source.
 
----
+3. Fix player prediction constants
 
-# 7. Change the player's networking model
+Your ClientPrediction currently has movement constants:
 
-This is where your current authoritative implementation needs the most attention.
+walk = 3.8
+sprint = 5.6
 
-The client sends:
+while the normal player object has its own movement values.
 
-```text
-Input
-```
+You don't want:
 
-not:
-
-```text
-Position
-```
-
-For example:
-
-```text
-{
-    seq: 104,
-    vx: 1,
-    vy: 0,
-    isSprinting: false,
-    dt: 0.016
-}
-```
-
-Your existing protocol already specifies `seq`, velocity, sprint state and `dt`. 
-
----
-
-# 8. Immediately predict that input locally
-
-When the user presses W:
-
-```text
-W
- ↓
-Input #104
- ↓
-Local prediction
- ↓
-Player moves immediately
- ↓
-Renderer
-```
-
-At the same time:
-
-```text
-Input #104
-      ↓
-Socket.IO
-      ↓
-Server
-```
-
-This is what removes the sluggishness you experienced.
-
-Your existing specification already describes immediate local movement and a `pendingInputs` buffer. 
-
----
-
-# 9. Maintain pending inputs
-
-Client maintains:
-
-```text
-pendingInputs = [
-    104,
-    105,
-    106,
-    107
-]
-```
-
-The server says:
-
-```text
-lastProcessedInputSeq = 105
-```
-
-Client removes:
-
-```text
-104
-105
-```
-
-and keeps:
-
-```text
-106
-107
-```
-
-Then:
-
-```text
-authoritative server state
-        ↓
-apply
-        ↓
-replay 106
-        ↓
-replay 107
-        ↓
-predicted current state
-```
-
-Your existing reconciliation design already specifies this process. 
-
----
-
-# 10. Don't send player inputs to other players
-
-This is one correction I would make very explicitly.
-
-Player A sends:
-
-```text
-Input #104
-```
-
-to the server.
-
-The server does **not** need to broadcast:
-
-```text
-Input #104
-```
-
-to Player B.
-
-Instead:
-
-```text
-Player A
-   ↓
-input
-   ↓
-Server
-   ↓
-simulation
-   ↓
-Player A state
-   +
-Player B relevant state
-```
-
-Player B receives something like:
-
-```text
-Player A
-position
-velocity
-direction
-state
-server tick
-```
-
-This keeps networking smaller and cleaner.
-
----
-
-# 11. Interpolate other entities
-
-For:
-
-```text
-Other players
-Animals
-NPCs
-Enemies
-```
-
-the client should maintain a small snapshot buffer.
-
-For example:
-
-```text
-Snapshot 100
-Cow #183 = (100,200)
-
-Snapshot 101
-Cow #183 = (102,200)
-```
-
-The renderer smoothly interpolates:
-
-```text
-100
-100.3
-100.7
-101.1
-101.5
-...
-102
-```
-
-Your specification already describes an `EntityInterpolator` and snapshot interpolation. 
-
----
-
-# 12. Keep animal AI entirely on the server
-
-Your existing wildlife design is already good.
-
-Animals have:
-
-```text
-IDLE
-WANDER
-EATING
-PETTED
-FLEE
-DEAD
-```
-
-with wandering, grazing, fleeing, and herding behavior. 
-
-Move/keep the actual decision-making on the server.
-
-For example:
-
-```text
-Cow #183
-   ↓
-AnimalSystem
-   ↓
-generateRandom(183)
-   ↓
-WANDER
-   ↓
-choose target
-   ↓
-server updates movement
-```
-
-Client only makes that movement visually smooth.
-
----
-
-# 13. Petting should be an event
-
-When player presses E:
-
-```text
-CLIENT
-
-E
- ↓
-pet command
- ↓
-server
-```
-
-Server checks:
-
-```text
-Is animal alive?
-Is player close enough?
-Can this species be petted?
-Is animal currently pettable?
-```
-
-If valid:
-
-```text
-Animal state → PETTED
-```
-
-Then server emits:
-
-```text
-animal:petted
-```
-
-Client reacts:
-
-```text
-Animal stops
-Animal faces player
-❤️ particles
-Player hop
-Sound
-```
-
-Your current specification already defines this interaction and heart-particle behavior. 
-
----
-
-# 14. Eating should also be state-based
+Client:
+speed = 3.8
 
 Server:
+speed = 3.82
 
-```text
-Animal
- ↓
-find grass
- ↓
-EATING
-```
+because that creates continuous divergence.
 
-Server doesn't need to synchronize:
+Make movement rules shared:
 
-```text
-head sprite y = -1
-head sprite y = -2
-head sprite y = -1
-```
+MovementConstants
 
-Instead:
+or derive both sides from the same configuration.
 
-```text
-state = EATING
-```
+The current mismatch is identified as a source of repeated reconciliation/jitter.
 
-Client:
+4. Fix tree collisions
 
-```text
-EATING
- ↓
-play eating animation
- ↓
-bob animal
- ↓
-render
-```
+Your current 2×2 trees only block the bottom-right tile.
 
-This greatly reduces networking.
+So visually:
 
----
+   TREE
+┌───────┐
+│       │
+│       │
+│   X   │
+└───────┘
 
-# 15. Keep your world generation deterministic
+but collision is essentially:
 
-Your existing world generation uses:
+   TREE
+┌───────┐
+│       │
+│       │
+│     X │
+└───────┘
 
-```text
-world seed
-Mulberry32
-2D noise
-16×16 chunks
-5×5 streaming window
-```
+Block both bottom tiles.
 
-and generates water, grassland, forest/jungle clusters, etc. 
+For wilderness:
 
-Keep that architecture.
+chunk.tiles[ty + 1][tx].isBlocked = true;
+chunk.tiles[ty + 1][tx + 1].isBlocked = true;
 
-But adapt your current biome rule to the rule you clarified:
+For village trees do the equivalent.
 
-```text
-Only biome = Grassland
-```
+The research explicitly identifies this as a major collision mismatch.
 
-Then:
+5. Fix house collision
 
-```text
-tree cluster >= 20
-        ↓
-considered Jungle
-```
+Currently parts of the visually solid house are walkable.
 
-That should be a **world classification**, not necessarily a completely different biome system.
+The current implementation blocks only the lower portion of the house footprint, meaning the player can walk into visually solid upper wall areas.
 
----
+Change the house collision representation so that the visual wall corresponds to the collision footprint, while leaving the intended doorway accessible.
 
-# 16. Keep villages as world structures
+Don't blindly make every pixel of a sprite solid. Keep the gameplay footprint logical.
 
-Your village generation remains deterministic.
+6. Fix solid village objects
 
-The existing system already has deterministic village planning and spacing rules. 
+Currently some objects visually look solid but have no collision:
 
-Server owns:
+trough
+crate
+chest
 
-```text
-Village layout
-NPC positions
-Chest contents
-Buildings
-Farm state
-World modifications
-```
+The collision research identifies these as currently fully walkable.
 
-Client renders them.
+Create a clear classification:
 
----
+SOLID
+├── house
+├── fence
+├── tree trunk
+├── rock
+├── trough
+├── crate
+├── chest
+└── other solid objects
 
-# 17. Make resources server-authoritative
+WALKABLE
+├── grass
+├── crops
+├── bushes
+└── decorations intended as walkable
 
-For example:
+Then the collision system uses the classification rather than having special cases scattered everywhere.
 
-```text
-Player attacks tree
-      ↓
-Client sends:
-"attack tree #928"
-      ↓
-Server
-      ↓
-validate distance
-validate tool
-validate cooldown
-      ↓
-damage tree
-      ↓
-tree HP = 0
-      ↓
-destroy tree
-      ↓
-spawn wood
-```
+7. Fix swimming detection
 
-Client doesn't award itself wood.
+Currently collision uses the player's foot position while swimming detection uses the player's top-left tile.
 
----
+That causes inconsistent behavior around water.
 
-# 18. Same for inventory
+Use the same conceptual reference point for both.
 
-Never:
+The research specifically suggests basing swimming detection on:
 
-```text
-Client:
-wood += 5
-```
+floor(player.x + 0.5)
 
-Instead:
+rather than:
 
-```text
-Client:
-"pickup item 712"
+floor(player.x)
 
-       ↓
+8. Fix rendering shimmer
 
-Server:
-item exists?
-player close enough?
-item still available?
+Change the screen coordinate conversion from:
 
-       ↓
+Math.floor(...)
 
-Server:
-inventory += item
-item destroyed
+to:
 
-       ↓
+Math.round(...)
 
-Client:
-inventory update
-```
+The current fractional cell size can otherwise produce a moving one-pixel tile ripple.
 
----
+PART B — Then introduce the multiplayer architecture
 
-# 19. Same for crafting
+Once the current single-player movement feels stable, don't immediately implement invitations.
 
-Client sends:
+First establish the realtime foundation.
 
-```text
-CRAFT
-recipeId
-```
+9. Create a separate Game Server
 
-Server validates:
-
-```text
-recipe exists
-materials available
-inventory space
-crafting requirements
-```
-
-Then:
-
-```text
-remove materials
-create item
-update inventory
-```
-
----
-
-# 20. Same for building
-
-Client can show the building preview locally:
-
-```text
-ghost house
-```
-
-But when the player clicks:
-
-```text
-BUILD
-position
-structureType
-```
-
-server validates:
-
-```text
-position
-collision
-resources
-permissions
-world rules
-```
-
-Then actually creates:
-
-```text
-structure #1837
-```
-
-and broadcasts it.
-
-Your existing system already calls for grid-based building validation. 
-
----
-
-# 21. Survival system stays server-side
-
-Things such as:
-
-```text
-Hunger
-Health
-Stamina
-Starvation
-Damage
-Death
-Respawn
-```
-
-should be simulated on the server.
-
-Your existing architecture already has a dedicated `SurvivalSystem`. 
-
-The client merely displays the values.
-
----
-
-# 22. Make the renderer completely independent
-
-Your existing renderer is already designed as a Canvas 2D multi-pass renderer with smooth camera movement and pixel-jitter prevention. 
-
-Keep that.
-
-The renderer should receive:
-
-```text
-RenderableState
-```
-
-and render it.
-
-It shouldn't decide:
-
-```text
-whether a tree is actually destroyed
-whether the cow is actually dead
-whether the player really has wood
-```
-
----
-
-# 23. Your rendering stack can remain as it is
-
-You already have:
-
-```text
-Canvas 2D
-Phaser 3
-Web Audio API
-```
-
-The specification describes Canvas 2D as the main renderer and Phaser as the asset-atlas/inspection component. 
-
-So don't introduce another rendering technology just because you're adding networking.
-
-Use:
-
-```text
-Canvas 2D → actual game
-Phaser → asset/visual tooling where useful
-Web Audio → sound
-```
-
----
-
-# 24. Next.js stays outside the game loop
-
-This is important given your earlier decision to use Next.js Server Actions rather than a Node server inside Next.js.
-
-Use Next.js for:
-
-```text
-Authentication
-User profile
-Menus
-Game selection
-Save/load
-Database
-Settings
-Account data
-```
-
-Use the Node.js service for:
-
-```text
-Socket.IO
-Game loop
-GameState
-AI
-Gameplay
-Realtime synchronization
-```
-
-Your Next.js syllabus also explicitly covers Server Actions, Route Handlers, PostgreSQL/Prisma, authentication and deployment, so this gives each technology a sensible responsibility. 
-
----
-
-# 25. Persistence comes after the simulation
-
-Don't put PostgreSQL/Prisma in the 20 Hz loop.
-
-Instead:
-
-```text
-Game Server
-     │
-     ├── live state
-     │
-     └── persistence events
-              ↓
-        Save periodically
-              ↓
-        PostgreSQL
-```
-
-Your current specification uses a local JSON persistence manager, with a future recommendation to move persistent multiplayer state to a database such as SQLite/Redis. 
-
-For your final architecture, I'd use PostgreSQL/Prisma through the Next.js data layer.
-
----
-
-# 26. Add reconnection
-
-This is essential once the game is multiplayer.
-
-The flow should be:
-
-```text
-Player
- ↓
-WebSocket disconnect
- ↓
-Client detects it
- ↓
-Reconnect
- ↓
-authenticate
- ↓
-identify player/session
- ↓
-server returns current state
- ↓
-client rebuilds prediction buffer
- ↓
-resume
-```
-
-Never assume a WebSocket connection lasts forever.
-
----
-
-# 27. Add server tick numbers
-
-Every simulation update should have:
-
-```text
-tick
-timestamp
-```
-
-For example:
-
-```text
-tick = 5821
-```
-
-Then every client knows which simulation state it is looking at.
-
-Your existing server protocol already includes `tick` and `timestamp`. 
-
----
-
-# 28. Use delta updates eventually
-
-Don't keep doing:
-
-```text
-send entire world
-```
-
-Instead:
-
-```text
-ENTITY_SPAWN
-ENTITY_UPDATE
-ENTITY_REMOVE
-PLAYER_UPDATE
-INVENTORY_UPDATE
-WORLD_EVENT
-```
-
-For example:
-
-```text
-{
-    type: "entity:update",
-    id: 183,
-    state: "EATING"
-}
-```
-
-rather than sending 500 animals every update.
-
----
-
-# 29. Add interest management later
-
-Once the world becomes large:
-
-```text
-                 WORLD
-   ┌─────────────────────────────┐
-   │                             │
-   │       Player                │
-   │          ↓                  │
-   │      visible area           │
-   │                             │
-   └─────────────────────────────┘
-```
-
-Only synchronize entities relevant to the player's area.
-
-Your world is already chunk-based, so this is a natural future optimization.
-
----
-
-# 30. What the final data flow should look like
-
-### Player movement
-
-```text
-Keyboard
-   ↓
-Input #105
-   ├──────────────→ Socket.IO → Server
-   │
-   ↓
-Client prediction
-   ↓
-Renderer
-
-Server
-   ↓
-validate
-   ↓
-simulate
-   ↓
-authoritative state
-   ↓
-ack #105
-   ↓
-Client
-   ↓
-reconciliation
-```
-
-### Animal movement
-
-```text
-Server
- ↓
-AnimalSystem
- ↓
-generateRandom(id)
- ↓
-AI decision
- ↓
-state/position
- ↓
-Socket.IO
- ↓
-Client interpolation
- ↓
-Renderer
-```
-
-### Petting
-
-```text
-E
- ↓
-pet command
- ↓
-Server validation
- ↓
-ANIMAL_PETTED
- ↓
-Socket.IO
- ↓
-Client
- ├── heart
- ├── animal pause animation
- ├── player hop
- └── sound
-```
-
-### Tree chopping
-
-```text
-click
- ↓
-attack command
- ↓
-Server
- ↓
-validate
- ↓
-damage tree
- ↓
-tree destroyed
- ↓
-spawn item
- ↓
-event
- ↓
-clients
-```
-
----
-
-# 31. What you should NOT implement
-
-Avoid these architectures:
-
-### Don't do this
-
-```text
-Client
- ↓
-"Here is my new position."
- ↓
-Server
- ↓
-"Okay."
-```
-
-The client is effectively telling the server what reality is.
-
----
-
-### Don't do this
-
-```text
-Client
- ↓
-Server Action
- ↓
-random number
- ↓
-response
-```
-
-for every realtime decision.
-
----
-
-### Don't do this
-
-```text
-Every frame
- ↓
-send complete GameState
-```
-
-That's wasteful.
-
----
-
-### Don't do this
-
-```text
-React state
- ↓
-entire game simulation
-```
-
-Your game loop should not depend on React rendering.
-
----
-
-# 32. The actual implementation roadmap
-
-This is the order I'd follow.
-
-## Phase 1 — Architecture cleanup
-
-Implement:
-
-```text
-GameState
-Entity
-GameLoop
-EventBus
-Random
-```
-
-Your existing file structure already anticipates these. 
-
----
-
-## Phase 2 — Server simulation
-
-Implement/verify:
-
-```text
-PlayerSystem
-AnimalSystem
-NPCSystem
-CombatSystem
-ResourceSystem
-SpawnSystem
-SurvivalSystem
-CraftingSystem
-BuildingSystem
-```
-
-Your specification already identifies these ten systems. 
-
----
-
-## Phase 3 — Networking
-
-Implement:
-
-```text
-Socket.IO server
-NetworkClient
-Protocol
-connection management
-authentication/session
-tick system
-```
-
----
-
-## Phase 4 — Client prediction
-
-Implement:
-
-```text
-InputManager
-sequence numbers
-pendingInputs
-local simulation
-server acknowledgements
-reconciliation
-```
-
-Your current design already specifies the core reconciliation process. 
-
----
-
-## Phase 5 — Remote entity interpolation
-
-Implement:
-
-```text
-SnapshotBuffer
-EntityInterpolator
-server timestamps
-interpolation delay
-```
-
----
-
-## Phase 6 — Events
-
-Implement:
-
-```text
-GameEvent
-EventBus
-Socket event serialization
-Client event handlers
-```
-
-Events handle things like:
-
-```text
-pet
-attack
-death
-pickup
-craft
-build
-destroy
-spawn
-```
-
----
-
-## Phase 7 — Persistence
-
-Implement:
-
-```text
-Next.js Server Actions
-        ↓
-Data layer
-        ↓
-Prisma
-        ↓
-PostgreSQL
-```
-
-Save:
-
-```text
-player
-inventory
-world modifications
-structures
-important entity state
-```
-
-Not every simulation tick.
-
----
-
-## Phase 8 — Single-player mode
-
-Run:
-
-```text
-ONE PLAYER
-    ↓
-GAME SERVER
-```
-
-The exact same server simulation runs.
-
-This means single-player is effectively:
-
-```text
-multiplayer with one connected player
-```
-
----
-
-## Phase 9 — Multiplayer
+Keep your Next.js application.
 
 Add:
 
-```text
-rooms/world instances
-multiple player sessions
-player visibility
-interest management
-reconnection
-disconnect handling
-```
+game-server/
 
-The underlying game systems remain the same.
+with:
 
----
+Node.js
+TypeScript
+Socket.IO
 
-# 33. One thing I'd change from the current specification
+The architecture becomes:
 
-Your existing document describes:
+Next.js
+│
+├── UI
+├── menus
+├── authentication
+├── Server Actions
+└── persistence
 
-> "Client-Side Simulation / Standalone Mode" and "Authoritative Multiplayer Mode" as separate operating modes. 
-
-Given what we've decided now, I would **change that philosophy**.
-
-Instead of:
-
-```text
-Single Player
-→ client simulation
-
-Multiplayer
-→ server simulation
-```
-
-make it:
-
-```text
-Single Player
-→ server simulation
-→ client prediction/rendering
-
-Multiplayer
-→ server simulation
-→ client prediction/rendering
-```
-
-So there is only **one gameplay simulation**.
-
-The number of connected players is the only meaningful difference.
-
----
-
-# Final target
-
-When you're finished, the game should behave like this:
-
-```text
-                         GAME SERVER
-                              │
-                   authoritative GameState
-                              │
-             ┌────────────────┼────────────────┐
-             │                │                │
-          Player A          Player B         Player C
-             │                │                │
-        prediction       interpolation    interpolation
-             │                │                │
-             └────────────────┼────────────────┘
-                              │
-                         Socket.IO
-                              │
-                         Game Events
-```
-
-And internally:
-
-```text
 Game Server
 │
-├── Fixed 20 Hz GameLoop
-│
+├── Socket.IO
 ├── GameState
-│
-├── Entity Registry
-│
-├── Random
-│
-├── EventBus
-│
-├── PlayerSystem
-├── AnimalSystem
-├── NPCSystem
-├── CombatSystem
-├── ResourceSystem
-├── SpawnSystem
-├── SurvivalSystem
-├── CraftingSystem
-└── BuildingSystem
-```
+├── GameLoop
+├── Entity systems
+└── realtime simulation
 
-while the browser has:
+Do not delete your existing Next.js game.
 
-```text
+We are extracting/relocating gameplay responsibilities gradually.
+
+10. First make the game server capable of hosting ONE player
+
+Before multiplayer:
+
+Browser
+   │
+ Socket.IO
+   │
+   ▼
+Game Server
+   │
+ Player #1
+
+The server should be able to maintain:
+
+GameState
+Player
+World
+Animals
+NPCs
+
+for one connected player.
+
+This is your single-player authoritative mode.
+
+11. Move the authoritative player simulation to the server
+
+The client should send:
+
+INPUT
+
+not:
+
+POSITION
+
+For example:
+
+{
+    seq: 104,
+    moveX: 1,
+    moveY: 0,
+    sprint: false,
+    dt: 0.016
+}
+
+Server:
+
+input
+ ↓
+validate
+ ↓
+simulate
+ ↓
+update authoritative state
+12. Keep client prediction
+
+Do not wait for the server to move the local player.
+
+The client does:
+
+input
+ ↓
+local prediction
+ ↓
+render immediately
+
+while simultaneously:
+
+input
+ ↓
+Socket.IO
+ ↓
+server
+
+This addresses the lag that appeared when the server became authoritative.
+
+13. Add sequence numbers
+
+Client maintains:
+
+seq = 1
+seq = 2
+seq = 3
+...
+
+Each input gets one.
+
+Server responds with:
+
+lastProcessedInput = 103
+
+Client then knows which predicted inputs are already confirmed.
+
+14. Add reconciliation
+
+Client maintains:
+
+authoritativeState
+predictedState
+pendingInputs
+
+When server state arrives:
+
+server state
+     ↓
+apply authoritative state
+     ↓
+remove acknowledged inputs
+     ↓
+replay remaining inputs
+     ↓
+new predicted state
+
+This is the mechanism that lets the player remain responsive without abandoning server authority.
+
+PART C — Make all entities networkable
+
+Now extend the architecture beyond the player.
+
+15. Give every networked entity an ID
+
+You already have the requirement for entity IDs.
+
+Use:
+
+1       player
+183     cow
+184     cow
+928     tree
+45      NPC
+
+Every network message references the ID.
+
+For example:
+
+{
+    entityId: 183,
+    state: "EATING"
+}
+16. Server owns animal AI
+
+Your existing animal logic doesn't need to be thrown away.
+
+Move its decision-making into the server.
+
+For example:
+
+Animal #183
+     ↓
+AnimalSystem
+     ↓
+generateRandom(183)
+     ↓
+WANDER
+     ↓
+server movement
+
+Client receives enough information to render/interpolate the animal.
+
+17. Server owns NPC AI
+
+Same pattern:
+
+NPCSystem
+
+handles:
+
+idle
+wander
+talk
+follow
+work
+sleep
+flee
+
+The client only renders the resulting state.
+
+18. Server owns gameplay interactions
+
+For example, petting:
+
+Client:
+PET animal #183
+       ↓
+Server
+       ↓
+validate distance/state
+       ↓
+animal state = PETTED
+       ↓
+event: animal:petted
+       ↓
 Client
-│
-├── InputManager
-├── NetworkClient
-├── ClientPrediction
-├── Reconciliation
-├── SnapshotBuffer
-├── EntityInterpolator
-├── SurvivalRenderer
-├── Camera
-├── Animation
-├── Audio
-└── UI
-```
+       ↓
+❤️ + hop + animation
 
-**That is the exact direction I'd take from what you have now.** Your existing specification is already surprisingly close; the major architectural adjustment is to stop thinking of "single-player simulation" and "multiplayer simulation" as two different game engines. Build **one server simulation**, let the client predict its own inputs for responsiveness, interpolate everything else, and use Next.js/Server Actions for the application and persistence layer rather than putting realtime gameplay into Server Actions.
+The heart and hop remain client-side visual effects.
+
+PART D — Now implement actual multiplayer
+
+Once one player works through the server, add multiple connections.
+
+19. Introduce a World/Room
+
+You need a concept like:
+
+WorldSession
+
+or:
+
+GameRoom
+
+For your first implementation:
+
+worldId = "world_123"
+
+A room contains:
+
+World
+Players
+Entities
+GameState
+
+So:
+
+Room #123
+│
+├── Player A
+├── Player B
+├── Animals
+├── NPCs
+├── Resources
+└── World
+20. Create a basic multiplayer session
+
+Don't start with matchmaking.
+
+Just make:
+
+Create Game
+
+The server creates:
+
+worldId
+ownerPlayerId
+
+Then the owner enters that room.
+
+21. Implement Invite
+
+Your UI can have:
+
+Multiplayer
+   ↓
+Create / Host World
+   ↓
+Invite Player
+
+Initially the simplest version is a shareable invite code.
+
+Example:
+
+SUNNY-4821
+
+or a short random world/session ID.
+
+The owner sees:
+
+Invite Code:
+SUNNY-4821
+
+[Copy]
+22. Create Join screen
+
+Another player sees:
+
+Join World
+
+[ Enter Invite Code ]
+
+[ Join ]
+
+Client sends:
+
+joinWorld
+
+with the invite/session code.
+
+Server validates:
+
+world exists?
+world accepting players?
+player allowed?
+
+Then:
+
+Player B
+   ↓
+Room #123
+23. Add invite acceptance
+
+If you specifically want an invite → accept flow rather than simply entering a code, use:
+
+Player A
+   ↓
+Invite Player B
+   ↓
+Server creates invitation
+   ↓
+Player B receives invitation
+   ↓
+┌──────────────────────────┐
+│ Player A invited you     │
+│ to join their world      │
+│                          │
+│ [Accept]     [Decline]   │
+└──────────────────────────┘
+
+Accept:
+
+Player B
+ ↓
+acceptInvite(inviteId)
+ ↓
+server
+ ↓
+join World #123
+
+Decline:
+
+Player B
+ ↓
+declineInvite(inviteId)
+ ↓
+server removes invitation
+24. Don't use WebRTC for the game state
+
+For this first multiplayer implementation:
+
+Socket.IO
+    ↓
+game networking
+
+Use WebRTC later if you need things such as:
+
+voice chat
+peer-to-peer media
+
+Your gameplay state should remain on the game server.
+
+PART E — What the first multiplayer version should actually support
+
+Don't try to make the entire game multiplayer immediately.
+
+Your MVP multiplayer should be:
+
+Host world
+      ↓
+Generate world
+      ↓
+Invite another player
+      ↓
+Player accepts
+      ↓
+Both enter same world
+      ↓
+See each other
+      ↓
+Move around
+      ↓
+Smooth movement
+      ↓
+Disconnect/reconnect
+
+That's it.
+
+Once that works, expand.
+
+25. First multiplayer entity synchronization
+
+Start with only:
+
+Player A
+Player B
+
+Server sends:
+
+player:spawn
+player:update
+player:remove
+
+Player A should see B.
+
+Player B should see A.
+
+Don't synchronize animals/NPCs yet.
+
+26. Then synchronize animals
+
+Once players work:
+
+Animal
+   ↓
+server simulation
+   ↓
+state updates
+   ↓
+both clients
+
+Both players see the same cow.
+
+Not:
+
+Player A's cow
+Player B's separate cow
+
+but:
+
+Cow #183
+
+in the shared server world.
+
+27. Then synchronize interactions
+
+Add:
+
+pet
+feed
+attack
+pickup
+chop
+build
+
+For example:
+
+Player A pets Cow #183
+        ↓
+Server
+        ↓
+Cow #183 state changes
+        ↓
+broadcast
+        ↓
+Player A + Player B
+
+Both see the same world state.
+
+28. Then add world modifications
+
+Eventually:
+
+Player A chops tree #928
+
+Server:
+
+tree #928
+ ↓
+destroy
+ ↓
+spawn wood
+
+Both clients receive:
+
+entity:destroy 928
+entity:spawn wood...
+
+Now the world is genuinely shared.
+
+PART F — Reconnection
+
+Before calling multiplayer "done", implement:
+
+disconnect
+ ↓
+reconnect
+ ↓
+identify player
+ ↓
+server sends current world state
+ ↓
+restore player state
+ ↓
+resume
+
+Don't depend on the client retaining the truth.
+
+The exact order I recommend
+
+Do it in this order:
+
+1. Fix camera jitter
+        ↓
+2. Fix prediction/camera separation
+        ↓
+3. Fix movement constant mismatch
+        ↓
+4. Fix water collision
+        ↓
+5. Fix tree collision
+        ↓
+6. Fix house collision
+        ↓
+7. Fix village object collision
+        ↓
+8. Fix rendering shimmer
+        ↓
+9. Extract GameState
+        ↓
+10. Extract simulation systems
+        ↓
+11. Create Node.js + Socket.IO server
+        ↓
+12. Connect ONE player
+        ↓
+13. Send player inputs
+        ↓
+14. Server simulates player
+        ↓
+15. Client prediction
+        ↓
+16. Server acknowledgement
+        ↓
+17. Reconciliation
+        ↓
+18. Entity IDs
+        ↓
+19. Multiplayer room
+        ↓
+20. Host world
+        ↓
+21. Invite
+        ↓
+22. Accept / decline
+        ↓
+23. Join shared world
+        ↓
+24. Synchronize Player A/B
+        ↓
+25. Interpolate remote player
+        ↓
+26. Animals
+        ↓
+27. NPCs
+        ↓
+28. Interactions
+        ↓
+29. Resources
+        ↓
+30. Building
+        ↓
+31. Persistence
+        ↓
+32. Reconnection
+        ↓
+33. Interest management / optimization
+Most importantly
+
+Do not delete the existing systems.
+
+Your current:
+
+WorldManager
+SurvivalEngine
+PlayerSystem
+ClientPrediction
+SurvivalRenderer
+SettlementGenerator
+animal logic
+map generation
+Canvas renderer
+
+are the foundation.
+
+The collision analysis already gives us concrete fixes rather than requiring a rewrite.
+
+The multiplayer work should be done by extracting the reusable simulation logic, introducing the Socket.IO boundary, and gradually moving authority to the server while keeping client prediction for responsiveness.
+
+For the first milestone, I would therefore not touch crafting, survival, villages, NPC complexity, WebRTC, database persistence, or advanced multiplayer yet. Get this exact vertical slice working first:
+
+Host → Invite → Accept → Join
+                  ↓
+             Same World
+                  ↓
+          See Other Player
+                  ↓
+           Smooth Movement
+                  ↓
+             Disconnect
+                  ↓
+              Reconnect

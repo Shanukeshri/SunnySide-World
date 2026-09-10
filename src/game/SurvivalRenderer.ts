@@ -238,27 +238,36 @@ export class SurvivalRenderer {
 
   /**
    * Main render call invoked every animation frame (60 FPS).
+   *
+   * Fix 1: Accepts dt so camera smoothing is frame-rate independent (uses Math.exp).
+   * Fix 2: Camera follows predictedX/predictedY (stable), not visual position,
+   *         preventing server reconciliation from causing camera shudder.
    */
-  public render(canvas: HTMLCanvasElement, engine: SurvivalEngine) {
+  public render(canvas: HTMLCanvasElement, engine: SurvivalEngine, dt: number = 0.016) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Camera Follows Player smoothly
-    const targetCamX = engine.player.x;
-    const targetCamY = engine.player.y;
-    this.cameraX += (targetCamX - this.cameraX) * 0.18;
-    this.cameraY += (targetCamY - this.cameraY) * 0.18;
+    // Fix 1 & 2: Camera follows the authoritative predicted position, NOT the visual
+    // (error-offset) position, so server corrections never cause camera shudder.
+    // Smoothing uses exponential decay so it's identical at all frame rates.
+    const pred = (engine as any).networkPrediction;
+    const targetCamX = pred ? pred.predictedX : engine.player.x;
+    const targetCamY = pred ? pred.predictedY : engine.player.y;
+    const smoothing = 1 - Math.exp(-10 * dt);
+    this.cameraX += (targetCamX - this.cameraX) * smoothing;
+    this.cameraY += (targetCamY - this.cameraY) * smoothing;
 
     const cellSize = this.baseTileSize * this.zoom;
     const halfWidth = canvas.width / 2;
     const halfHeight = canvas.height / 2;
 
-    // Screen-to-world conversion helper without double-rounding jitter
+    // Fix 8: Use Math.round (not Math.floor) to eliminate the one-pixel tile shimmer
+    // that occurs when fractional cell sizes shift between adjacent integer values.
     const worldToScreen = (wx: number, wy: number) => ({
-      sx: Math.floor(halfWidth + (wx - this.cameraX) * cellSize),
-      sy: Math.floor(halfHeight + (wy - this.cameraY) * cellSize),
+      sx: Math.round(halfWidth + (wx - this.cameraX) * cellSize),
+      sy: Math.round(halfHeight + (wy - this.cameraY) * cellSize),
     });
 
     // Clear canvas with rich sunnyside grass green (prevents dark background leakage)

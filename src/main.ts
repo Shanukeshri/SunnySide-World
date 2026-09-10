@@ -1639,6 +1639,272 @@ function setupNetworkClientHandlers() {
       else if (s === "heart") GameAudio.playHeartChime();
     }
   });
+
+  // ── Multiplayer invite events ──────────────────────────────────────────────
+  networkClient.onInviteReceived((invite) => {
+    showInviteModal(invite.inviteId, invite.fromName);
+  });
+
+  networkClient.onInviteResponse((resp) => {
+    const toast = document.getElementById("mp-toast");
+    if (toast) {
+      toast.textContent = resp.accepted
+        ? `✅ ${resp.byName} joined your world!`
+        : `❌ ${resp.byName} declined your invite.`;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 4000);
+    }
+  });
+
+  networkClient.onServerError((err) => {
+    const toast = document.getElementById("mp-toast");
+    if (toast) {
+      toast.textContent = `⚠️ ${err.message}`;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 5000);
+    }
+  });
+
+  // Show invite code in UI when we become a room host
+  networkClient.onInit((init) => {
+    if (init.inviteCode) {
+      const codeEl = document.getElementById("mp-invite-code-display");
+      if (codeEl) {
+        codeEl.textContent = init.inviteCode;
+        const banner = document.getElementById("mp-host-banner");
+        if (banner) banner.classList.remove("hidden");
+      }
+    }
+  });
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multiplayer UI — Host / Join / Invite (spec items 20-23)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Shows a popup when someone invites you to their world */
+function showInviteModal(inviteId: string, fromName: string): void {
+  let modal = document.getElementById("mp-invite-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "mp-invite-modal";
+    modal.style.cssText = `
+      position:fixed; bottom:24px; right:24px; z-index:9999;
+      background:linear-gradient(135deg,#1e293b,#0f172a);
+      border:1.5px solid #38bdf8; border-radius:16px;
+      padding:20px 24px; min-width:280px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6);
+      font-family:'Inter',sans-serif; color:#e2e8f0;
+      animation: slideInRight 0.3s ease;
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;">🌍 Multiplayer Invite</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:14px;">
+      <span style="color:#38bdf8">${fromName}</span> invited you to join their world!
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button id="mp-accept-btn" style="
+        flex:1;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;
+        background:linear-gradient(135deg,#22c55e,#16a34a);
+        color:#fff;font-weight:700;font-size:13px;
+        box-shadow:0 2px 8px rgba(34,197,94,0.3);
+        transition:opacity 0.2s;
+      ">✅ Accept</button>
+      <button id="mp-decline-btn" style="
+        flex:1;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;
+        background:linear-gradient(135deg,#ef4444,#dc2626);
+        color:#fff;font-weight:700;font-size:13px;
+        box-shadow:0 2px 8px rgba(239,68,68,0.3);
+        transition:opacity 0.2s;
+      ">❌ Decline</button>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+
+  document.getElementById("mp-accept-btn")?.addEventListener("click", () => {
+    networkClient?.acceptInvite(inviteId);
+    modal!.remove();
+  });
+  document.getElementById("mp-decline-btn")?.addEventListener("click", () => {
+    networkClient?.declineInvite(inviteId);
+    modal!.remove();
+  });
+
+  // Auto-dismiss after 30s
+  setTimeout(() => modal?.remove(), 30000);
+}
+
+/** Injects multiplayer Host/Join panel into the survival HUD */
+function initMultiplayerUI(): void {
+  // Inject CSS for mp-panel animations if not already present
+  if (!document.getElementById("mp-ui-styles")) {
+    const style = document.createElement("style");
+    style.id = "mp-ui-styles";
+    style.textContent = `
+      @keyframes slideInRight { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+      #mp-toast {
+        position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+        background:rgba(15,23,42,0.95); color:#e2e8f0;
+        border:1px solid #334155; border-radius:12px;
+        padding:10px 20px; font-size:14px; font-family:'Inter',sans-serif;
+        box-shadow:0 4px 20px rgba(0,0,0,0.5); z-index:10000;
+        transition:opacity 0.3s;
+      }
+      #mp-toast.hidden { display:none; }
+      #mp-panel {
+        position:fixed; top:70px; right:16px; z-index:5000;
+        background:linear-gradient(135deg,rgba(15,23,42,0.96),rgba(30,41,59,0.96));
+        border:1.5px solid #334155; border-radius:16px;
+        padding:16px; min-width:240px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.5);
+        font-family:'Inter',sans-serif; color:#e2e8f0;
+        display:none;
+      }
+      #mp-panel.open { display:block; animation:slideInRight 0.25s ease; }
+      #mp-host-banner {
+        background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(56,189,248,0.1));
+        border:1px solid #0ea5e9; border-radius:10px;
+        padding:10px 12px; margin-top:12px;
+      }
+      #mp-host-banner.hidden { display:none; }
+      .mp-btn {
+        width:100%; padding:9px 14px; border-radius:10px; border:none;
+        cursor:pointer; font-weight:600; font-size:13px;
+        margin-top:8px; transition:opacity 0.2s,transform 0.1s;
+      }
+      .mp-btn:hover { opacity:0.9; transform:scale(0.98); }
+      .mp-btn-host { background:linear-gradient(135deg,#8b5cf6,#6d28d9); color:#fff; }
+      .mp-btn-join { background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; }
+      .mp-input {
+        width:100%; padding:8px 10px; border-radius:8px;
+        border:1.5px solid #334155; background:#0f172a;
+        color:#e2e8f0; font-size:13px; box-sizing:border-box; margin-top:8px;
+      }
+      .mp-input:focus { outline:none; border-color:#38bdf8; }
+      .mp-label { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:12px; display:block; }
+      #mp-toggle-btn {
+        position:fixed; top:14px; right:80px; z-index:5001;
+        background:linear-gradient(135deg,#8b5cf6,#6d28d9);
+        border:none; border-radius:10px; color:#fff;
+        padding:7px 14px; font-size:13px; font-weight:600;
+        cursor:pointer; font-family:'Inter',sans-serif;
+        box-shadow:0 2px 10px rgba(139,92,246,0.4);
+        transition:opacity 0.2s;
+      }
+      #mp-toggle-btn:hover { opacity:0.88; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Toast notification element
+  if (!document.getElementById("mp-toast")) {
+    const toast = document.createElement("div");
+    toast.id = "mp-toast";
+    toast.className = "hidden";
+    document.body.appendChild(toast);
+  }
+
+  // Multiplayer toggle button
+  if (!document.getElementById("mp-toggle-btn")) {
+    const btn = document.createElement("button");
+    btn.id = "mp-toggle-btn";
+    btn.textContent = "🌐 Multiplayer";
+    btn.addEventListener("click", () => {
+      const panel = document.getElementById("mp-panel");
+      if (panel) panel.classList.toggle("open");
+    });
+    document.body.appendChild(btn);
+  }
+
+  // Multiplayer panel
+  if (!document.getElementById("mp-panel")) {
+    const panel = document.createElement("div");
+    panel.id = "mp-panel";
+    panel.innerHTML = `
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">🌍 Multiplayer</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Play with friends in a shared world.</div>
+
+      <button id="mp-host-btn" class="mp-btn mp-btn-host">🏠 Host World</button>
+
+      <span class="mp-label">Join via Invite Code</span>
+      <input id="mp-join-code-input" class="mp-input" type="text" placeholder="SUNNY-4821" maxlength="10" style="text-transform:uppercase;" />
+      <button id="mp-join-btn" class="mp-btn mp-btn-join">🔗 Join World</button>
+
+      <div id="mp-host-banner" class="hidden">
+        <div style="font-size:11px;color:#0ea5e9;margin-bottom:4px;">📋 Your Invite Code</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="mp-invite-code-display" style="
+            font-size:20px;font-weight:800;letter-spacing:2px;color:#38bdf8;
+            font-family:'Courier New',monospace;
+          ">——</span>
+          <button id="mp-copy-code-btn" style="
+            background:#1e293b;border:1px solid #334155;border-radius:6px;
+            color:#94a3b8;font-size:11px;padding:4px 8px;cursor:pointer;
+          ">Copy</button>
+        </div>
+        <div style="font-size:11px;color:#475569;margin-top:4px;">Share this code with a friend to invite them.</div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    // Host button
+    document.getElementById("mp-host-btn")?.addEventListener("click", () => {
+      if (!networkClient) return;
+      const name = (survivalEngine?.player as any)?.name || "Explorer";
+      const hairstyle = (survivalEngine?.player as any)?.hairstyle || "style_01";
+      networkClient.hostWorld(name, hairstyle);
+      const toast = document.getElementById("mp-toast");
+      if (toast) {
+        toast.textContent = "🌍 Hosting world... waiting for invite code...";
+        toast.classList.remove("hidden");
+        setTimeout(() => toast.classList.add("hidden"), 3000);
+      }
+    });
+
+    // Join button
+    document.getElementById("mp-join-btn")?.addEventListener("click", () => {
+      if (!networkClient) return;
+      const input = document.getElementById("mp-join-code-input") as HTMLInputElement;
+      const code = (input?.value || "").trim().toUpperCase();
+      if (!code || code.length < 6) {
+        const toast = document.getElementById("mp-toast");
+        if (toast) {
+          toast.textContent = "⚠️ Please enter a valid invite code (e.g. SUNNY-4821)";
+          toast.classList.remove("hidden");
+          setTimeout(() => toast.classList.add("hidden"), 3000);
+        }
+        return;
+      }
+      const name = (survivalEngine?.player as any)?.name || "Explorer";
+      const hairstyle = (survivalEngine?.player as any)?.hairstyle || "style_01";
+      networkClient.joinWorld(code, name, hairstyle);
+      const toast = document.getElementById("mp-toast");
+      if (toast) {
+        toast.textContent = `🔗 Joining world ${code}...`;
+        toast.classList.remove("hidden");
+        setTimeout(() => toast.classList.add("hidden"), 3000);
+      }
+    });
+
+    // Copy invite code button
+    document.getElementById("mp-copy-code-btn")?.addEventListener("click", () => {
+      const codeEl = document.getElementById("mp-invite-code-display");
+      const code = codeEl?.textContent?.trim();
+      if (code && code !== "——") {
+        navigator.clipboard.writeText(code).then(() => {
+          const btn = document.getElementById("mp-copy-code-btn");
+          if (btn) {
+            btn.textContent = "Copied!";
+            setTimeout(() => { btn.textContent = "Copy"; }, 2000);
+          }
+        }).catch(() => {});
+      }
+    });
+  }
 }
 
 function ensureSurvivalGameLoaded() {
@@ -1847,7 +2113,8 @@ function survivalGameLoop(now: number) {
     }
 
     // 2. Render World & Entities (Local + Remote Multiplayer Players)
-    survivalRenderer.render(survivalCanvas, survivalEngine);
+    // Fix 1: Pass dt so SurvivalRenderer uses Math.exp-based camera smoothing.
+    survivalRenderer.render(survivalCanvas, survivalEngine, dt);
 
     // 3. Update HUD & Radar
     updateSurvivalHUD();
@@ -2155,6 +2422,10 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
     (networkClient.connectionState === "CONNECTED" ||
       networkClient.connectionState === "LOCAL_SERVER")
   ) {
+    // Fix 2: Expose the prediction object so SurvivalRenderer camera can follow predictedX
+    // (stable authoritative position) rather than the visual error-offset position.
+    (survivalEngine as any).networkPrediction = networkClient.prediction;
+
     // Smooth visual error decay over time (zero jerking / zero snapping)
     networkClient.prediction.updateSmoothing(dt);
 
@@ -2168,7 +2439,7 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
         (x, y) => (survivalEngine as any).canMoveTo(x, y),
       );
 
-      // Render at smoothly interpolated visual coordinates
+      // Render at smoothly interpolated visual coordinates (predicted + decaying error offset)
       const vis = networkClient.prediction.getVisualPosition();
       survivalEngine.player.x = vis.x;
       survivalEngine.player.y = vis.y;
@@ -2401,6 +2672,9 @@ function initSurvivalInputs() {
 }
 
 function initSurvivalUI() {
+  // Initialize multiplayer Host/Join/Invite UI panel
+  initMultiplayerUI();
+
   // Fullscreen button
   btnToggleFullscreen.addEventListener("click", () => {
     const container = document.getElementById("survival-game-container");

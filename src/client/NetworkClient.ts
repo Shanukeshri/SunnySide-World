@@ -1,10 +1,10 @@
 /**
  * NetworkClient.ts - Real-Time Network Client for Authoritative Simulation
  * 
- * Implements Sections 1, 2, 7, 8, 9, 11, 26, 33 of implementation_spec.txt:
+ * Implements Sections 1, 2, 7, 8, 9, 11, 19-23, 26, 33 of implementation_spec.txt:
  * Manages connection to the authoritative server (Node.js Socket.IO or Embedded Local GameServer),
  * client-side prediction, entity interpolation, reconnection with persistent session tokens,
- * and unified event dispatching.
+ * and unified event dispatching, plus multiplayer room/invite flow.
  */
 
 import { io, Socket } from "socket.io-client";
@@ -12,6 +12,9 @@ import {
   ServerInitMessage,
   ServerSyncMessage,
   ClientActionMessage,
+  ServerInviteReceivedMessage,
+  ServerInviteResponseMessage,
+  ServerErrorMessage,
 } from "../server/networking/Protocol";
 import { ClientPrediction } from "./ClientPrediction";
 import { EntityInterpolator } from "./EntityInterpolator";
@@ -81,11 +84,18 @@ export class NetworkClient {
   public latestSync: ServerSyncMessage | null = null;
   public latestInit: ServerInitMessage | null = null;
 
+  // Current room info (null when in single-player mode)
+  public currentRoomId: string | null = null;
+  public currentInviteCode: string | null = null;
+
   // Event handlers
   private eventListeners: ((event: GameEvent) => void)[] = [];
   private syncListeners: ((sync: ServerSyncMessage) => void)[] = [];
   private initListeners: ((init: ServerInitMessage) => void)[] = [];
   private stateChangeListeners: ((state: ConnectionState) => void)[] = [];
+  private inviteReceivedListeners: ((invite: ServerInviteReceivedMessage) => void)[] = [];
+  private inviteResponseListeners: ((resp: ServerInviteResponseMessage) => void)[] = [];
+  private errorListeners: ((err: ServerErrorMessage) => void)[] = [];
 
   public collisionChecker: ((x: number, y: number) => boolean) | null = null;
 
@@ -179,6 +189,15 @@ export class NetworkClient {
       this.latestInit = initMsg;
       this.localPlayerId = initMsg.playerId;
       this.prediction.initPosition(initMsg.player.x, initMsg.player.y);
+
+      // Capture room info if present
+      if (initMsg.roomId) {
+        this.currentRoomId = initMsg.roomId;
+      }
+      if (initMsg.inviteCode) {
+        this.currentInviteCode = initMsg.inviteCode;
+      }
+
       for (const l of this.initListeners) {
         l(initMsg);
       }
@@ -234,6 +253,20 @@ export class NetworkClient {
       }
     });
 
+    // ── Multiplayer invite events ─────────────────────────────────────────────
+    sock.on("inviteReceived", (msg: ServerInviteReceivedMessage) => {
+      for (const l of this.inviteReceivedListeners) l(msg);
+    });
+
+    sock.on("inviteResponse", (msg: ServerInviteResponseMessage) => {
+      for (const l of this.inviteResponseListeners) l(msg);
+    });
+
+    sock.on("error", (msg: ServerErrorMessage) => {
+      console.warn("[NetworkClient] Server error:", msg.message);
+      for (const l of this.errorListeners) l(msg);
+    });
+
     sock.on("disconnect", (reason?: any) => {
       console.log(`[NetworkClient] Disconnected:`, reason);
       if (this.connectionState !== "LOCAL_SERVER") {
@@ -266,6 +299,45 @@ export class NetworkClient {
     }
   }
 
+  // ─── Multiplayer Room Methods (spec items 20-23) ────────────────────────────
+
+  /** Host a new multiplayer world room (spec item 20) */
+  public hostWorld(name: string, hairstyle: string): void {
+    if (this.socket) {
+      this.socket.emit("hostWorld", { name, hairstyle, token: this.sessionToken });
+    }
+  }
+
+  /** Join a room by invite code (spec item 22) */
+  public joinWorld(inviteCode: string, name: string, hairstyle: string): void {
+    if (this.socket) {
+      this.socket.emit("joinWorld", { inviteCode: inviteCode.toUpperCase(), name, hairstyle, token: this.sessionToken });
+    }
+  }
+
+  /** Invite another connected player by their sessionId (spec item 21) */
+  public invitePlayer(targetSessionId: string): void {
+    if (this.socket) {
+      this.socket.emit("invitePlayer", { targetSessionId });
+    }
+  }
+
+  /** Accept a pending invite (spec item 23) */
+  public acceptInvite(inviteId: string): void {
+    if (this.socket) {
+      this.socket.emit("acceptInvite", { inviteId });
+    }
+  }
+
+  /** Decline a pending invite (spec item 23) */
+  public declineInvite(inviteId: string): void {
+    if (this.socket) {
+      this.socket.emit("declineInvite", { inviteId });
+    }
+  }
+
+  // ─── Event subscription methods ─────────────────────────────────────────────
+
   public onEvent(callback: (event: GameEvent) => void): () => void {
     this.eventListeners.push(callback);
     return () => {
@@ -295,6 +367,33 @@ export class NetworkClient {
     return () => {
       const idx = this.stateChangeListeners.indexOf(callback);
       if (idx >= 0) this.stateChangeListeners.splice(idx, 1);
+    };
+  }
+
+  /** Called when this client receives an invite from another player */
+  public onInviteReceived(callback: (invite: ServerInviteReceivedMessage) => void): () => void {
+    this.inviteReceivedListeners.push(callback);
+    return () => {
+      const idx = this.inviteReceivedListeners.indexOf(callback);
+      if (idx >= 0) this.inviteReceivedListeners.splice(idx, 1);
+    };
+  }
+
+  /** Called when a player we invited responds (accepted/declined) */
+  public onInviteResponse(callback: (resp: ServerInviteResponseMessage) => void): () => void {
+    this.inviteResponseListeners.push(callback);
+    return () => {
+      const idx = this.inviteResponseListeners.indexOf(callback);
+      if (idx >= 0) this.inviteResponseListeners.splice(idx, 1);
+    };
+  }
+
+  /** Called when the server sends an error (e.g., bad invite code) */
+  public onServerError(callback: (err: ServerErrorMessage) => void): () => void {
+    this.errorListeners.push(callback);
+    return () => {
+      const idx = this.errorListeners.indexOf(callback);
+      if (idx >= 0) this.errorListeners.splice(idx, 1);
     };
   }
 
