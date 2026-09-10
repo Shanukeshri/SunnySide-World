@@ -1,12 +1,13 @@
 /**
- * GameServer.ts - Authoritative Node.js Game Server Simulation & Room Manager
- * 
- * Implements Sections 1, 4, 10, 11, 13, 16 of authoritative_server.txt:
- * Runs the authoritative 20 Hz simulation loop with all game systems,
- * receives and validates client inputs/commands, and broadcasts state snapshots.
+ * GameServer.ts - Authoritative Game Server Simulation & Room Manager
+ *
+ * Implements Sections 1, 2, 4, 6, 10, 11, 12, 13, 17, 26, 33 of implementation_spec.txt:
+ * Runs the single canonical authoritative 20 Hz simulation loop with all 10 game systems,
+ * receives and validates client inputs/commands, manages player reconnection tokens,
+ * and broadcasts state snapshots (over Socket.IO or embedded local transport).
  */
 
-import { Server as SocketIOServer, Socket } from "socket.io";
+import type { Server as SocketIOServer, Socket } from "socket.io";
 import { GameState } from "../game/core/GameState";
 import { GameLoop } from "../game/core/GameLoop";
 import { EventBus } from "../game/core/EventBus";
@@ -22,6 +23,7 @@ import { SpawnSystem } from "../game/systems/SpawnSystem";
 import { WorldSystem } from "../game/systems/WorldSystem";
 import { PersistenceManager } from "./persistence/PersistenceManager";
 import { CRAFTING_RECIPES } from "../game/SurvivalEngine";
+import { PlayerEntityState } from "../game/core/Entity";
 import {
   ClientJoinMessage,
   ClientInputMessage,
@@ -29,6 +31,12 @@ import {
   ServerInitMessage,
   ServerSyncMessage,
 } from "./networking/Protocol";
+
+export interface ITransportSocket {
+  id: string;
+  emit(event: string, ...args: any[]): void;
+  on(event: string, handler: (...args: any[]) => void): void;
+}
 
 export class GameServer {
   public gameState: GameState;
@@ -49,7 +57,18 @@ export class GameServer {
   public worldSystem: WorldSystem;
 
   private io: SocketIOServer | null = null;
-  private socketMap = new Map<string, Socket>();
+  private socketMap = new Map<string, ITransportSocket>();
+
+  // Reconnection and token session management (Section 26)
+  private tokenPlayerMap = new Map<string, PlayerEntityState>();
+  private playerTokenMap = new Map<string, string>(); // sessionId -> token
+  private disconnectTimers = new Map<string, any>();
+
+  // Delta synchronization trackers (Section 28)
+  private structuresDirty = true;
+  private droppedItemsDirty = true;
+  private lastStructuresLength = -1;
+  private lastDroppedItemsLength = -1;
 
   constructor(seed = 42891, tickRate = 20) {
     this.eventBus = new EventBus();
@@ -57,7 +76,7 @@ export class GameServer {
     this.persistence = new PersistenceManager();
     this.persistence.loadSnapshot(this.gameState);
 
-    // Instantiate systems
+    // Instantiate authoritative systems
     this.playerSystem = new PlayerSystem(this.gameState);
     this.animalSystem = new AnimalSystem(this.gameState);
     this.npcSystem = new NPCSystem(this.gameState);
@@ -69,7 +88,7 @@ export class GameServer {
     this.spawnSystem = new SpawnSystem(this.gameState);
     this.worldSystem = new WorldSystem(this.gameState);
 
-    // Initialize Game Loop
+    // Initialize 20 Hz Game Loop
     this.gameLoop = new GameLoop(tickRate, (dt, tick) => this.tick(dt, tick));
   }
 
@@ -77,38 +96,98 @@ export class GameServer {
     this.io = io;
 
     io.on("connection", (socket: Socket) => {
-      console.log(`[GameServer] New connection: ${socket.id}`);
-      this.socketMap.set(socket.id, socket);
-
-      // 1. Client requests to join world
-      socket.on("join", (data: ClientJoinMessage) => {
-        this.handlePlayerJoin(socket, data);
-      });
-
-      // 2. Client sends continuous movement inputs
-      socket.on("input", (data: ClientInputMessage) => {
-        const player = this.gameState.getPlayer(socket.id);
-        if (player) {
-          this.playerSystem.processInput(player, data);
-        }
-      });
-
-      // 3. Client sends discrete gameplay actions
-      socket.on("action", (action: ClientActionMessage) => {
-        const player = this.gameState.getPlayer(socket.id);
-        if (player) {
-          this.handlePlayerAction(player, action);
-        }
-      });
-
-      // 4. Client disconnect
-      socket.on("disconnect", () => {
-        console.log(`[GameServer] Disconnected: ${socket.id}`);
-        this.socketMap.delete(socket.id);
-        this.gameState.removePlayer(socket.id);
-        this.persistence.markDirty();
-      });
+      console.log(`[GameServer] New WebSocket connection: ${socket.id}`);
+      this.registerSocket(socket as unknown as ITransportSocket);
     });
+  }
+
+  /**
+   * Registers a socket connection (either real Socket.IO or in-memory local transport).
+   */
+  public registerSocket(socket: ITransportSocket): void {
+    this.socketMap.set(socket.id, socket);
+
+    socket.on("join", (data: ClientJoinMessage) => {
+      this.handlePlayerJoin(socket, data);
+    });
+
+    socket.on("input", (data: ClientInputMessage) => {
+      const player = this.gameState.getPlayer(socket.id);
+      if (player) {
+        this.playerSystem.processInput(player, data);
+      }
+    });
+
+    socket.on("action", (action: ClientActionMessage) => {
+      const player = this.gameState.getPlayer(socket.id);
+      if (player) {
+        this.handlePlayerAction(player, action);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      this.handlePlayerDisconnect(socket.id);
+    });
+  }
+
+  /**
+   * Creates an in-memory client transport for offline single-player mode.
+   * Runs the exact same simulation model, systems, and protocols (Section 33).
+   */
+  public createLocalClientTransport(): {
+    id: string;
+    emit: (event: string, data?: any) => void;
+    on: (event: string, handler: (data?: any) => void) => void;
+    disconnect: () => void;
+  } {
+    const localId = `local_${Math.random().toString(36).substring(2, 9)}`;
+    const serverHandlers = new Map<string, ((data: any) => void)[]>();
+    const clientHandlers = new Map<string, ((data: any) => void)[]>();
+
+    const serverSideSocket: ITransportSocket = {
+      id: localId,
+      emit: (event: string, data: any) => {
+        const handlers = clientHandlers.get(event);
+        if (handlers) {
+          for (const h of handlers) h(data);
+        }
+      },
+      on: (event: string, handler: (data: any) => void) => {
+        let list = serverHandlers.get(event);
+        if (!list) {
+          list = [];
+          serverHandlers.set(event, list);
+        }
+        list.push(handler);
+      },
+    };
+
+    const clientSide = {
+      id: localId,
+      emit: (event: string, data?: any) => {
+        const handlers = serverHandlers.get(event);
+        if (handlers) {
+          for (const h of handlers) h(data);
+        }
+      },
+      on: (event: string, handler: (data?: any) => void) => {
+        let list = clientHandlers.get(event);
+        if (!list) {
+          list = [];
+          clientHandlers.set(event, list);
+        }
+        list.push(handler);
+      },
+      disconnect: () => {
+        const handlers = serverHandlers.get("disconnect");
+        if (handlers) {
+          for (const h of handlers) h({});
+        }
+      },
+    };
+
+    this.registerSocket(serverSideSocket);
+    return clientSide;
   }
 
   public start(): void {
@@ -154,19 +233,45 @@ export class GameServer {
     const events = this.eventBus.flushQueue();
 
     // 9. Broadcast authoritative state synchronization
-    if (this.io && this.gameState.players.size > 0) {
+    if (this.socketMap.size > 0 && this.gameState.players.size > 0) {
       this.broadcastStateSync(tick, events);
     }
   }
 
-  private handlePlayerJoin(socket: Socket, data: ClientJoinMessage): void {
+  private handlePlayerJoin(socket: ITransportSocket, data: ClientJoinMessage): void {
+    const token = data?.token;
     const name = data?.name || `Explorer_${socket.id.substring(0, 4)}`;
     const hairstyle = data?.hairstyle || "style_01";
 
-    const player = this.gameState.addPlayer(socket.id, name, hairstyle);
+    let player: PlayerEntityState | undefined;
+
+    // Check if player is reconnecting with an existing valid session token (Section 26)
+    if (token && this.tokenPlayerMap.has(token)) {
+      player = this.tokenPlayerMap.get(token)!;
+      console.log(`[GameServer] Reconnecting existing player: ${player.name} (id: ${player.id}, token: ${token})`);
+
+      // Clear any pending disconnect cleanup timer
+      if (this.disconnectTimers.has(player.sessionId)) {
+        clearTimeout(this.disconnectTimers.get(player.sessionId));
+        this.disconnectTimers.delete(player.sessionId);
+      }
+
+      // Re-bind to new socket ID
+      this.gameState.players.delete(player.sessionId);
+      player.sessionId = socket.id;
+      this.gameState.players.set(socket.id, player);
+      this.playerTokenMap.set(socket.id, token);
+    } else {
+      // Create new player
+      player = this.gameState.addPlayer(socket.id, name, hairstyle);
+      if (token) {
+        this.tokenPlayerMap.set(token, player);
+        this.playerTokenMap.set(socket.id, token);
+      }
+    }
 
     const otherPlayers = Array.from(this.gameState.players.values()).filter(
-      (p) => p.sessionId !== socket.id
+      (p) => p.sessionId !== socket.id,
     );
 
     const initMsg: ServerInitMessage = {
@@ -177,6 +282,7 @@ export class GameServer {
       player,
       otherPlayers,
       placedStructures: this.gameState.placedStructures,
+      droppedItems: this.gameState.droppedItems,
       quests: this.gameState.quests,
     };
 
@@ -184,31 +290,56 @@ export class GameServer {
     this.persistence.markDirty();
   }
 
-  private handlePlayerAction(player: any, action: ClientActionMessage): void {
+  private handlePlayerDisconnect(sessionId: string): void {
+    console.log(`[GameServer] Player disconnected: ${sessionId}`);
+    this.socketMap.delete(sessionId);
+
+    const token = this.playerTokenMap.get(sessionId);
+
+    if (token) {
+      // Grace period (30s) before destroying the player entity to allow reconnect (Section 26)
+      const timer = setTimeout(() => {
+        this.gameState.removePlayer(sessionId);
+        this.tokenPlayerMap.delete(token);
+        this.playerTokenMap.delete(sessionId);
+        this.disconnectTimers.delete(sessionId);
+        this.persistence.markDirty();
+        console.log(`[GameServer] Disconnected player session expired: ${sessionId}`);
+      }, 30000);
+      this.disconnectTimers.set(sessionId, timer);
+    } else {
+      this.gameState.removePlayer(sessionId);
+      this.persistence.markDirty();
+    }
+  }
+
+  private handlePlayerAction(player: PlayerEntityState, action: ClientActionMessage): void {
     if (player.isDead && action.type !== "RESPAWN") return;
 
     switch (action.type) {
       case "HIT": {
-        // Directional swing in front of player
         this.combatSystem.performPlayerHit(player);
         break;
       }
 
       case "CLICK": {
         const { wx, wy } = action;
-        // Directional swing or hit clicked target
         player.swingTimer = 0.25;
 
         // Check animal hit
         for (const animal of this.gameState.animals) {
           if (animal.behaviorState === "DEAD") continue;
-          if (Math.hypot(wx - animal.x, wy - animal.y) < 1.3 && Math.hypot(player.x - animal.x, player.y - animal.y) <= 3.2) {
+          if (
+            Math.hypot(wx - animal.x, wy - animal.y) < 1.3 &&
+            Math.hypot(player.x - animal.x, player.y - animal.y) <= 3.2
+          ) {
             animal.health -= 15;
             this.animalSystem.scareAnimal(animal, player.x, player.y);
             this.combatSystem.useActiveToolDurability(player);
             if (animal.health <= 0) {
               animal.behaviorState = "DEAD";
               this.gameState.spawnDroppedItem("raw_meat", 2, animal.x, animal.y);
+              this.droppedItemsDirty = true;
             }
             return;
           }
@@ -217,7 +348,10 @@ export class GameServer {
         // Check enemy hit
         for (const enemy of this.gameState.enemies) {
           if (!enemy.isAlive) continue;
-          if (Math.hypot(wx - enemy.x, wy - enemy.y) < 1.4 && Math.hypot(player.x - enemy.x, player.y - enemy.y) < 3.2) {
+          if (
+            Math.hypot(wx - enemy.x, wy - enemy.y) < 1.4 &&
+            Math.hypot(player.x - enemy.x, player.y - enemy.y) < 3.2
+          ) {
             this.combatSystem.attackEnemy(player, enemy);
             return;
           }
@@ -227,6 +361,7 @@ export class GameServer {
         const res = this.gameState.worldManager.getResourceAt(wx, wy, 1.4);
         if (res && !res.isDepleted) {
           this.resourceSystem.harvestResource(player, res);
+          this.droppedItemsDirty = true;
           return;
         }
 
@@ -235,30 +370,56 @@ export class GameServer {
         break;
       }
 
-      case "JUMP": {
-        this.playerSystem.jump(player);
+      case "ATTACK_RESOURCE": {
+        const res = this.gameState.worldManager.getResourceById(action.resourceId);
+        if (res && !res.isDepleted) {
+          this.resourceSystem.harvestResource(player, res);
+          this.droppedItemsDirty = true;
+        }
         break;
       }
 
+      case "JUMP":
       case "ROLL": {
         this.playerSystem.jump(player);
         break;
       }
 
       case "INTERACT": {
-        // 1. Check NPC
+        // 1. Check NPC proximity
         for (const npc of this.gameState.npcs) {
           if (Math.hypot(player.x - npc.x, player.y - npc.y) < 2.4) {
             this.npcSystem.interactWithNPC(npc, player.id);
             return;
           }
         }
-        // 2. Check Animal
+        // 2. Check Animal proximity for petting (Section 13)
         for (const animal of this.gameState.animals) {
           if (Math.hypot(player.x - animal.x, player.y - animal.y) < 2.2) {
             if (this.animalSystem.petAnimal(animal, player.x, player.y)) {
               player.hopTimer = 0.35;
               return;
+            }
+          }
+        }
+        break;
+      }
+
+      case "PET": {
+        if (action.animalId) {
+          const animal = this.gameState.animals.find((a) => a.id === action.animalId);
+          if (animal && Math.hypot(player.x - animal.x, player.y - animal.y) < 2.5) {
+            if (this.animalSystem.petAnimal(animal, player.x, player.y)) {
+              player.hopTimer = 0.35;
+            }
+          }
+        } else {
+          for (const animal of this.gameState.animals) {
+            if (Math.hypot(player.x - animal.x, player.y - animal.y) < 2.2) {
+              if (this.animalSystem.petAnimal(animal, player.x, player.y)) {
+                player.hopTimer = 0.35;
+                return;
+              }
             }
           }
         }
@@ -298,6 +459,7 @@ export class GameServer {
 
       case "BUILD": {
         this.buildingSystem.placeStructure(player, action.pieceId, action.wx, action.wy);
+        this.structuresDirty = true;
         this.persistence.markDirty();
         break;
       }
@@ -314,6 +476,7 @@ export class GameServer {
         const struct = this.gameState.placedStructures.find((s) => s.id === action.structId);
         if (struct) {
           this.buildingSystem.toggleDoor(struct);
+          this.structuresDirty = true;
         }
         break;
       }
@@ -328,10 +491,39 @@ export class GameServer {
   private broadcastStateSync(tick: number, events: any[]): void {
     const allPlayers = Array.from(this.gameState.players.values());
 
+    // Delta tracking for placed structures and dropped items (Section 28)
+    const shouldSendStructures =
+      this.structuresDirty ||
+      this.gameState.placedStructures.length !== this.lastStructuresLength ||
+      tick % 100 === 0;
+
+    const shouldSendDroppedItems =
+      this.droppedItemsDirty ||
+      this.gameState.droppedItems.length !== this.lastDroppedItemsLength ||
+      tick % 100 === 0;
+
+    if (shouldSendStructures) {
+      this.lastStructuresLength = this.gameState.placedStructures.length;
+      this.structuresDirty = false;
+    }
+    if (shouldSendDroppedItems) {
+      this.lastDroppedItemsLength = this.gameState.droppedItems.length;
+      this.droppedItemsDirty = false;
+    }
+
+    const placedStructuresPayload = shouldSendStructures
+      ? this.gameState.placedStructures
+      : undefined;
+
+    const droppedItemsPayload = shouldSendDroppedItems
+      ? this.gameState.droppedItems
+      : undefined;
+
     for (const [sessionId, socket] of this.socketMap.entries()) {
       const player = this.gameState.getPlayer(sessionId);
       if (!player) continue;
 
+      // Do NOT send inputs to other players; send simulated player state (Section 10)
       const otherPlayers = allPlayers.filter((p) => p.sessionId !== sessionId);
 
       const syncMsg: ServerSyncMessage = {
@@ -344,8 +536,8 @@ export class GameServer {
         animals: this.gameState.animals,
         npcs: this.gameState.npcs,
         enemies: this.gameState.enemies,
-        droppedItems: this.gameState.droppedItems,
-        placedStructures: this.gameState.placedStructures,
+        droppedItems: droppedItemsPayload,
+        placedStructures: placedStructuresPayload,
         events,
       };
 

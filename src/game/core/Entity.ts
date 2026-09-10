@@ -60,6 +60,7 @@ export interface PlayerEntityState extends IBaseEntity {
   activeHotbarIndex: number;
   activeHeldItem: ItemId | null;
   lastProcessedInputSeq: number;
+  inputQueue?: { seq: number; vx: number; vy: number; isSprinting: boolean; dt: number }[];
 }
 
 export interface AnimalEntityState extends IBaseEntity {

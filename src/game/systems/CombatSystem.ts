@@ -7,28 +7,28 @@
  */
 
 import { GameState } from "../core/GameState";
-import { PlayerEntityState, EnemyEntityState, AnimalEntityState } from "../core/Entity";
+import { PlayerEntityState, EnemyEntityState } from "../core/Entity";
 import { ITEM_CATALOG } from "../SurvivalEngine";
-import { ItemId } from "../GameTypes";
 import { AnimalSystem } from "./AnimalSystem";
+import { generateRandom, randomRange, randomInt, randomChance } from "../core/Random";
 
 export class CombatSystem {
   private gameState: GameState;
-  private animalSystem: AnimalSystem;
+  private animalSystem?: AnimalSystem;
 
-  constructor(gameState: GameState, animalSystem: AnimalSystem) {
+  constructor(gameState: GameState, animalSystem?: AnimalSystem) {
     this.gameState = gameState;
     this.animalSystem = animalSystem;
   }
 
   public update(dt: number): void {
+    // 1. Update hostile enemies AI and attacks
     this.updateEnemies(dt);
   }
 
-  /**
-   * Updates hostile enemy state machines and combat actions.
-   */
   private updateEnemies(dt: number): void {
+    const players = Array.from(this.gameState.players.values()).filter((p) => !p.isDead);
+
     for (let i = this.gameState.enemies.length - 1; i >= 0; i--) {
       const enemy = this.gameState.enemies[i];
 
@@ -36,10 +36,6 @@ export class CombatSystem {
         enemy.deathTimer -= dt;
         if (enemy.deathTimer <= 0) {
           this.gameState.enemies.splice(i, 1);
-          this.gameState.eventBus.emit("ENTITY_DESTROYED", {
-            entityId: enemy.id,
-            kind: "enemy",
-          });
         }
         continue;
       }
@@ -47,25 +43,25 @@ export class CombatSystem {
       if (enemy.hurtTimer > 0) enemy.hurtTimer -= dt;
       if (enemy.attackCooldown > 0) enemy.attackCooldown -= dt;
 
-      // Find nearest alive player
-      let targetPlayer: PlayerEntityState | null = null;
-      let nearestDist = 8.0; // Detection radius
-
-      for (const p of this.gameState.players.values()) {
-        if (p.isDead) continue;
+      // Find nearest player
+      let nearestPlayer: PlayerEntityState | null = null;
+      let nearestDist = 999;
+      for (const p of players) {
         const d = Math.hypot(p.x - enemy.x, p.y - enemy.y);
         if (d < nearestDist) {
           nearestDist = d;
-          targetPlayer = p;
+          nearestPlayer = p;
         }
       }
 
-      if (targetPlayer) {
-        // Chase state
+      // Aggro / Chase check (8 tiles detection radius)
+      if (nearestPlayer && nearestDist < 8.0) {
+        const targetPlayer = nearestPlayer;
         enemy.state = "CHASE";
         const angle = Math.atan2(targetPlayer.y - enemy.y, targetPlayer.x - enemy.x);
         enemy.vx = Math.cos(angle) * enemy.speed;
         enemy.vy = Math.sin(angle) * enemy.speed;
+        enemy.direction = Math.abs(enemy.vx) > Math.abs(enemy.vy) ? (enemy.vx > 0 ? "RIGHT" : "LEFT") : (enemy.vy > 0 ? "DOWN" : "UP");
 
         // Attack when in melee reach (1.2 tiles)
         if (nearestDist < 1.2 && enemy.attackCooldown <= 0) {
@@ -77,14 +73,14 @@ export class CombatSystem {
         // Patrol or Idle state
         enemy.patrolTimer -= dt;
         if (enemy.patrolTimer <= 0) {
-          enemy.patrolTimer = 2.5 + Math.random() * 3;
-          if (Math.random() < 0.4) {
+          enemy.patrolTimer = randomRange(enemy.id, 2.5, 5.5);
+          if (randomChance(enemy.id, 0.4)) {
             enemy.state = "IDLE";
             enemy.vx = 0;
             enemy.vy = 0;
           } else {
             enemy.state = "PATROL";
-            const randAngle = Math.random() * Math.PI * 2;
+            const randAngle = generateRandom(enemy.id) * Math.PI * 2;
             enemy.vx = Math.cos(randAngle) * (enemy.speed * 0.5);
             enemy.vy = Math.sin(randAngle) * (enemy.speed * 0.5);
           }
@@ -100,44 +96,38 @@ export class CombatSystem {
     }
   }
 
-  /**
-   * Validates and executes a player attack in front of the player (Directional Hit).
-   */
   public performPlayerHit(player: PlayerEntityState): boolean {
     if (player.isDead) return false;
 
     player.swingTimer = 0.25;
     this.gameState.eventBus.emit("AUDIO_TRIGGER", { sound: "swing", playerId: player.id });
 
-    const reach = 0.95;
-    let hitX = player.x;
-    let hitY = player.y;
+    // Target point 1.2 tiles in front of player
+    let targetX = player.x;
+    let targetY = player.y;
+    if (player.direction === "UP") targetY -= 1.2;
+    else if (player.direction === "DOWN") targetY += 1.2;
+    else if (player.direction === "LEFT") targetX -= 1.2;
+    else targetX += 1.2;
 
-    if (player.direction === "UP") hitY -= reach;
-    else if (player.direction === "DOWN") hitY += reach;
-    else if (player.direction === "LEFT" || player.facing === "LEFT") hitX -= reach;
-    else hitX += reach;
+    // Check hit on hostile enemies
+    for (const enemy of this.gameState.enemies) {
+      if (!enemy.isAlive) continue;
+      const dist = Math.hypot(targetX - enemy.x, targetY - enemy.y);
+      if (dist < 1.3) {
+        this.attackEnemy(player, enemy);
+        return true;
+      }
+    }
 
-    const hitRadius = 1.35;
-
-    // 1. Check animals in hit cone -> takes damage & sprints away!
+    // Check hit on wildlife
     for (const animal of this.gameState.animals) {
       if (animal.behaviorState === "DEAD") continue;
-      const dist = Math.hypot(hitX - animal.x, hitY - animal.y);
-      if (dist <= hitRadius) {
-        const dmg = 15;
-        animal.health -= dmg;
-        this.animalSystem.scareAnimal(animal, player.x, player.y);
-
-        this.gameState.eventBus.emit("FLOATING_TEXT", {
-          text: `-${dmg}`,
-          x: animal.x,
-          y: animal.y - 0.6,
-          color: "#ef4444",
-        });
-        this.gameState.eventBus.emit("AUDIO_TRIGGER", { sound: "hurt" });
+      const dist = Math.hypot(targetX - animal.x, targetY - animal.y);
+      if (dist < 1.3) {
+        animal.health -= 15;
+        this.animalSystem?.scareAnimal(animal, player.x, player.y);
         this.useActiveToolDurability(player);
-
         if (animal.health <= 0) {
           animal.behaviorState = "DEAD";
           this.gameState.spawnDroppedItem("raw_meat", 2, animal.x, animal.y);
@@ -146,28 +136,28 @@ export class CombatSystem {
       }
     }
 
-    // 2. Check enemies in hit cone
-    for (const enemy of this.gameState.enemies) {
-      if (!enemy.isAlive) continue;
-      const dist = Math.hypot(hitX - enemy.x, hitY - enemy.y);
-      if (dist <= hitRadius + 0.2) {
-        this.attackEnemy(player, enemy);
-        return true;
-      }
+    // Check hit on harvestable resources (trees, rocks)
+    const res = this.gameState.worldManager.getResourceAt(targetX, targetY, 1.4);
+    if (res && !res.isDepleted) {
+      this.gameState.eventBus.emit("TREE_HIT", {
+        resourceId: res.id,
+        x: res.x,
+        y: res.y,
+        remainingHp: res.health,
+      });
+      return true;
     }
 
     return false;
   }
 
-  /**
-   * Attacks an enemy with player's active weapon/tool.
-   */
   public attackEnemy(player: PlayerEntityState, enemy: EnemyEntityState): void {
     const activeSlot = player.hotbar[player.activeHotbarIndex];
     const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
 
     const baseDamage = activeItemDef?.damage || 6;
-    const finalDamage = Math.round(baseDamage * (0.9 + Math.random() * 0.2));
+    const damageVariance = randomRange(player.id, 0.9, 1.1);
+    const finalDamage = Math.round(baseDamage * damageVariance);
 
     enemy.health -= finalDamage;
     enemy.hurtTimer = 0.25;
@@ -199,12 +189,12 @@ export class CombatSystem {
         enemyType: enemy.enemyType,
       });
 
-      // Spawn loot
+      // Spawn loot deterministically with enemy.id
       if (enemy.enemyType === "slime") {
-        this.gameState.spawnDroppedItem("slime_gel", Math.floor(1 + Math.random() * 2), enemy.x, enemy.y);
+        this.gameState.spawnDroppedItem("slime_gel", randomInt(enemy.id, 1, 2), enemy.x, enemy.y);
       } else {
         this.gameState.spawnDroppedItem("raw_meat", 1, enemy.x, enemy.y);
-        if (Math.random() < 0.5) {
+        if (randomChance(enemy.id, 0.5)) {
           this.gameState.spawnDroppedItem("iron_ore", 1, enemy.x, enemy.y);
         }
       }

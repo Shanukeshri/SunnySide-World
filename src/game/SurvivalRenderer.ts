@@ -248,21 +248,17 @@ export class SurvivalRenderer {
     // 1. Camera Follows Player smoothly
     const targetCamX = engine.player.x;
     const targetCamY = engine.player.y;
-    this.cameraX += (targetCamX - this.cameraX) * 0.15;
-    this.cameraY += (targetCamY - this.cameraY) * 0.15;
+    this.cameraX += (targetCamX - this.cameraX) * 0.18;
+    this.cameraY += (targetCamY - this.cameraY) * 0.18;
 
     const cellSize = this.baseTileSize * this.zoom;
     const halfWidth = canvas.width / 2;
     const halfHeight = canvas.height / 2;
 
-    // Pixel-snapped integer camera to prevent subpixel jitter and seam gaps during movement
-    const camPixelX = Math.round(this.cameraX * cellSize);
-    const camPixelY = Math.round(this.cameraY * cellSize);
-
-    // Screen-to-world conversion helper
+    // Screen-to-world conversion helper without double-rounding jitter
     const worldToScreen = (wx: number, wy: number) => ({
-      sx: Math.round(halfWidth + Math.round(wx * cellSize) - camPixelX),
-      sy: Math.round(halfHeight + Math.round(wy * cellSize) - camPixelY),
+      sx: Math.floor(halfWidth + (wx - this.cameraX) * cellSize),
+      sy: Math.floor(halfHeight + (wy - this.cameraY) * cellSize),
     });
 
     // Clear canvas with rich sunnyside grass green (prevents dark background leakage)
@@ -282,11 +278,10 @@ export class SurvivalRenderer {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
         for (let tx = minTileX; tx <= maxTileX; tx++) {
           const screen = worldToScreen(tx, ty);
-          const nextX = Math.round(halfWidth + Math.round((tx + 1) * cellSize) - camPixelX);
-          const nextY = Math.round(halfHeight + Math.round((ty + 1) * cellSize) - camPixelY);
+          const screenNext = worldToScreen(tx + 1, ty + 1);
           // +1px overlap guarantees zero pixel gap lines between adjacent tiles during movement
-          const tileW = nextX - screen.sx + 1;
-          const tileH = nextY - screen.sy + 1;
+          const tileW = screenNext.sx - screen.sx + 1;
+          const tileH = screenNext.sy - screen.sy + 1;
 
           const tile = engine.worldManager.getTile(tx, ty);
 
@@ -321,10 +316,9 @@ export class SurvivalRenderer {
           if (wx < minTileX - 1 || wx > maxTileX + 1 || wy < minTileY - 1 || wy > maxTileY + 1) continue;
 
           const screen = worldToScreen(wx, wy);
-          const nextX = Math.round(halfWidth + Math.round((wx + 1) * cellSize) - camPixelX);
-          const nextY = Math.round(halfHeight + Math.round((wy + 1) * cellSize) - camPixelY);
-          const tileW = nextX - screen.sx + 1;
-          const tileH = nextY - screen.sy + 1;
+          const screenNext = worldToScreen(wx + 1, wy + 1);
+          const tileW = screenNext.sx - screen.sx + 1;
+          const tileH = screenNext.sy - screen.sy + 1;
 
           if (this.soilImg && this.soilImg.complete && this.soilImg.naturalWidth > 0) {
             ctx.drawImage(this.soilImg, screen.sx, screen.sy, tileW, tileH);

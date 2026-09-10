@@ -19,29 +19,22 @@ export class PlayerSystem {
   }
 
   /**
-   * Applies client input vector and validates movement with collision detection.
+   * Enqueues client input vector and metadata for deterministic server simulation.
    */
   public processInput(
     player: PlayerEntityState,
-    input: { vx: number; vy: number; isSprinting: boolean; seq?: number }
+    input: { seq: number; vx: number; vy: number; isSprinting: boolean; dt: number }
   ): void {
     if (player.isDead) return;
 
-    // Normalize input vectors to prevent speed-hacking diagonals
-    let vx = input.vx;
-    let vy = input.vy;
-    const len = Math.hypot(vx, vy);
-    if (len > 1.0) {
-      vx /= len;
-      vy /= len;
+    if (!player.inputQueue) {
+      player.inputQueue = [];
     }
-
-    player.vx = vx;
-    player.vy = vy;
-    player.isSprinting = !!input.isSprinting;
-    if (input.seq !== undefined) {
-      player.lastProcessedInputSeq = input.seq;
+    // Prevent queue overflow (cap to 40 recent inputs per tick)
+    if (player.inputQueue.length > 40) {
+      player.inputQueue.shift();
     }
+    player.inputQueue.push(input);
   }
 
   public update(dt: number): void {
@@ -60,53 +53,76 @@ export class PlayerSystem {
     );
     player.isSwimming = curTile.isWater;
 
-    // Sprint & swimming speed logic
-    let baseSpeed =
-      player.isSprinting && player.stamina > 10
-        ? player.sprintSpeed
-        : player.speed;
+    // Process all queued client inputs from this tick
+    if (player.inputQueue && player.inputQueue.length > 0) {
+      const inputs = player.inputQueue;
+      player.inputQueue = [];
 
-    if (player.isSwimming) {
-      baseSpeed *= 0.65;
-    }
+      for (const input of inputs) {
+        let vx = input.vx;
+        let vy = input.vy;
+        const len = Math.hypot(vx, vy);
+        if (len > 1.0) {
+          vx /= len;
+          vy /= len;
+        }
 
-    // Stamina depletion & regeneration
-    const isMoving = player.vx !== 0 || player.vy !== 0;
-    if (player.isSprinting && isMoving && !player.isSwimming) {
-      player.stamina = Math.max(0, player.stamina - dt * 18);
+        const inputDt = Math.max(0.001, Math.min(0.1, input.dt || dt));
+        const isSprinting = !!input.isSprinting;
+
+        let baseSpeed = isSprinting && player.stamina > 10 ? player.sprintSpeed : player.speed;
+        if (player.isSwimming) {
+          baseSpeed *= 0.65;
+        }
+
+        // Stamina logic per input slice
+        const isMoving = vx !== 0 || vy !== 0;
+        if (isSprinting && isMoving && !player.isSwimming) {
+          player.stamina = Math.max(0, player.stamina - inputDt * 18);
+        } else {
+          player.stamina = Math.min(player.maxStamina, player.stamina + inputDt * 14);
+        }
+
+        const nextX = player.x + vx * baseSpeed * inputDt;
+        const nextY = player.y + vy * baseSpeed * inputDt;
+
+        // Collision detection with diagonal sliding
+        if (this.canMoveTo(nextX, nextY)) {
+          player.x = nextX;
+          player.y = nextY;
+        } else {
+          const canX = this.canMoveTo(nextX, player.y);
+          const canY = this.canMoveTo(player.x, nextY);
+          if (canX) player.x = nextX;
+          if (canY) player.y = nextY;
+        }
+
+        // Direction & facing
+        if (vx > 0) {
+          player.facing = "RIGHT";
+          player.direction = "RIGHT";
+        } else if (vx < 0) {
+          player.facing = "LEFT";
+          player.direction = "LEFT";
+        } else if (vy > 0) {
+          player.direction = "DOWN";
+        } else if (vy < 0) {
+          player.direction = "UP";
+        }
+
+        player.vx = vx;
+        player.vy = vy;
+        player.isSprinting = isSprinting;
+        if (input.seq !== undefined) {
+          player.lastProcessedInputSeq = input.seq;
+        }
+      }
     } else {
+      // Standing still / idle: restore stamina
+      player.vx = 0;
+      player.vy = 0;
+      player.isSprinting = false;
       player.stamina = Math.min(player.maxStamina, player.stamina + dt * 14);
-    }
-
-    const nextX = player.x + player.vx * baseSpeed * dt;
-    const nextY = player.y + player.vy * baseSpeed * dt;
-
-    // Collision detection with diagonal sliding
-    if (this.canMoveTo(nextX, nextY)) {
-      player.x = nextX;
-      player.y = nextY;
-    } else {
-      // Slide horizontally
-      if (this.canMoveTo(nextX, player.y)) {
-        player.x = nextX;
-      }
-      // Slide vertically
-      if (this.canMoveTo(player.x, nextY)) {
-        player.y = nextY;
-      }
-    }
-
-    // Update facing direction
-    if (player.vx > 0) {
-      player.facing = "RIGHT";
-      player.direction = "RIGHT";
-    } else if (player.vx < 0) {
-      player.facing = "LEFT";
-      player.direction = "LEFT";
-    } else if (player.vy > 0) {
-      player.direction = "DOWN";
-    } else if (player.vy < 0) {
-      player.direction = "UP";
     }
 
     // Update active held item
@@ -165,12 +181,15 @@ export class PlayerSystem {
   }
 
   public canMoveTo(x: number, y: number): boolean {
-    const r = 0.22;
+    const footX = x + 0.5;
+    const footY = y + 0.65;
+    const rx = 0.22;
+    const ry = 0.16;
     const pts = [
-      { x: x - r, y: y - r },
-      { x: x + r, y: y - r },
-      { x: x - r, y: y + r },
-      { x: x + r, y: y + r },
+      { x: footX - rx, y: footY - ry },
+      { x: footX + rx, y: footY - ry },
+      { x: footX - rx, y: footY + ry },
+      { x: footX + rx, y: footY + ry },
     ];
     for (const p of pts) {
       const tile = this.gameState.worldManager.getTile(
@@ -178,20 +197,22 @@ export class PlayerSystem {
         Math.floor(p.y)
       );
       if (tile.isBlocked) return false;
-      if (this.isBlockedByStructure(p.x, p.y)) return false;
+      if (this.isBlockedByStructure(footX, footY)) return false;
     }
     return true;
   }
 
-  private isBlockedByStructure(x: number, y: number): boolean {
+  private isBlockedByStructure(footX: number, footY: number): boolean {
     for (const struct of this.gameState.placedStructures) {
       if (
         struct.structureType === "wood_wall" ||
         (struct.structureType === "wood_door" && !struct.isOpen)
       ) {
+        const sx = struct.x + 0.5;
+        const sy = struct.y + 0.5;
         if (
-          Math.abs(x - (struct.x + 0.5)) < 0.55 &&
-          Math.abs(y - (struct.y + 0.5)) < 0.55
+          Math.abs(footX - sx) < 0.62 &&
+          Math.abs(footY - sy) < 0.62
         ) {
           return true;
         }

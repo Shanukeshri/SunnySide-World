@@ -1,13 +1,11 @@
 /**
  * PersistenceManager.ts - Game State Persistence & Snapshot Manager
  * 
- * Implements Section 19 of authoritative_server.txt:
+ * Implements Section 19 & 25 of authoritative_server.txt & implementation_spec.txt:
  * Decoupled persistence manager saving world time, placed structures,
- * and player profiles periodically to disk without blocking tick execution.
+ * and player profiles periodically to disk or localStorage without blocking tick execution.
  */
 
-import fs from "fs";
-import path from "path";
 import { GameState } from "../../game/core/GameState";
 
 export interface WorldSnapshot {
@@ -29,22 +27,44 @@ export interface WorldSnapshot {
   }[];
 }
 
+const isBrowser = typeof window !== "undefined";
+
+function getNodeFs(): any {
+  if (isBrowser) return null;
+  try {
+    const req = typeof require !== "undefined" ? require : new Function("return typeof require !== 'undefined' ? require : null")();
+    return req ? req("fs") : null;
+  } catch {
+    return null;
+  }
+}
+
 export class PersistenceManager {
   private saveFilePath: string;
   private autoSaveIntervalMs: number;
-  private autoSaveTimer: NodeJS.Timeout | null = null;
+  private autoSaveTimer: any = null;
   private isDirty: boolean = false;
+  private storageKey: string = "sunnyside_world_save";
+  private nodeFs: any = null;
 
   constructor(
     saveDir = "./saves",
     fileName = "world_save.json",
     autoSaveIntervalMs = 60000 // default 60 seconds
   ) {
-    if (!fs.existsSync(saveDir)) {
-      fs.mkdirSync(saveDir, { recursive: true });
-    }
-    this.saveFilePath = path.join(saveDir, fileName);
+    this.saveFilePath = `${saveDir}/${fileName}`;
     this.autoSaveIntervalMs = autoSaveIntervalMs;
+    this.nodeFs = getNodeFs();
+
+    if (this.nodeFs) {
+      try {
+        if (!this.nodeFs.existsSync(saveDir)) {
+          this.nodeFs.mkdirSync(saveDir, { recursive: true });
+        }
+      } catch {
+        // ignore
+      }
+    }
   }
 
   public markDirty(): void {
@@ -88,9 +108,23 @@ export class PersistenceManager {
         })),
       };
 
-      fs.writeFileSync(this.saveFilePath, JSON.stringify(snapshot, null, 2), "utf-8");
-      console.log(`[Persistence] World saved successfully (${snapshot.placedStructures.length} structures)`);
-      return true;
+      const jsonStr = JSON.stringify(snapshot, null, 2);
+
+      if (isBrowser) {
+        try {
+          window.localStorage.setItem(this.storageKey, jsonStr);
+          console.log(`[Persistence] World saved to browser localStorage (${snapshot.placedStructures.length} structures)`);
+          return true;
+        } catch (e) {
+          console.warn("[Persistence] Browser localStorage save failed:", e);
+          return false;
+        }
+      } else if (this.nodeFs) {
+        this.nodeFs.writeFileSync(this.saveFilePath, jsonStr, "utf-8");
+        console.log(`[Persistence] World saved successfully to ${this.saveFilePath} (${snapshot.placedStructures.length} structures)`);
+        return true;
+      }
+      return false;
     } catch (err) {
       console.error("[Persistence] Error saving world snapshot:", err);
       return false;
@@ -98,10 +132,19 @@ export class PersistenceManager {
   }
 
   public loadSnapshot(gameState: GameState): boolean {
-    if (!fs.existsSync(this.saveFilePath)) return false;
-
     try {
-      const content = fs.readFileSync(this.saveFilePath, "utf-8");
+      let content: string | null = null;
+
+      if (isBrowser) {
+        content = window.localStorage.getItem(this.storageKey);
+      } else if (this.nodeFs) {
+        if (this.nodeFs.existsSync(this.saveFilePath)) {
+          content = this.nodeFs.readFileSync(this.saveFilePath, "utf-8");
+        }
+      }
+
+      if (!content) return false;
+
       const snapshot: WorldSnapshot = JSON.parse(content);
 
       if (snapshot.worldTime) {
@@ -118,7 +161,7 @@ export class PersistenceManager {
         }
       }
 
-      console.log(`[Persistence] World loaded successfully from ${this.saveFilePath}`);
+      console.log(`[Persistence] World loaded successfully (${gameState.placedStructures.length} structures)`);
       return true;
     } catch (err) {
       console.error("[Persistence] Error reading save file:", err);

@@ -18,13 +18,19 @@ export class ClientPrediction {
   private pendingInputs: PendingInput[] = [];
   public currentSeq = 0;
 
-  // Predicted coordinates
+  // Authoritative predicted coordinates
   public predictedX = 22;
   public predictedY = 18;
+
+  // Visual error offset for smooth reconciliation (decays to 0)
+  public errorOffsetX = 0;
+  public errorOffsetY = 0;
 
   public initPosition(x: number, y: number): void {
     this.predictedX = x;
     this.predictedY = y;
+    this.errorOffsetX = 0;
+    this.errorOffsetY = 0;
     this.pendingInputs = [];
   }
 
@@ -59,8 +65,10 @@ export class ClientPrediction {
       this.predictedX = nextX;
       this.predictedY = nextY;
     } else {
-      if (canMoveTo(nextX, this.predictedY)) this.predictedX = nextX;
-      if (canMoveTo(this.predictedX, nextY)) this.predictedY = nextY;
+      const canX = canMoveTo(nextX, this.predictedY);
+      const canY = canMoveTo(this.predictedX, nextY);
+      if (canX) this.predictedX = nextX;
+      if (canY) this.predictedY = nextY;
     }
 
     const input: PendingInput = {
@@ -72,12 +80,19 @@ export class ClientPrediction {
     };
 
     this.pendingInputs.push(input);
+
+    // Limit pending input history to last 120 inputs
+    if (this.pendingInputs.length > 120) {
+      this.pendingInputs.shift();
+    }
+
     return input;
   }
 
   /**
    * Reconciles predicted position against authoritative server position.
-   * Discards inputs <= lastProcessedSeq, and replays newer pending inputs.
+   * Discards inputs <= lastProcessedSeq, replays newer pending inputs,
+   * and smoothly absorbs any discrepancy into errorOffset without visual jerk.
    */
   public reconcile(
     serverX: number,
@@ -86,31 +101,76 @@ export class ClientPrediction {
     isSwimming: boolean,
     canMoveTo: (x: number, y: number) => boolean
   ): void {
-    // Discard acknowledged inputs
+    // 1. Discard acknowledged inputs
     this.pendingInputs = this.pendingInputs.filter((i) => i.seq > lastProcessedSeq);
 
-    // If server position significantly differs (error threshold > 0.05 tiles), replay unacknowledged inputs
-    const diff = Math.hypot(this.predictedX - serverX, this.predictedY - serverY);
-    if (diff > 0.05) {
-      this.predictedX = serverX;
-      this.predictedY = serverY;
+    // 2. Start from server authoritative baseline
+    let replayedX = serverX;
+    let replayedY = serverY;
 
-      // Re-simulate pending inputs from server authoritative baseline
-      for (const input of this.pendingInputs) {
-        let speed = input.isSprinting ? 5.6 : 3.8;
-        if (isSwimming) speed *= 0.65;
+    // 3. Re-simulate pending inputs from server authoritative baseline
+    for (const input of this.pendingInputs) {
+      let speed = input.isSprinting ? 5.6 : 3.8;
+      if (isSwimming) speed *= 0.65;
 
-        const nextX = this.predictedX + input.vx * speed * input.dt;
-        const nextY = this.predictedY + input.vy * speed * input.dt;
+      const nextX = replayedX + input.vx * speed * input.dt;
+      const nextY = replayedY + input.vy * speed * input.dt;
 
-        if (canMoveTo(nextX, nextY)) {
-          this.predictedX = nextX;
-          this.predictedY = nextY;
-        } else {
-          if (canMoveTo(nextX, this.predictedY)) this.predictedX = nextX;
-          if (canMoveTo(this.predictedX, nextY)) this.predictedY = nextY;
-        }
+      if (canMoveTo(nextX, nextY)) {
+        replayedX = nextX;
+        replayedY = nextY;
+      } else {
+        const canX = canMoveTo(nextX, replayedY);
+        const canY = canMoveTo(replayedX, nextY);
+        if (canX) replayedX = nextX;
+        if (canY) replayedY = nextY;
       }
     }
+
+    // 4. Determine discrepancy between previous prediction and replayed truth
+    const errorX = this.predictedX - replayedX;
+    const errorY = this.predictedY - replayedY;
+    const errorDist = Math.hypot(errorX, errorY);
+
+    if (errorDist > 2.0) {
+      // Large discrepancy (teleport, respawn, knockback) -> snap immediately
+      this.predictedX = replayedX;
+      this.predictedY = replayedY;
+      this.errorOffsetX = 0;
+      this.errorOffsetY = 0;
+    } else if (errorDist > 0.035) {
+      // Small discrepancy -> adjust prediction to replayed truth,
+      // and preserve visual continuity through smoothly decaying error offset without compounding
+      this.predictedX = replayedX;
+      this.predictedY = replayedY;
+      this.errorOffsetX = errorX;
+      this.errorOffsetY = errorY;
+    }
+  }
+
+  /**
+   * Decays the visual error offset smoothly toward zero.
+   * Call once per client render frame.
+   */
+  public updateSmoothing(dt: number): void {
+    if (this.errorOffsetX !== 0 || this.errorOffsetY !== 0) {
+      // Exponential decay: reduces error offset smoothly over ~100ms
+      const factor = Math.exp(-18 * dt);
+      this.errorOffsetX *= factor;
+      this.errorOffsetY *= factor;
+
+      if (Math.abs(this.errorOffsetX) < 0.002) this.errorOffsetX = 0;
+      if (Math.abs(this.errorOffsetY) < 0.002) this.errorOffsetY = 0;
+    }
+  }
+
+  /**
+   * Returns smoothly interpolated visual coordinates for rendering (predicted + visual error offset).
+   */
+  public getVisualPosition(): { x: number; y: number } {
+    return {
+      x: this.predictedX + this.errorOffsetX,
+      y: this.predictedY + this.errorOffsetY,
+    };
   }
 }

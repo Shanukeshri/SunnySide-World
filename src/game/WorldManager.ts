@@ -113,6 +113,7 @@ export class WorldManager {
   }[] = [];
 
   private nextResourceId = 1;
+  private stampedVillages = new Set<number>();
 
   constructor(seed: number = 42891) {
     this.seed = seed;
@@ -273,6 +274,9 @@ export class WorldManager {
    * Stamps village terrain, roads, houses, farms, wells, and trees into existing or new chunks.
    */
   private stampVillageIntoChunks(v: WorldRealmVillage) {
+    if (this.stampedVillages.has(v.id)) return;
+    this.stampedVillages.add(v.id);
+
     const startX = v.gridX;
     const startY = v.gridY;
     const data = v.data;
@@ -577,15 +581,9 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          // Mark only tree trunk base (bottom row) as blocked so player can walk behind canopy
-          if (ty + 1 < CHUNK_SIZE) {
-            chunk.tiles[ty + 1][tx].isBlocked = true;
-            if (tx + 1 < CHUNK_SIZE) {
-              chunk.tiles[ty + 1][tx + 1].isBlocked = true;
-            }
-          } else {
-            tile.isBlocked = true;
-          }
+          // Mark only tree trunk base (bottom-center of 2x2 footprint) as blocked.
+          // Use chunk.tiles directly (tx+1, ty+1 always within bounds since tx < CHUNK_SIZE-1)
+          chunk.tiles[ty + 1][tx + 1].isBlocked = true;
           continue;
         }
 
@@ -716,6 +714,18 @@ export class WorldManager {
             return res;
           }
         }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find harvestable resource node by its unique numeric ID.
+   */
+  public getResourceById(id: number): ResourceNode | null {
+    for (const chunk of this.chunks.values()) {
+      for (const res of chunk.resources) {
+        if (res.id === id) return res;
       }
     }
     return null;

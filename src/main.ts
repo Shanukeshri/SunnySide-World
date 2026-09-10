@@ -24,7 +24,12 @@ import {
 } from "./game/SurvivalEngine";
 import { SurvivalRenderer } from "./game/SurvivalRenderer";
 import { GameAudio } from "./game/GameAudio";
-import { ItemId, Recipe, PlacedStructure, InventorySlot } from "./game/GameTypes";
+import {
+  ItemId,
+  Recipe,
+  PlacedStructure,
+  InventorySlot,
+} from "./game/GameTypes";
 import { NetworkClient } from "./client/NetworkClient";
 import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 
@@ -71,10 +76,18 @@ const viewTerrain = document.getElementById("terrain-view")!;
 const viewAssetsMap = document.getElementById("assets-map-view")!;
 
 const atlasControls = document.getElementById("atlas-controls")!;
-const allViews = [viewSettlement, viewGame, viewHouses, viewTerrain, viewAssetsMap];
+const allViews = [
+  viewSettlement,
+  viewGame,
+  viewHouses,
+  viewTerrain,
+  viewAssetsMap,
+];
 const allTabs = [tabSettlement, tabGame, tabHouses, tabTerrain, tabAssetsMap];
 
-export function switchTab(tab: "settlement" | "game" | "houses" | "terrain" | "assets-map") {
+export function switchTab(
+  tab: "settlement" | "game" | "houses" | "terrain" | "assets-map",
+) {
   allViews.forEach((v) => v.classList.remove("active"));
   allTabs.forEach((t) => {
     t.classList.remove("active");
@@ -907,8 +920,12 @@ function drawTerrainChunks() {
 // PROCEDURAL SETTLEMENT MODULE
 // ═══════════════════════════════════════════════════════════════════
 
-const settlementCanvas = document.getElementById("settlement-canvas") as HTMLCanvasElement;
-const settlementViewport = document.getElementById("settlement-viewport") as HTMLElement;
+const settlementCanvas = document.getElementById(
+  "settlement-canvas",
+) as HTMLCanvasElement;
+const settlementViewport = document.getElementById(
+  "settlement-viewport",
+) as HTMLElement;
 
 let currentSettlementData: SettlementData | null = null;
 let currentSeed = Math.floor(Math.random() * 1000000);
@@ -982,7 +999,7 @@ function settlementLoop(now: number) {
         showGrid: optShowGrid,
         showClearance: optShowClearance,
         showFootprints: optShowFootprints,
-      }
+      },
     );
 
     // Update live counts
@@ -990,12 +1007,12 @@ function settlementLoop(now: number) {
     const npcBadge = document.getElementById("stat-villagers-count");
     if (wildBadge) {
       wildBadge.textContent = String(
-        lifeformManager.getAnimals().filter((a) => a.isActive).length
+        lifeformManager.getAnimals().filter((a) => a.isActive).length,
       );
     }
     if (npcBadge) {
       npcBadge.textContent = String(
-        lifeformManager.getNPCs().filter((n) => n.isActive).length
+        lifeformManager.getNPCs().filter((n) => n.isActive).length,
       );
     }
   }
@@ -1025,20 +1042,29 @@ function updateSettlementBadges(data: SettlementData) {
   const waterBadge = document.getElementById("stat-water-badge");
   const decorBadge = document.getElementById("stat-decor-badge");
   const validationText = document.getElementById("validation-text");
-  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+  const seedInput = document.getElementById(
+    "settlement-seed-input",
+  ) as HTMLInputElement;
 
   if (seedBadge) seedBadge.innerHTML = `Seed: <strong>${data.seed}</strong>`;
-  if (housesBadge) housesBadge.innerHTML = `Houses: <strong>${data.houses.length}</strong>`;
-  if (farmsBadge) farmsBadge.innerHTML = `Farms: <strong>${data.farms.length}</strong>`;
-  if (wellsBadge) wellsBadge.innerHTML = `Wells: <strong>${data.wells.length}</strong>`;
-  if (treesBadge) treesBadge.innerHTML = `Trees: <strong>${data.trees.length}</strong>`;
-  if (waterBadge) waterBadge.innerHTML = `Water: <strong>${data.waterBodies.length > 0 ? `${data.waterBodies.length} Ponds` : "None"}</strong>`;
-  if (decorBadge) decorBadge.innerHTML = `Scatter: <strong>${data.decorations.length}</strong> (${data.bushes?.length || 0} Bushes)`;
+  if (housesBadge)
+    housesBadge.innerHTML = `Houses: <strong>${data.houses.length}</strong>`;
+  if (farmsBadge)
+    farmsBadge.innerHTML = `Farms: <strong>${data.farms.length}</strong>`;
+  if (wellsBadge)
+    wellsBadge.innerHTML = `Wells: <strong>${data.wells.length}</strong>`;
+  if (treesBadge)
+    treesBadge.innerHTML = `Trees: <strong>${data.trees.length}</strong>`;
+  if (waterBadge)
+    waterBadge.innerHTML = `Water: <strong>${data.waterBodies.length > 0 ? `${data.waterBodies.length} Ponds` : "None"}</strong>`;
+  if (decorBadge)
+    decorBadge.innerHTML = `Scatter: <strong>${data.decorations.length}</strong> (${data.bushes?.length || 0} Bushes)`;
   if (seedInput) seedInput.value = String(data.seed);
 
   if (validationText) {
     if (data.validation.valid) {
-      validationText.textContent = "✓ Validated: All 10 Rules Passed (0 Road Overlaps)";
+      validationText.textContent =
+        "✓ Validated: All 10 Rules Passed (0 Road Overlaps)";
     } else {
       validationText.textContent = `⚠ ${data.validation.violations.length} Violations`;
     }
@@ -1078,7 +1104,9 @@ function initSettlementUI() {
   const btnGenerate = document.getElementById("btn-generate-settlement");
   const btnApplySeed = document.getElementById("btn-apply-seed");
   const btnRandomSeed = document.getElementById("btn-random-seed");
-  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+  const seedInput = document.getElementById(
+    "settlement-seed-input",
+  ) as HTMLInputElement;
 
   const btnZoomIn = document.getElementById("settlement-zoom-in");
   const btnZoomOut = document.getElementById("settlement-zoom-out");
@@ -1137,8 +1165,11 @@ function initSettlementUI() {
       currentZoomLevel = 1.5;
       updateZoomDisplay();
       if (settlementViewport) {
-        settlementViewport.scrollLeft = (settlementViewport.scrollWidth - settlementViewport.clientWidth) / 2;
-        settlementViewport.scrollTop = (settlementViewport.scrollHeight - settlementViewport.clientHeight) / 2;
+        settlementViewport.scrollLeft =
+          (settlementViewport.scrollWidth - settlementViewport.clientWidth) / 2;
+        settlementViewport.scrollTop =
+          (settlementViewport.scrollHeight - settlementViewport.clientHeight) /
+          2;
       }
     });
   }
@@ -1182,7 +1213,20 @@ function initSettlementUI() {
       lifeformManager?.feedClosestAnimal();
     }
 
-    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(key) || e.code === "Space") {
+    if (
+      [
+        "arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        " ",
+        "w",
+        "a",
+        "s",
+        "d",
+      ].includes(key) ||
+      e.code === "Space"
+    ) {
       e.preventDefault();
     }
 
@@ -1249,14 +1293,17 @@ function initSettlementUI() {
             lifeformManager.player &&
             Math.hypot(
               lifeformManager.player.position.x - animal.position.x,
-              lifeformManager.player.position.y - animal.position.y
+              lifeformManager.player.position.y - animal.position.y,
             ) <= 2.2
           ) {
             if (animal.pet()) {
               lifeformManager.player.triggerHop();
             }
           } else if (lifeformManager.player) {
-            lifeformManager.player.setTarget(animal.position.x, animal.position.y);
+            lifeformManager.player.setTarget(
+              animal.position.x,
+              animal.position.y,
+            );
           }
         } else if (lifeformManager.player) {
           lifeformManager.player.setTarget(clickX, clickY);
@@ -1277,7 +1324,7 @@ function initSettlementUI() {
           updateZoomDisplay();
         }
       },
-      { passive: false }
+      { passive: false },
     );
   }
 }
@@ -1286,8 +1333,12 @@ function initSettlementUI() {
 // FULL-SCREEN SURVIVAL GAME CONTROLLER & HUD
 // ═══════════════════════════════════════════════════════════════════
 
-const survivalCanvas = document.getElementById("survival-game-canvas") as HTMLCanvasElement;
-const radarCanvas = document.getElementById("radar-canvas") as HTMLCanvasElement;
+const survivalCanvas = document.getElementById(
+  "survival-game-canvas",
+) as HTMLCanvasElement;
+const radarCanvas = document.getElementById(
+  "radar-canvas",
+) as HTMLCanvasElement;
 
 let survivalEngine: SurvivalEngine | null = null;
 let survivalRenderer: SurvivalRenderer | null = null;
@@ -1343,7 +1394,9 @@ const dialogueNpcName = document.getElementById("dialogue-npc-name")!;
 const dialogueNpcText = document.getElementById("dialogue-npc-text")!;
 const barterTradeList = document.getElementById("barter-trade-list")!;
 const modalChestGrid = document.getElementById("modal-chest-grid")!;
-const modalChestPlayerGrid = document.getElementById("modal-chest-player-grid")!;
+const modalChestPlayerGrid = document.getElementById(
+  "modal-chest-player-grid",
+)!;
 
 let activeCraftCategory = "tools";
 let networkClient: NetworkClient | null = null;
@@ -1360,9 +1413,16 @@ function setupNetworkClientHandlers() {
       if (state === "CONNECTED") {
         hudServerDot.style.background = "#22c55e";
         hudServerDot.style.boxShadow = "0 0 8px #22c55e";
-        const displayHost = networkClient?.serverUrl ? networkClient.serverUrl.replace(/^https?:\/\//, "") : "Online";
-        hudServerStatus.textContent = `Authoritative Server: Online (${displayHost} • 20Hz)`;
+        const displayHost = networkClient?.serverUrl
+          ? networkClient.serverUrl.replace(/^https?:\/\//, "")
+          : "Online";
+        hudServerStatus.textContent = `Authoritative Server: Multiplayer (${displayHost} • 20Hz)`;
         hudServerStatus.style.color = "#4ade80";
+      } else if (state === "LOCAL_SERVER") {
+        hudServerDot.style.background = "#38bdf8";
+        hudServerDot.style.boxShadow = "0 0 8px #38bdf8";
+        hudServerStatus.textContent = "Authoritative Server: Single Player (Local • 20Hz)";
+        hudServerStatus.style.color = "#38bdf8";
       } else if (state === "CONNECTING") {
         hudServerDot.style.background = "#eab308";
         hudServerDot.style.boxShadow = "0 0 6px #eab308";
@@ -1371,9 +1431,22 @@ function setupNetworkClientHandlers() {
       } else {
         hudServerDot.style.background = "#f97316";
         hudServerDot.style.boxShadow = "0 0 6px #f97316";
-        hudServerStatus.textContent = "Local Authoritative Mode (Standalone)";
+        hudServerStatus.textContent = "Authoritative Server: Offline";
         hudServerStatus.style.color = "#fb923c";
       }
+    }
+  });
+
+  networkClient.onInit((init) => {
+    if (!survivalEngine) return;
+    if (init.placedStructures) {
+      survivalEngine.placedStructures = init.placedStructures as any;
+    }
+    if (init.droppedItems) {
+      survivalEngine.droppedItems = init.droppedItems as any;
+    }
+    if (init.worldTime) {
+      survivalEngine.worldTime = init.worldTime;
     }
   });
 
@@ -1411,11 +1484,17 @@ function setupNetworkClientHandlers() {
     // Synchronize remote players with interpolated positions
     if (sync.otherPlayers) {
       survivalEngine.remotePlayers = sync.otherPlayers.map((op) => {
-        const pos = networkClient!.interpolator.getInterpolatedPosition(op.id, op.x, op.y);
+        const res = networkClient!.interpolator.getInterpolatedEntity(
+          op.id,
+          op.x,
+          op.y,
+        );
         return {
           ...op,
-          x: pos.x,
-          y: pos.y,
+          x: res.x,
+          y: res.y,
+          vx: res.vx,
+          vy: res.vy,
         };
       });
     }
@@ -1423,11 +1502,14 @@ function setupNetworkClientHandlers() {
     // Synchronize wildlife animals from authoritative server
     if (sync.animals) {
       const activeIds = new Set(sync.animals.map((a) => a.id));
-      survivalEngine.animals = survivalEngine.animals.filter((a: any) => activeIds.has(a.id));
+      survivalEngine.animals = survivalEngine.animals.filter((a: any) =>
+        activeIds.has(a.id),
+      );
       for (const sa of sync.animals) {
         let existing = survivalEngine.animals.find((a: any) => a.id === sa.id);
         if (!existing) {
-          const cfg = (SPECIES_CONFIGS as any)[sa.species] || SPECIES_CONFIGS["cow"];
+          const cfg =
+            (SPECIES_CONFIGS as any)[sa.species] || SPECIES_CONFIGS["cow"];
           existing = new Animal(sa.id, cfg, sa.x, sa.y);
           survivalEngine.animals.push(existing);
         }
@@ -1440,12 +1522,23 @@ function setupNetworkClientHandlers() {
     // Synchronize village NPCs from authoritative server
     if (sync.npcs) {
       const activeIds = new Set(sync.npcs.map((n) => n.id));
-      survivalEngine.npcs = survivalEngine.npcs.filter((n: any) => activeIds.has(n.id));
+      survivalEngine.npcs = survivalEngine.npcs.filter((n: any) =>
+        activeIds.has(n.id),
+      );
       for (const sn of sync.npcs) {
         let existing = survivalEngine.npcs.find((n: any) => n.id === sn.id);
         if (!existing) {
-          const cfg = (SPECIES_CONFIGS as any)["villager"] || SPECIES_CONFIGS["cow"];
-          existing = new NPC(sn.id, cfg, sn.x, sn.y, sn.x, sn.y, sn.role as any);
+          const cfg =
+            (SPECIES_CONFIGS as any)["villager"] || SPECIES_CONFIGS["cow"];
+          existing = new NPC(
+            sn.id,
+            cfg,
+            sn.x,
+            sn.y,
+            sn.x,
+            sn.y,
+            sn.role as any,
+          );
           survivalEngine.npcs.push(existing);
         }
         existing.direction = sn.direction;
@@ -1456,7 +1549,9 @@ function setupNetworkClientHandlers() {
     // Synchronize hostile enemies from authoritative server
     if (sync.enemies) {
       const activeIds = new Set(sync.enemies.map((e) => e.id));
-      survivalEngine.enemies = survivalEngine.enemies.filter((e: any) => activeIds.has(e.id));
+      survivalEngine.enemies = survivalEngine.enemies.filter((e: any) =>
+        activeIds.has(e.id),
+      );
       for (const se of sync.enemies) {
         let existing = survivalEngine.enemies.find((e: any) => e.id === se.id);
         if (!existing) {
@@ -1501,10 +1596,18 @@ function setupNetworkClientHandlers() {
 
     if (ev.type === "TREE_HIT") {
       GameAudio.playChop();
-      (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#a16207");
+      (survivalEngine as any).emitWoodChips(
+        ev.payload.x,
+        ev.payload.y,
+        "#a16207",
+      );
     } else if (ev.type === "ROCK_HIT") {
       GameAudio.playMine();
-      (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#94a3b8");
+      (survivalEngine as any).emitWoodChips(
+        ev.payload.x,
+        ev.payload.y,
+        "#94a3b8",
+      );
     } else if (ev.type === "ANIMAL_PETTED" || ev.type === "ANIMAL_FED") {
       GameAudio.playHeartChime();
       (survivalEngine as any).emitHeart(ev.payload.x, ev.payload.y);
@@ -1517,7 +1620,12 @@ function setupNetworkClientHandlers() {
     } else if (ev.type === "BUILDING_PLACED") {
       GameAudio.playBuild();
     } else if (ev.type === "FLOATING_TEXT") {
-      survivalEngine.addFloatingText(ev.payload.text, ev.payload.x, ev.payload.y, ev.payload.color);
+      survivalEngine.addFloatingText(
+        ev.payload.text,
+        ev.payload.x,
+        ev.payload.y,
+        ev.payload.color,
+      );
     } else if (ev.type === "AUDIO_TRIGGER") {
       const s = ev.payload.sound;
       if (s === "chop") GameAudio.playChop();
@@ -1546,6 +1654,8 @@ function ensureSurvivalGameLoaded() {
     // Initialize Network Client for authoritative server (auto-detects Render or localhost)
     networkClient = new NetworkClient();
     (window as any).networkClient = networkClient;
+    networkClient.collisionChecker = (x, y) =>
+      (survivalEngine as any).canMoveTo(x, y);
     setupNetworkClientHandlers();
     networkClient.connect("Explorer", "mophair");
 
@@ -1596,56 +1706,141 @@ function survivalGameLoop(now: number) {
   lastSurvivalTime = now;
 
   if (survivalEngine && survivalRenderer && survivalCanvas) {
-    const isOnline = networkClient && networkClient.connectionState === "CONNECTED";
+    const isAuthoritative =
+      networkClient &&
+      (networkClient.connectionState === "CONNECTED" ||
+        networkClient.connectionState === "LOCAL_SERVER");
 
-    if (isOnline) {
-      // 1. Authoritative Online Continuous Movement with Local Prediction (Phase 1 & 3)
+    if (isAuthoritative) {
+      // 1. Authoritative Continuous Movement with Local Prediction (Phase 1 & 3)
       updatePlayerContinuousMovement(dt);
 
       // 2. Client updates local cosmetic timers, particles, and smooth prediction
       (survivalEngine as any).updateParticles(dt);
-      if (survivalEngine.player.swingTimer > 0) survivalEngine.player.swingTimer -= dt;
+      if (survivalEngine.player.swingTimer > 0)
+        survivalEngine.player.swingTimer -= dt;
       if (survivalEngine.player.hopTimer > 0) {
         survivalEngine.player.hopTimer -= dt;
-        const progress = Math.max(0, Math.min(1, 1 - survivalEngine.player.hopTimer / 0.55));
+        const progress = Math.max(
+          0,
+          Math.min(1, 1 - survivalEngine.player.hopTimer / 0.55),
+        );
         survivalEngine.player.hopOffset = Math.sin(progress * Math.PI) * 0.55;
       } else {
         survivalEngine.player.hopOffset = 0;
       }
-      if (survivalEngine.player.hurtTimer > 0) survivalEngine.player.hurtTimer -= dt;
-      if (survivalEngine.player.rollTimer > 0) survivalEngine.player.rollTimer -= dt;
-      if (survivalEngine.player.doingTimer > 0) survivalEngine.player.doingTimer -= dt;
+      if (survivalEngine.player.hurtTimer > 0)
+        survivalEngine.player.hurtTimer -= dt;
+      if (survivalEngine.player.rollTimer > 0)
+        survivalEngine.player.rollTimer -= dt;
+      if (survivalEngine.player.doingTimer > 0)
+        survivalEngine.player.doingTimer -= dt;
 
       // 3. Smooth Entity Interpolation at 60 FPS (Phase 6 of authoritative_server.txt)
       if (networkClient) {
         // Wildlife animals
         for (const a of survivalEngine.animals) {
-          const pos = networkClient.interpolator.getInterpolatedPosition(a.id, a.position.x, a.position.y);
-          a.position.x = pos.x;
-          a.position.y = pos.y;
+          const res = networkClient.interpolator.getInterpolatedEntity(
+            a.id,
+            a.position.x,
+            a.position.y,
+          );
+          a.position.x = res.x;
+          a.position.y = res.y;
+          if (res.isMoving) {
+            if (Math.abs(res.vx) > Math.abs(res.vy)) {
+              a.direction = res.vx > 0 ? "RIGHT" : "LEFT";
+              a.anim.flipX = res.vx > 0;
+            } else {
+              a.direction = res.vy > 0 ? "DOWN" : "UP";
+            }
+            a.anim.frameTimer += dt;
+            if (a.anim.frameTimer >= (a.anim.frameSpeed || 0.12)) {
+              a.anim.frameTimer = 0;
+              a.anim.currentFrame =
+                (a.anim.currentFrame + 1) % (a.anim.totalFrames || 4);
+            }
+          } else {
+            a.anim.currentFrame = 0;
+            a.anim.frameTimer = 0;
+          }
         }
         // Village NPCs
         for (const n of survivalEngine.npcs) {
-          const pos = networkClient.interpolator.getInterpolatedPosition(n.id, n.position.x, n.position.y);
-          n.position.x = pos.x;
-          n.position.y = pos.y;
+          const res = networkClient.interpolator.getInterpolatedEntity(
+            n.id,
+            n.position.x,
+            n.position.y,
+          );
+          n.position.x = res.x;
+          n.position.y = res.y;
+          if (res.isMoving) {
+            if (Math.abs(res.vx) > Math.abs(res.vy)) {
+              n.direction = res.vx > 0 ? "RIGHT" : "LEFT";
+              n.anim.flipX = res.vx < 0; // humans face right by default
+            } else {
+              n.direction = res.vy > 0 ? "DOWN" : "UP";
+            }
+            n.anim.frameTimer += dt;
+            if (n.anim.frameTimer >= (n.anim.frameSpeed || 0.12)) {
+              n.anim.frameTimer = 0;
+              n.anim.currentFrame =
+                (n.anim.currentFrame + 1) % (n.anim.totalFrames || 4);
+            }
+          } else {
+            n.anim.currentFrame = 0;
+            n.anim.frameTimer = 0;
+          }
         }
         // Hostile enemies
         for (const e of survivalEngine.enemies) {
-          const pos = networkClient.interpolator.getInterpolatedPosition(e.id, e.x, e.y);
-          e.x = pos.x;
-          e.y = pos.y;
+          const res = networkClient.interpolator.getInterpolatedEntity(
+            e.id,
+            e.x,
+            e.y,
+          );
+          e.x = res.x;
+          e.y = res.y;
+          if (res.isMoving) {
+            e.vx = res.vx;
+            e.vy = res.vy;
+            if (Math.abs(res.vx) > Math.abs(res.vy)) {
+              e.direction = res.vx > 0 ? "RIGHT" : "LEFT";
+            } else {
+              e.direction = res.vy > 0 ? "DOWN" : "UP";
+            }
+          }
         }
         // Remote multiplayer players
         for (const rp of survivalEngine.remotePlayers) {
-          const pos = networkClient.interpolator.getInterpolatedPosition(rp.id, rp.x, rp.y);
-          rp.x = pos.x;
-          rp.y = pos.y;
+          const res = networkClient.interpolator.getInterpolatedEntity(
+            rp.id,
+            rp.x,
+            rp.y,
+          );
+          rp.x = res.x;
+          rp.y = res.y;
+          if (res.isMoving) {
+            rp.vx = res.vx;
+            rp.vy = res.vy;
+            if (Math.abs(res.vx) > Math.abs(res.vy)) {
+              rp.facing = res.vx > 0 ? "RIGHT" : "LEFT";
+              rp.direction = rp.facing;
+            } else {
+              rp.direction = res.vy > 0 ? "DOWN" : "UP";
+            }
+          } else {
+            rp.vx = 0;
+            rp.vy = 0;
+          }
         }
       }
 
       // 4. Update terrain chunk loading around player's predicted position
-      survivalEngine.worldManager.updatePlayerLocation(survivalEngine.player.x, survivalEngine.player.y);
+      survivalEngine.worldManager.updatePlayerLocation(
+        survivalEngine.player.x,
+        survivalEngine.player.y,
+      );
     } else {
       // Standalone / Offline Fallback Mode: run complete local simulation
       survivalEngine.update(dt);
@@ -1666,7 +1861,10 @@ function survivalGameLoop(now: number) {
     }
 
     // 5. NPC Dialogue Modal Check
-    if (survivalEngine.activeDialogueNPC && modalDialogue.classList.contains("hidden")) {
+    if (
+      survivalEngine.activeDialogueNPC &&
+      modalDialogue.classList.contains("hidden")
+    ) {
       openDialogueModal(survivalEngine.activeDialogueNPC);
     }
 
@@ -1701,17 +1899,29 @@ function updateSurvivalHUD() {
   const isPM = wt.hour >= 12;
   const displayHour = wt.hour % 12 === 0 ? 12 : wt.hour % 12;
   hudClockTime.textContent = `${String(displayHour).padStart(2, "0")}:${minPad} ${isPM ? "PM" : "AM"}`;
-  hudClockIcon.textContent = wt.timeOfDay === "Night" ? "🌙" : wt.timeOfDay === "Sunset" ? "🌇" : wt.timeOfDay === "Morning" ? "🌅" : "☀️";
+  hudClockIcon.textContent =
+    wt.timeOfDay === "Night"
+      ? "🌙"
+      : wt.timeOfDay === "Sunset"
+        ? "🌇"
+        : wt.timeOfDay === "Morning"
+          ? "🌅"
+          : "☀️";
   hudClockPhase.textContent = `Day ${wt.dayNumber} • ${wt.timeOfDay}`;
 
   // Discovered Villages (out of max 4)
-  const totalDiscovered = survivalEngine.worldManager.villages.filter((v) => v.discovered).length;
+  const totalDiscovered = survivalEngine.worldManager.villages.filter(
+    (v) => v.discovered,
+  ).length;
   hudVillagesCount.textContent = `${totalDiscovered}/4`;
 
   const nearest = survivalEngine.worldManager.getNearestVillage(p.x, p.y);
   if (nearest) {
     const distMeters = Math.round(nearest.dist);
-    hudNearestVillage.textContent = distMeters < 25 ? `In: ${nearest.village.name}` : `Nearest: ${nearest.village.name} (~${distMeters}m)`;
+    hudNearestVillage.textContent =
+      distMeters < 25
+        ? `In: ${nearest.village.name}`
+        : `Nearest: ${nearest.village.name} (~${distMeters}m)`;
   }
 
   // Hotbar render
@@ -1798,7 +2008,12 @@ function updateActionPrompt() {
   // 3. Nearby Resource Node (Tree, Rock, Bush)
   const res = survivalEngine.worldManager.getResourceAt(p.x, p.y, 2.2);
   if (res && !res.isDepleted) {
-    const action = res.type === "tree" ? "Chop Tree" : res.type === "rock" || res.type === "iron_rock" ? "Mine Rock" : "Harvest";
+    const action =
+      res.type === "tree"
+        ? "Chop Tree"
+        : res.type === "rock" || res.type === "iron_rock"
+          ? "Mine Rock"
+          : "Harvest";
     showPrompt("[Left Click]", action);
     return;
   }
@@ -1908,7 +2123,9 @@ function renderRadarMiniMap() {
     ctx.fill();
 
     // Pointer line from center to village marker
-    ctx.strokeStyle = isGenerated ? "rgba(34, 197, 94, 0.4)" : "rgba(255, 255, 255, 0.15)";
+    ctx.strokeStyle = isGenerated
+      ? "rgba(34, 197, 94, 0.4)"
+      : "rgba(255, 255, 255, 0.15)";
     ctx.beginPath();
     ctx.moveTo(center, center);
     ctx.lineTo(iconX, iconY);
@@ -1923,14 +2140,24 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
   let dx = 0;
   let dy = 0;
   if (activeSurvivalKeys.has("w") || activeSurvivalKeys.has("arrowup")) dy -= 1;
-  if (activeSurvivalKeys.has("s") || activeSurvivalKeys.has("arrowdown")) dy += 1;
-  if (activeSurvivalKeys.has("a") || activeSurvivalKeys.has("arrowleft")) dx -= 1;
-  if (activeSurvivalKeys.has("d") || activeSurvivalKeys.has("arrowright")) dx += 1;
+  if (activeSurvivalKeys.has("s") || activeSurvivalKeys.has("arrowdown"))
+    dy += 1;
+  if (activeSurvivalKeys.has("a") || activeSurvivalKeys.has("arrowleft"))
+    dx -= 1;
+  if (activeSurvivalKeys.has("d") || activeSurvivalKeys.has("arrowright"))
+    dx += 1;
 
   survivalEngine.player.vx = dx;
   survivalEngine.player.vy = dy;
 
-  if (networkClient && networkClient.connectionState === "CONNECTED") {
+  if (
+    networkClient &&
+    (networkClient.connectionState === "CONNECTED" ||
+      networkClient.connectionState === "LOCAL_SERVER")
+  ) {
+    // Smooth visual error decay over time (zero jerking / zero snapping)
+    networkClient.prediction.updateSmoothing(dt);
+
     if (dx !== 0 || dy !== 0) {
       const input = networkClient.prediction.predictMovement(
         dx,
@@ -1938,10 +2165,13 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
         survivalEngine.player.isSprinting,
         survivalEngine.player.isSwimming,
         dt,
-        (x, y) => (survivalEngine as any).canMoveTo(x, y)
+        (x, y) => (survivalEngine as any).canMoveTo(x, y),
       );
-      survivalEngine.player.x = networkClient.prediction.predictedX;
-      survivalEngine.player.y = networkClient.prediction.predictedY;
+
+      // Render at smoothly interpolated visual coordinates
+      const vis = networkClient.prediction.getVisualPosition();
+      survivalEngine.player.x = vis.x;
+      survivalEngine.player.y = vis.y;
 
       if (dx > 0) {
         survivalEngine.player.facing = "RIGHT";
@@ -1955,19 +2185,31 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
         survivalEngine.player.direction = "UP";
       }
 
-      networkClient.sendInput(input.vx, input.vy, input.isSprinting, input.seq);
-      (survivalEngine.player as any)._wasMoving = true;
-    } else if ((survivalEngine.player as any)._wasMoving) {
-      (survivalEngine.player as any)._wasMoving = false;
-      const input = networkClient.prediction.predictMovement(
-        0,
-        0,
-        false,
-        survivalEngine.player.isSwimming,
+      networkClient.sendInput(
+        input.vx,
+        input.vy,
+        input.isSprinting,
+        input.seq,
         dt,
-        (x, y) => (survivalEngine as any).canMoveTo(x, y)
       );
-      networkClient.sendInput(0, 0, false, input.seq);
+      (survivalEngine.player as any)._wasMoving = true;
+    } else {
+      if ((survivalEngine.player as any)._wasMoving) {
+        (survivalEngine.player as any)._wasMoving = false;
+        const input = networkClient.prediction.predictMovement(
+          0,
+          0,
+          false,
+          survivalEngine.player.isSwimming,
+          dt,
+          (x, y) => (survivalEngine as any).canMoveTo(x, y),
+        );
+        networkClient.sendInput(0, 0, false, input.seq, dt);
+      }
+      // Keep visual coordinates smoothly updated even when standing still
+      const vis = networkClient.prediction.getVisualPosition();
+      survivalEngine.player.x = vis.x;
+      survivalEngine.player.y = vis.y;
     }
   }
 }
@@ -2017,8 +2259,14 @@ function initSurvivalInputs() {
       if (survivalEngine) {
         survivalEngine.isBuildMode = !survivalEngine.isBuildMode;
         const active = survivalEngine.getActiveItemSlot()?.item;
-        survivalEngine.buildPiece = active && ITEM_CATALOG[active]?.isPlaceable ? active : "wood_wall";
-        survivalEngine.addFloatingText(survivalEngine.isBuildMode ? "Build Mode ON" : "Build Mode OFF", survivalEngine.player.x, survivalEngine.player.y - 1, "#38bdf8");
+        survivalEngine.buildPiece =
+          active && ITEM_CATALOG[active]?.isPlaceable ? active : "wood_wall";
+        survivalEngine.addFloatingText(
+          survivalEngine.isBuildMode ? "Build Mode ON" : "Build Mode OFF",
+          survivalEngine.player.x,
+          survivalEngine.player.y - 1,
+          "#38bdf8",
+        );
       }
     }
 
@@ -2035,7 +2283,20 @@ function initSurvivalInputs() {
       }
     }
 
-    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "w", "a", "s", "d"].includes(key) || e.code === "Space") {
+    if (
+      [
+        "arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        " ",
+        "w",
+        "a",
+        "s",
+        "d",
+      ].includes(key) ||
+      e.code === "Space"
+    ) {
       e.preventDefault();
     }
 
@@ -2078,7 +2339,11 @@ function initSurvivalInputs() {
           wx: worldX,
           wy: worldY,
         });
-        survivalEngine.placeStructure(survivalEngine.buildPiece, worldX, worldY);
+        survivalEngine.placeStructure(
+          survivalEngine.buildPiece,
+          worldX,
+          worldY,
+        );
       } else {
         networkClient?.sendAction({
           type: "CLICK",
@@ -2098,24 +2363,40 @@ function initSurvivalInputs() {
         const screenY = e.clientY - rect.top;
         const halfW = survivalCanvas.width / 2;
         const halfH = survivalCanvas.height / 2;
-        survivalEngine.buildPreviewX = Math.round(survivalRenderer.cameraX + (screenX - halfW) / cellSize);
-        survivalEngine.buildPreviewY = Math.round(survivalRenderer.cameraY + (screenY - halfH) / cellSize);
-        const tile = survivalEngine.worldManager.getTile(survivalEngine.buildPreviewX, survivalEngine.buildPreviewY);
+        survivalEngine.buildPreviewX = Math.round(
+          survivalRenderer.cameraX + (screenX - halfW) / cellSize,
+        );
+        survivalEngine.buildPreviewY = Math.round(
+          survivalRenderer.cameraY + (screenY - halfH) / cellSize,
+        );
+        const tile = survivalEngine.worldManager.getTile(
+          survivalEngine.buildPreviewX,
+          survivalEngine.buildPreviewY,
+        );
         survivalEngine.isBuildPreviewValid = !tile.isWater && !tile.isBlocked;
       }
     });
 
-    survivalCanvas.addEventListener("wheel", (e) => {
-      if (!isSurvivalTabActive || !survivalEngine) return;
-      e.preventDefault();
-      // Cycle hotbar slots with mouse wheel
-      if (e.deltaY > 0) {
-        survivalEngine.activeHotbarIndex = (survivalEngine.activeHotbarIndex + 1) % 8;
-      } else {
-        survivalEngine.activeHotbarIndex = (survivalEngine.activeHotbarIndex + 7) % 8;
-      }
-      networkClient?.sendAction({ type: "SELECT_HOTBAR", index: survivalEngine.activeHotbarIndex });
-    }, { passive: false });
+    survivalCanvas.addEventListener(
+      "wheel",
+      (e) => {
+        if (!isSurvivalTabActive || !survivalEngine) return;
+        e.preventDefault();
+        // Cycle hotbar slots with mouse wheel
+        if (e.deltaY > 0) {
+          survivalEngine.activeHotbarIndex =
+            (survivalEngine.activeHotbarIndex + 1) % 8;
+        } else {
+          survivalEngine.activeHotbarIndex =
+            (survivalEngine.activeHotbarIndex + 7) % 8;
+        }
+        networkClient?.sendAction({
+          type: "SELECT_HOTBAR",
+          index: survivalEngine.activeHotbarIndex,
+        });
+      },
+      { passive: false },
+    );
   }
 }
 
@@ -2141,7 +2422,9 @@ function initSurvivalUI() {
   btnOpenInventory.addEventListener("click", toggleInventoryModal);
   btnOpenPause.addEventListener("click", togglePauseModal);
 
-  btnCloseInventory.addEventListener("click", () => modalInventory.classList.add("hidden"));
+  btnCloseInventory.addEventListener("click", () =>
+    modalInventory.classList.add("hidden"),
+  );
   btnCloseDialogue.addEventListener("click", () => {
     modalDialogue.classList.add("hidden");
     if (survivalEngine) survivalEngine.activeDialogueNPC = null;
@@ -2150,8 +2433,12 @@ function initSurvivalUI() {
     modalChest.classList.add("hidden");
     if (survivalEngine) survivalEngine.activeChest = null;
   });
-  btnClosePause.addEventListener("click", () => modalPause.classList.add("hidden"));
-  btnResumeGame.addEventListener("click", () => modalPause.classList.add("hidden"));
+  btnClosePause.addEventListener("click", () =>
+    modalPause.classList.add("hidden"),
+  );
+  btnResumeGame.addEventListener("click", () =>
+    modalPause.classList.add("hidden"),
+  );
 
   // Save / Load / Reset
   btnSaveGame.addEventListener("click", () => {
@@ -2179,7 +2466,12 @@ function initSurvivalUI() {
         survivalEngine.hotbar = data.hotbar || survivalEngine.hotbar;
         survivalEngine.placedStructures = data.placedStructures || [];
         modalPause.classList.add("hidden");
-        survivalEngine.addFloatingText("Game Loaded!", survivalEngine.player.x, survivalEngine.player.y - 1, "#38bdf8");
+        survivalEngine.addFloatingText(
+          "Game Loaded!",
+          survivalEngine.player.x,
+          survivalEngine.player.y - 1,
+          "#38bdf8",
+        );
       } catch (err) {
         alert("Failed to load save data.");
       }
@@ -2249,7 +2541,8 @@ function renderInventoryGrids() {
     slotEl.addEventListener("click", () => {
       // Swap or transfer item with active hotbar slot
       if (survivalEngine) {
-        const activeHot = survivalEngine.hotbar[survivalEngine.activeHotbarIndex];
+        const activeHot =
+          survivalEngine.hotbar[survivalEngine.activeHotbarIndex];
         const temp = { ...slot };
         survivalEngine.inventory[idx] = { ...activeHot };
         survivalEngine.hotbar[survivalEngine.activeHotbarIndex] = temp;
@@ -2287,10 +2580,14 @@ function renderCraftingList() {
   if (!survivalEngine) return;
   craftRecipesList.innerHTML = "";
 
-  const recipes = CRAFTING_RECIPES.filter((r) => r.category === activeCraftCategory);
+  const recipes = CRAFTING_RECIPES.filter(
+    (r) => r.category === activeCraftCategory,
+  );
 
   recipes.forEach((rec) => {
-    const canCraft = rec.ingredients.every((ing) => survivalEngine?.hasItem(ing.item, ing.count));
+    const canCraft = rec.ingredients.every((ing) =>
+      survivalEngine?.hasItem(ing.item, ing.count),
+    );
     const card = document.createElement("div");
     card.className = "recipe-card";
 
@@ -2324,7 +2621,9 @@ function renderCraftingList() {
 
 function openDialogueModal(npc: NPC) {
   dialogueNpcName.textContent = npc.customTitle || `Village Elder & Merchant`;
-  dialogueNpcText.textContent = npc.customDialogue ? `"${npc.customDialogue}"` : `"Welcome, traveler! Between Oakvale and the next villages (Riverwood, Sunhaven, Pinecrest) lies dangerous open wilderness. Take provisions or barter with us!"`;
+  dialogueNpcText.textContent = npc.customDialogue
+    ? `"${npc.customDialogue}"`
+    : `"Welcome, traveler! Between Oakvale and the next villages (Riverwood, Sunhaven, Pinecrest) lies dangerous open wilderness. Take provisions or barter with us!"`;
 
   barterTradeList.innerHTML = "";
 
@@ -2338,7 +2637,9 @@ function openDialogueModal(npc: NPC) {
   trades.forEach((trade) => {
     const row = document.createElement("div");
     row.className = "barter-row";
-    const canTrade = survivalEngine ? survivalEngine.hasItem(trade.give as ItemId, trade.giveCount) : false;
+    const canTrade = survivalEngine
+      ? survivalEngine.hasItem(trade.give as ItemId, trade.giveCount)
+      : false;
 
     row.innerHTML = `
       <div class="barter-details">
@@ -2351,11 +2652,19 @@ function openDialogueModal(npc: NPC) {
 
     const tradeBtn = row.querySelector("button")!;
     tradeBtn.addEventListener("click", () => {
-      if (survivalEngine && survivalEngine.hasItem(trade.give as ItemId, trade.giveCount)) {
+      if (
+        survivalEngine &&
+        survivalEngine.hasItem(trade.give as ItemId, trade.giveCount)
+      ) {
         survivalEngine.removeItem(trade.give as ItemId, trade.giveCount);
         survivalEngine.addItemToInventory(trade.get as ItemId, trade.getCount);
         GameAudio.playCraft();
-        survivalEngine.addFloatingText("Trade Complete!", survivalEngine.player.x, survivalEngine.player.y - 1, "#34d399");
+        survivalEngine.addFloatingText(
+          "Trade Complete!",
+          survivalEngine.player.x,
+          survivalEngine.player.y - 1,
+          "#34d399",
+        );
         openDialogueModal(npc);
       }
     });
@@ -2372,7 +2681,10 @@ function openChestModal(chest: PlacedStructure) {
   modalChestPlayerGrid.innerHTML = "";
 
   if (!chest.chestStorage) {
-    chest.chestStorage = Array.from({ length: 16 }, () => ({ item: null, count: 0 }));
+    chest.chestStorage = Array.from({ length: 16 }, () => ({
+      item: null,
+      count: 0,
+    }));
   }
 
   // Render 16 chest slots
@@ -2407,7 +2719,9 @@ function openChestModal(chest: PlacedStructure) {
     slotEl.addEventListener("click", () => {
       // Transfer into first empty chest slot
       if (slot.item && chest.chestStorage) {
-        const emptySlot = chest.chestStorage.find((s: InventorySlot) => !s.item);
+        const emptySlot = chest.chestStorage.find(
+          (s: InventorySlot) => !s.item,
+        );
         if (emptySlot) {
           emptySlot.item = slot.item;
           emptySlot.count = slot.count;
@@ -2425,11 +2739,14 @@ function openChestModal(chest: PlacedStructure) {
 
 // Initial auto-start on page load (support ?tab=game or hash #game)
 const urlParams = new URLSearchParams(window.location.search);
-const initialTab = urlParams.get("tab") || (window.location.hash ? window.location.hash.replace("#", "") : null);
-if (initialTab && ["game", "settlement", "houses", "terrain", "assets-map"].includes(initialTab)) {
+const initialTab =
+  urlParams.get("tab") ||
+  (window.location.hash ? window.location.hash.replace("#", "") : null);
+if (
+  initialTab &&
+  ["game", "settlement", "houses", "terrain", "assets-map"].includes(initialTab)
+) {
   switchTab(initialTab as any);
 } else {
   switchTab("game");
 }
-
-

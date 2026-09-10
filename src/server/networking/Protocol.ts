@@ -20,6 +20,7 @@ import { WorldTime, Quest, ItemId } from "../../game/GameTypes";
 export interface ClientJoinMessage {
   name: string;
   hairstyle: string;
+  token?: string; // Session token for reconnection (Section 26)
 }
 
 export interface ClientInputMessage {
@@ -27,6 +28,7 @@ export interface ClientInputMessage {
   vx: number;
   vy: number;
   isSprinting: boolean;
+  dt: number;
 }
 
 export type ClientActionMessage =
@@ -35,6 +37,8 @@ export type ClientActionMessage =
   | { type: "JUMP" }
   | { type: "ROLL" }
   | { type: "INTERACT" }
+  | { type: "PET"; animalId?: number }
+  | { type: "ATTACK_RESOURCE"; resourceId: number }
   | { type: "FEED" }
   | { type: "EAT" }
   | { type: "CRAFT"; recipeId: string }
@@ -51,6 +55,7 @@ export interface ServerInitMessage {
   player: PlayerEntityState;
   otherPlayers: PlayerEntityState[];
   placedStructures: StructureEntityState[];
+  droppedItems: DroppedItemEntityState[];
   quests: Quest[];
 }
 
@@ -64,7 +69,7 @@ export interface ServerSyncMessage {
   animals: AnimalEntityState[];
   npcs: NPCEntityState[];
   enemies: EnemyEntityState[];
-  droppedItems: DroppedItemEntityState[];
-  placedStructures: StructureEntityState[];
+  droppedItems?: DroppedItemEntityState[];
+  placedStructures?: StructureEntityState[];
   events: GameEvent[];
 }

@@ -1,6 +1,6 @@
 /**
  * BuildingSystem.ts - Authoritative Structure Placement & Container System
- * 
+ *
  * Implements Section 4 & 5 of authoritative_server.txt:
  * Validates structure placement on the server, updates world collision maps,
  * manages chest inventories and door states.
@@ -18,7 +18,12 @@ export class BuildingSystem {
     this.gameState = gameState;
   }
 
-  public placeStructure(player: PlayerEntityState, pieceId: ItemId, wx: number, wy: number): boolean {
+  public placeStructure(
+    player: PlayerEntityState,
+    pieceId: ItemId,
+    wx: number,
+    wy: number,
+  ): boolean {
     if (player.isDead) return false;
 
     const tileX = Math.round(wx);
@@ -49,7 +54,10 @@ export class BuildingSystem {
 
     // 3. Structure overlap check
     for (const struct of this.gameState.placedStructures) {
-      if (Math.abs(struct.x - tileX) < 0.8 && Math.abs(struct.y - tileY) < 0.8) {
+      if (
+        Math.abs(struct.x - tileX) < 0.8 &&
+        Math.abs(struct.y - tileY) < 0.8
+      ) {
         this.gameState.eventBus.emit("FLOATING_TEXT", {
           text: "Space already occupied!",
           x: tileX,
@@ -76,7 +84,10 @@ export class BuildingSystem {
       y: tileY,
       w: 1,
       h: 1,
-      chestStorage: structType === "chest" ? Array.from({ length: 16 }, () => ({ item: null, count: 0 })) : undefined,
+      chestStorage:
+        structType === "chest"
+          ? Array.from({ length: 16 }, () => ({ item: null, count: 0 }))
+          : undefined,
       isOpen: false,
     };
 
@@ -90,7 +101,10 @@ export class BuildingSystem {
       x: tileX,
       y: tileY,
     });
-    this.gameState.eventBus.emit("AUDIO_TRIGGER", { sound: "build", playerId: player.id });
+    this.gameState.eventBus.emit("AUDIO_TRIGGER", {
+      sound: "build",
+      playerId: player.id,
+    });
     this.gameState.eventBus.emit("FLOATING_TEXT", {
       text: `Placed ${ITEM_CATALOG[pieceId]?.name || pieceId}`,
       x: tileX,
@@ -99,7 +113,12 @@ export class BuildingSystem {
     });
 
     if (pieceId === "campfire") {
-      this.gameState.updateQuestProgress("build_campfire", 1, player.x, player.y);
+      this.gameState.updateQuestProgress(
+        "build_campfire",
+        1,
+        player.x,
+        player.y,
+      );
     }
 
     return true;
@@ -114,7 +133,11 @@ export class BuildingSystem {
     }
   }
 
-  private playerHasItem(player: PlayerEntityState, item: ItemId, count = 1): boolean {
+  private playerHasItem(
+    player: PlayerEntityState,
+    item: ItemId,
+    count = 1,
+  ): boolean {
     let total = 0;
     for (const s of [...player.hotbar, ...player.inventory]) {
       if (s.item === item) total += s.count;
@@ -122,7 +145,11 @@ export class BuildingSystem {
     return total >= count;
   }
 
-  private removePlayerItem(player: PlayerEntityState, item: ItemId, count: number): void {
+  private removePlayerItem(
+    player: PlayerEntityState,
+    item: ItemId,
+    count: number,
+  ): void {
     let needed = count;
     for (const s of [...player.hotbar, ...player.inventory]) {
       if (s.item === item) {

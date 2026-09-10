@@ -770,26 +770,31 @@ export class SurvivalEngine {
     this.jump();
   }
 
-  private canMoveTo(x: number, y: number): boolean {
-    const r = 0.22;
+  public canMoveTo(x: number, y: number): boolean {
+    const footX = x + 0.5;
+    const footY = y + 0.65;
+    const rx = 0.22;
+    const ry = 0.16;
     const pts = [
-      { x: x - r, y: y - r },
-      { x: x + r, y: y - r },
-      { x: x - r, y: y + r },
-      { x: x + r, y: y + r },
+      { x: footX - rx, y: footY - ry },
+      { x: footX + rx, y: footY - ry },
+      { x: footX - rx, y: footY + ry },
+      { x: footX + rx, y: footY + ry },
     ];
     for (const p of pts) {
       const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
       if (tile.isBlocked) return false;
-      if (this.isBlockedByStructure(p.x, p.y)) return false;
+      if (this.isBlockedByStructure(footX, footY)) return false;
     }
     return true;
   }
 
-  private isBlockedByStructure(x: number, y: number): boolean {
+  private isBlockedByStructure(footX: number, footY: number): boolean {
     for (const struct of this.placedStructures) {
       if (struct.type === "wood_wall" || (struct.type === "wood_door" && !struct.isOpen)) {
-        if (Math.abs(x - (struct.x + 0.5)) < 0.55 && Math.abs(y - (struct.y + 0.5)) < 0.55) {
+        const sx = struct.x + 0.5;
+        const sy = struct.y + 0.5;
+        if (Math.abs(footX - sx) < 0.62 && Math.abs(footY - sy) < 0.62) {
           return true;
         }
       }

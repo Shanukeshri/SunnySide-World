@@ -11,6 +11,7 @@ import { PlayerEntityState } from "../core/Entity";
 import { ResourceNode, ItemId } from "../GameTypes";
 import { ITEM_CATALOG } from "../SurvivalEngine";
 import { CombatSystem } from "./CombatSystem";
+import { generateRandom, randomInt, randomChance } from "../core/Random";
 
 export class ResourceSystem {
   private gameState: GameState;
@@ -77,21 +78,21 @@ export class ResourceSystem {
       res.isDepleted = true;
 
       if (res.type === "crop") {
-        this.gameState.spawnDroppedItem("wheat", 1 + Math.floor(Math.random() * 2), res.x, res.y);
-        if (Math.random() < 0.5) {
+        this.gameState.spawnDroppedItem("wheat", randomInt(res.id, 1, 2), res.x, res.y);
+        if (randomChance(res.id, 0.5)) {
           this.gameState.spawnDroppedItem("seeds", 1, res.x + 0.2, res.y);
         }
       } else if (res.type === "tree") {
-        const count = 3 + Math.floor(Math.random() * 3);
+        const count = randomInt(res.id, 3, 5);
         this.gameState.spawnDroppedItem(res.lootItem, count, res.x, res.y);
-        if (res.secondaryLoot && Math.random() < 0.55) {
+        if (res.secondaryLoot && randomChance(res.id, 0.55)) {
           this.gameState.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.3, res.y);
         }
         this.gameState.eventBus.emit("TREE_DESTROYED", { resourceId: res.id, x: res.x, y: res.y });
       } else {
-        const count = 2 + Math.floor(Math.random() * 2);
+        const count = randomInt(res.id, 2, 3);
         this.gameState.spawnDroppedItem(res.lootItem, count, res.x, res.y);
-        if (res.secondaryLoot && Math.random() < 0.55) {
+        if (res.secondaryLoot && randomChance(res.id, 0.55)) {
           this.gameState.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.3, res.y);
         }
         this.gameState.eventBus.emit("ROCK_DESTROYED", { resourceId: res.id, x: res.x, y: res.y });

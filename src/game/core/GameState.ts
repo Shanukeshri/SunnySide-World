@@ -199,6 +199,7 @@ export class GameState {
       activeHotbarIndex: 0,
       activeHeldItem: "wooden_axe",
       lastProcessedInputSeq: 0,
+      inputQueue: [],
     };
 
     this.players.set(sessionId, player);
