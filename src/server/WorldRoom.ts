@@ -24,6 +24,7 @@ import { SpawnSystem } from "../game/systems/SpawnSystem";
 import { WorldSystem } from "../game/systems/WorldSystem";
 import { PlayerEntityState } from "../game/core/Entity";
 import { ServerSyncMessage } from "./networking/Protocol";
+import { PersistenceManager } from "./persistence/PersistenceManager";
 import type { ITransportSocket } from "./GameServer";
 
 /** Generates a human-readable invite code like SUNNY-4821 */
@@ -42,6 +43,7 @@ export class WorldRoom {
   public gameState: GameState;
   public eventBus: EventBus;
   public gameLoop: GameLoop;
+  public persistence: PersistenceManager;
 
   // Systems
   public playerSystem: PlayerSystem;
@@ -58,11 +60,13 @@ export class WorldRoom {
   /** Active socket connections for all players in this room (keyed by sessionId) */
   public sockets = new Map<string, ITransportSocket>();
 
-  /** Delta dirty flags for structures and dropped items */
+  /** Delta dirty flags for structures, dropped items, and depleted resources */
   private structuresDirty = true;
   private droppedItemsDirty = true;
+  private depletedDirty = true;
   private lastStructuresLength = -1;
   private lastDroppedItemsLength = -1;
+  private lastDepletedCount = -1;
 
   constructor(seed: number, tickRate: number, ownerSessionId: string) {
     this.roomId = `room_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
@@ -71,6 +75,9 @@ export class WorldRoom {
 
     this.eventBus = new EventBus();
     this.gameState = new GameState(seed, this.eventBus);
+
+    this.persistence = new PersistenceManager("./saves", `room_${this.inviteCode}.json`);
+    this.persistence.loadSnapshot(this.gameState);
 
     this.playerSystem = new PlayerSystem(this.gameState);
     this.animalSystem = new AnimalSystem(this.gameState);
@@ -88,10 +95,13 @@ export class WorldRoom {
 
   public start(): void {
     this.gameLoop.start();
+    this.persistence.startAutoSave(this.gameState);
   }
 
   public stop(): void {
     this.gameLoop.stop();
+    this.persistence.stopAutoSave();
+    this.persistence.saveSnapshot(this.gameState);
   }
 
   public get isEmpty(): boolean {
@@ -134,6 +144,11 @@ export class WorldRoom {
       this.gameState.droppedItems.length !== this.lastDroppedItemsLength ||
       tick % 100 === 0;
 
+    const shouldSendDepleted =
+      this.depletedDirty ||
+      this.gameState.depletedResourceIds.size !== this.lastDepletedCount ||
+      tick % 100 === 0;
+
     if (shouldSendStructures) {
       this.lastStructuresLength = this.gameState.placedStructures.length;
       this.structuresDirty = false;
@@ -142,9 +157,14 @@ export class WorldRoom {
       this.lastDroppedItemsLength = this.gameState.droppedItems.length;
       this.droppedItemsDirty = false;
     }
+    if (shouldSendDepleted) {
+      this.lastDepletedCount = this.gameState.depletedResourceIds.size;
+      this.depletedDirty = false;
+    }
 
     const placedStructuresPayload = shouldSendStructures ? this.gameState.placedStructures : undefined;
     const droppedItemsPayload = shouldSendDroppedItems ? this.gameState.droppedItems : undefined;
+    const depletedPayload = shouldSendDepleted ? Array.from(this.gameState.depletedResourceIds) : undefined;
 
     for (const [sessionId, socket] of this.sockets.entries()) {
       const player = this.gameState.getPlayer(sessionId);
@@ -164,6 +184,7 @@ export class WorldRoom {
         enemies: this.gameState.enemies,
         droppedItems: droppedItemsPayload,
         placedStructures: placedStructuresPayload,
+        depletedResourceIds: depletedPayload,
         events,
       };
 
@@ -198,9 +219,15 @@ export class WorldRoom {
 
   public markStructuresDirty(): void {
     this.structuresDirty = true;
+    this.persistence.markDirty();
   }
 
   public markDroppedItemsDirty(): void {
     this.droppedItemsDirty = true;
+  }
+
+  public markDepletedDirty(): void {
+    this.depletedDirty = true;
+    this.persistence.markDirty();
   }
 }

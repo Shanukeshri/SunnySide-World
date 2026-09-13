@@ -56,6 +56,7 @@ export interface ServerInitMessage {
   otherPlayers: PlayerEntityState[];
   placedStructures: StructureEntityState[];
   droppedItems: DroppedItemEntityState[];
+  depletedResourceIds?: number[];
   quests: Quest[];
   /** Room the player was placed in (if multiplayer) */
   roomId?: string;
@@ -75,6 +76,7 @@ export interface ServerSyncMessage {
   enemies: EnemyEntityState[];
   droppedItems?: DroppedItemEntityState[];
   placedStructures?: StructureEntityState[];
+  depletedResourceIds?: number[];
   events: GameEvent[];
 }
 

@@ -73,13 +73,16 @@ export class GameServer {
   // Reconnection and token session management (Section 26)
   private tokenPlayerMap = new Map<string, PlayerEntityState>();
   private playerTokenMap = new Map<string, string>(); // sessionId -> token
+  private tokenToRoomMap = new Map<string, string>(); // token -> roomId
   private disconnectTimers = new Map<string, any>();
 
   // Delta synchronization trackers (Section 28)
   private structuresDirty = true;
   private droppedItemsDirty = true;
+  private depletedDirty = true;
   private lastStructuresLength = -1;
   private lastDroppedItemsLength = -1;
+  private lastDepletedCount = -1;
 
   // ─── Room / Multiplayer management (spec items 19-23) ──────────────────────
   /** All active WorldRoom instances, keyed by roomId */
@@ -300,12 +303,57 @@ export class GameServer {
 
     let player: PlayerEntityState | undefined;
 
-    // Check if player is reconnecting with an existing valid session token (Section 26)
+    // Check if player is reconnecting with an existing valid session token (Section 26 & Part F)
     if (token && this.tokenPlayerMap.has(token)) {
       player = this.tokenPlayerMap.get(token)!;
       console.log(`[GameServer] Reconnecting existing player: ${player.name} (id: ${player.id}, token: ${token})`);
 
-      // Clear any pending disconnect cleanup timer
+      // Check if this player was inside an active WorldRoom
+      const roomId = this.tokenToRoomMap.get(token);
+      const room = roomId ? this.rooms.get(roomId) : undefined;
+
+      if (room) {
+        // Clear pending room disconnect timer
+        if (this.disconnectTimers.has(player.sessionId)) {
+          clearTimeout(this.disconnectTimers.get(player.sessionId));
+          this.disconnectTimers.delete(player.sessionId);
+        }
+
+        // Re-bind to room state and new socket ID
+        room.gameState.players.delete(player.sessionId);
+        player.sessionId = socket.id;
+        room.gameState.players.set(socket.id, player);
+        room.sockets.set(socket.id, socket);
+        this.socketToRoom.set(socket.id, room.roomId);
+        this.playerTokenMap.set(socket.id, token);
+
+        const otherPlayers = Array.from(room.gameState.players.values()).filter(
+          (p) => p.sessionId !== socket.id,
+        );
+
+        const isOwner = room.ownerSessionId === player.sessionId || room.ownerSessionId === socket.id;
+
+        const initMsg: ServerInitMessage = {
+          playerId: player.id,
+          sessionId: socket.id,
+          seed: room.gameState.seed,
+          worldTime: room.gameState.worldTime,
+          player,
+          otherPlayers,
+          placedStructures: room.gameState.placedStructures,
+          droppedItems: room.gameState.droppedItems,
+          depletedResourceIds: Array.from(room.gameState.depletedResourceIds),
+          quests: room.gameState.quests,
+          roomId: room.roomId,
+          inviteCode: isOwner ? room.inviteCode : undefined,
+        };
+
+        socket.emit("init", initMsg);
+        console.log(`[GameServer] Successfully restored player ${player.name} into room ${room.roomId}`);
+        return;
+      }
+
+      // Single-player reconnection
       if (this.disconnectTimers.has(player.sessionId)) {
         clearTimeout(this.disconnectTimers.get(player.sessionId));
         this.disconnectTimers.delete(player.sessionId);
@@ -338,6 +386,7 @@ export class GameServer {
       otherPlayers,
       placedStructures: this.gameState.placedStructures,
       droppedItems: this.gameState.droppedItems,
+      depletedResourceIds: Array.from(this.gameState.depletedResourceIds),
       quests: this.gameState.quests,
     };
 
@@ -351,14 +400,21 @@ export class GameServer {
 
     // ── Room cleanup ──────────────────────────────────────────────────────────
     const roomId = this.socketToRoom.get(sessionId);
+    const token = this.playerTokenMap.get(sessionId);
+
     if (roomId) {
       this.socketToRoom.delete(sessionId);
+      if (token) this.playerTokenMap.delete(sessionId);
       const room = this.rooms.get(roomId);
       if (room) {
         room.removeSocket(sessionId);
-        // Grace period: keep player entity for 30s to allow reconnect
+        // Grace period: keep player entity for 30s to allow reconnect (Section 26 & Part F)
         const timer = setTimeout(() => {
           room.gameState.removePlayer(sessionId);
+          if (token) {
+            this.tokenPlayerMap.delete(token);
+            this.tokenToRoomMap.delete(token);
+          }
           // Destroy empty room
           if (room.isEmpty && room.gameState.players.size === 0) {
             room.stop();
@@ -374,13 +430,12 @@ export class GameServer {
     }
 
     // ── Single-player cleanup ─────────────────────────────────────────────────
-    const token = this.playerTokenMap.get(sessionId);
-
     if (token) {
       // Grace period (30s) before destroying the player entity to allow reconnect (Section 26)
       const timer = setTimeout(() => {
         this.gameState.removePlayer(sessionId);
         this.tokenPlayerMap.delete(token);
+        this.tokenToRoomMap.delete(token);
         this.playerTokenMap.delete(sessionId);
         this.disconnectTimers.delete(sessionId);
         this.persistence.markDirty();
@@ -442,6 +497,8 @@ export class GameServer {
         if (res && !res.isDepleted) {
           this.resourceSystem.harvestResource(player, res);
           this.droppedItemsDirty = true;
+          this.depletedDirty = true;
+          this.persistence.markDirty();
           return;
         }
 
@@ -455,6 +512,8 @@ export class GameServer {
         if (res && !res.isDepleted) {
           this.resourceSystem.harvestResource(player, res);
           this.droppedItemsDirty = true;
+          this.depletedDirty = true;
+          this.persistence.markDirty();
         }
         break;
       }
@@ -582,6 +641,11 @@ export class GameServer {
       this.gameState.droppedItems.length !== this.lastDroppedItemsLength ||
       tick % 100 === 0;
 
+    const shouldSendDepleted =
+      this.depletedDirty ||
+      this.gameState.depletedResourceIds.size !== this.lastDepletedCount ||
+      tick % 100 === 0;
+
     if (shouldSendStructures) {
       this.lastStructuresLength = this.gameState.placedStructures.length;
       this.structuresDirty = false;
@@ -590,6 +654,10 @@ export class GameServer {
       this.lastDroppedItemsLength = this.gameState.droppedItems.length;
       this.droppedItemsDirty = false;
     }
+    if (shouldSendDepleted) {
+      this.lastDepletedCount = this.gameState.depletedResourceIds.size;
+      this.depletedDirty = false;
+    }
 
     const placedStructuresPayload = shouldSendStructures
       ? this.gameState.placedStructures
@@ -597,6 +665,10 @@ export class GameServer {
 
     const droppedItemsPayload = shouldSendDroppedItems
       ? this.gameState.droppedItems
+      : undefined;
+
+    const depletedPayload = shouldSendDepleted
+      ? Array.from(this.gameState.depletedResourceIds)
       : undefined;
 
     for (const [sessionId, socket] of this.socketMap.entries()) {
@@ -618,6 +690,7 @@ export class GameServer {
         enemies: this.gameState.enemies,
         droppedItems: droppedItemsPayload,
         placedStructures: placedStructuresPayload,
+        depletedResourceIds: depletedPayload,
         events,
       };
 
@@ -648,6 +721,7 @@ export class GameServer {
     if (token) {
       this.tokenPlayerMap.set(token, player);
       this.playerTokenMap.set(socket.id, token);
+      this.tokenToRoomMap.set(token, room.roomId);
     }
 
     const otherPlayers = Array.from(room.gameState.players.values()).filter(
@@ -663,6 +737,7 @@ export class GameServer {
       otherPlayers,
       placedStructures: room.gameState.placedStructures,
       droppedItems: room.gameState.droppedItems,
+      depletedResourceIds: Array.from(room.gameState.depletedResourceIds),
       quests: room.gameState.quests,
       roomId: room.roomId,
       inviteCode: room.inviteCode, // Only owner gets this
@@ -697,6 +772,7 @@ export class GameServer {
     if (token) {
       this.tokenPlayerMap.set(token, player);
       this.playerTokenMap.set(socket.id, token);
+      this.tokenToRoomMap.set(token, room.roomId);
     }
 
     const otherPlayers = Array.from(room.gameState.players.values()).filter(
@@ -712,6 +788,7 @@ export class GameServer {
       otherPlayers,
       placedStructures: room.gameState.placedStructures,
       droppedItems: room.gameState.droppedItems,
+      depletedResourceIds: Array.from(room.gameState.depletedResourceIds),
       quests: room.gameState.quests,
       roomId: room.roomId,
       // Note: inviteCode is NOT sent to joining players
@@ -787,6 +864,12 @@ export class GameServer {
     this.socketToRoom.set(socket.id, room.roomId);
     const player = room.addPlayer(socket, name, hairstyle);
 
+    const token = this.playerTokenMap.get(socket.id);
+    if (token) {
+      this.tokenPlayerMap.set(token, player);
+      this.tokenToRoomMap.set(token, room.roomId);
+    }
+
     const otherPlayers = Array.from(room.gameState.players.values()).filter(
       (p) => p.sessionId !== socket.id,
     );
@@ -800,6 +883,7 @@ export class GameServer {
       otherPlayers,
       placedStructures: room.gameState.placedStructures,
       droppedItems: room.gameState.droppedItems,
+      depletedResourceIds: Array.from(room.gameState.depletedResourceIds),
       quests: room.gameState.quests,
       roomId: room.roomId,
     };
@@ -856,6 +940,8 @@ export class GameServer {
       case "CLICK": {
         const { wx, wy } = action as any;
         player.swingTimer = 0.25;
+
+        // Check animal hit
         for (const animal of room.gameState.animals) {
           if (animal.behaviorState === "DEAD") continue;
           if (
@@ -873,20 +959,49 @@ export class GameServer {
             return;
           }
         }
+
+        // Check enemy hit
+        for (const enemy of room.gameState.enemies) {
+          if (!enemy.isAlive) continue;
+          if (
+            Math.hypot(wx - enemy.x, wy - enemy.y) < 1.4 &&
+            Math.hypot(player.x - enemy.x, player.y - enemy.y) < 3.2
+          ) {
+            room.combatSystem.attackEnemy(player, enemy);
+            return;
+          }
+        }
+
+        // Check resource hit
         const res = room.gameState.worldManager.getResourceAt(wx, wy, 1.4);
         if (res && !res.isDepleted) {
           room.resourceSystem.harvestResource(player, res);
           room.markDroppedItemsDirty();
+          room.markDepletedDirty();
           return;
         }
+
+        // Fallback: directional hit
         room.combatSystem.performPlayerHit(player);
         break;
       }
+
+      case "ATTACK_RESOURCE": {
+        const res = room.gameState.worldManager.getResourceById(action.resourceId);
+        if (res && !res.isDepleted) {
+          room.resourceSystem.harvestResource(player, res);
+          room.markDroppedItemsDirty();
+          room.markDepletedDirty();
+        }
+        break;
+      }
+
       case "JUMP":
       case "ROLL": {
         room.playerSystem.jump(player);
         break;
       }
+
       case "INTERACT": {
         for (const npc of room.gameState.npcs) {
           if (Math.hypot(player.x - npc.x, player.y - npc.y) < 2.4) {
@@ -904,12 +1019,40 @@ export class GameServer {
         }
         break;
       }
+
       case "PET": {
         const animalId = (action as any).animalId;
         if (animalId) {
           const animal = room.gameState.animals.find((a) => a.id === animalId);
           if (animal && Math.hypot(player.x - animal.x, player.y - animal.y) < 2.5) {
             if (room.animalSystem.petAnimal(animal, player.x, player.y)) player.hopTimer = 0.35;
+          }
+        } else {
+          for (const animal of room.gameState.animals) {
+            if (Math.hypot(player.x - animal.x, player.y - animal.y) < 2.2) {
+              if (room.animalSystem.petAnimal(animal, player.x, player.y)) {
+                player.hopTimer = 0.35;
+                return;
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case "FEED": {
+        for (const animal of room.gameState.animals) {
+          if (Math.hypot(player.x - animal.x, player.y - animal.y) < 2.2) {
+            const foodItems = ["wheat", "seeds", "berries", "apple"] as const;
+            for (const f of foodItems) {
+              const slot = [...player.hotbar, ...player.inventory].find((s) => s.item === f);
+              if (slot && slot.count > 0) {
+                slot.count--;
+                if (slot.count <= 0) slot.item = null;
+                room.animalSystem.feedAnimal(animal, player.x, player.y);
+                return;
+              }
+            }
           }
         }
         break;

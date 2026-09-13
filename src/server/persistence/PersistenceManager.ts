@@ -14,6 +14,7 @@ export interface WorldSnapshot {
   seed: number;
   worldTime: GameState["worldTime"];
   placedStructures: GameState["placedStructures"];
+  depletedResourceIds?: number[];
   players: {
     sessionId: string;
     name: string;
@@ -95,6 +96,7 @@ export class PersistenceManager {
         seed: gameState.seed,
         worldTime: gameState.worldTime,
         placedStructures: gameState.placedStructures,
+        depletedResourceIds: Array.from(gameState.depletedResourceIds),
         players: Array.from(gameState.players.values()).map((p) => ({
           sessionId: p.sessionId,
           name: p.name,
@@ -158,6 +160,11 @@ export class PersistenceManager {
             const tile = gameState.worldManager.getTile(s.x, s.y);
             tile.isBlocked = true;
           }
+        }
+      }
+      if (Array.isArray(snapshot.depletedResourceIds)) {
+        for (const rid of snapshot.depletedResourceIds) {
+          gameState.markResourceDepleted(rid);
         }
       }
 

@@ -10,6 +10,7 @@ import { GameState } from "../core/GameState";
 import { PlayerEntityState } from "../core/Entity";
 import { ITEM_CATALOG } from "../SurvivalEngine";
 import { ItemId } from "../GameTypes";
+import { SWIM_MULTIPLIER } from "../MovementConstants";
 
 export class PlayerSystem {
   private gameState: GameState;
@@ -75,7 +76,7 @@ export class PlayerSystem {
 
         let baseSpeed = isSprinting && player.stamina > 10 ? player.sprintSpeed : player.speed;
         if (player.isSwimming) {
-          baseSpeed *= 0.65;
+          baseSpeed *= SWIM_MULTIPLIER;
         }
 
         // Stamina logic per input slice

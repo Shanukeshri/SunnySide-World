@@ -48,6 +48,7 @@ export class GameState {
   public enemies: EnemyEntityState[] = [];
   public droppedItems: DroppedItemEntityState[] = [];
   public placedStructures: StructureEntityState[] = [];
+  public depletedResourceIds: Set<number> = new Set();
 
   // Quests (per-player or realm-wide)
   public quests: Quest[] = [
@@ -272,6 +273,26 @@ export class GameState {
           color: "#facc15",
         });
         this.eventBus.emit("AUDIO_TRIGGER", { sound: "craft" });
+      }
+    }
+  }
+
+  /**
+   * Authoritatively marks a resource as depleted, clearing collision on its footprint tiles.
+   */
+  public markResourceDepleted(resourceId: number): void {
+    this.depletedResourceIds.add(resourceId);
+    const res = this.worldManager.getResourceById(resourceId);
+    if (res) {
+      res.isDepleted = true;
+      for (let dy = 0; dy < res.h; dy++) {
+        for (let dx = 0; dx < res.w; dx++) {
+          const tile = this.worldManager.getTile(
+            Math.floor(res.x + dx),
+            Math.floor(res.y + dy)
+          );
+          tile.isBlocked = false;
+        }
       }
     }
   }

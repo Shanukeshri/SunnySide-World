@@ -76,6 +76,7 @@ export class ResourceSystem {
 
     if (res.health <= 0) {
       res.isDepleted = true;
+      this.gameState.depletedResourceIds.add(res.id);
 
       if (res.type === "crop") {
         this.gameState.spawnDroppedItem("wheat", randomInt(res.id, 1, 2), res.x, res.y);

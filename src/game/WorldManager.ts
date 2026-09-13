@@ -113,6 +113,7 @@ export class WorldManager {
   }[] = [];
 
   private nextResourceId = 1;
+  public depletedResourceIds: Set<number> = new Set();
   private stampedVillages = new Set<number>();
 
   constructor(seed: number = 42891) {
@@ -747,6 +748,23 @@ export class WorldManager {
       }
     }
     return null;
+  }
+
+  /**
+   * Authoritatively marks a resource node as depleted and unblocks its collision footprint.
+   */
+  public markResourceDepleted(id: number): void {
+    this.depletedResourceIds.add(id);
+    const res = this.getResourceById(id);
+    if (res) {
+      res.isDepleted = true;
+      for (let dy = 0; dy < res.h; dy++) {
+        for (let dx = 0; dx < res.w; dx++) {
+          const tile = this.getTile(Math.floor(res.x + dx), Math.floor(res.y + dy));
+          tile.isBlocked = false;
+        }
+      }
+    }
   }
 
   /**

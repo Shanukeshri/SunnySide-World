@@ -1440,13 +1440,35 @@ function setupNetworkClientHandlers() {
   networkClient.onInit((init) => {
     if (!survivalEngine) return;
     if (init.placedStructures) {
-      survivalEngine.placedStructures = init.placedStructures as any;
+      survivalEngine.placedStructures = (init.placedStructures as any[]).map((s) => ({
+        ...s,
+        type: s.type || s.structureType,
+      }));
+      for (const s of survivalEngine.placedStructures) {
+        if (s.type === "wood_wall") {
+          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
+          tile.isBlocked = true;
+        } else if (s.type === "wood_door") {
+          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
+          tile.isBlocked = !s.isOpen;
+        }
+      }
     }
     if (init.droppedItems) {
       survivalEngine.droppedItems = init.droppedItems as any;
     }
+    if (init.depletedResourceIds) {
+      for (const rid of init.depletedResourceIds) {
+        survivalEngine.worldManager.markResourceDepleted(rid);
+      }
+    }
     if (init.worldTime) {
       survivalEngine.worldTime = init.worldTime;
+    }
+    if (init.player) {
+      survivalEngine.player.x = init.player.x;
+      survivalEngine.player.y = init.player.y;
+      survivalEngine.worldManager.updatePlayerLocation(init.player.x, init.player.y);
     }
   });
 
@@ -1478,7 +1500,24 @@ function setupNetworkClientHandlers() {
       survivalEngine.worldTime = sync.worldTime;
     }
     if (sync.placedStructures) {
-      survivalEngine.placedStructures = sync.placedStructures as any;
+      survivalEngine.placedStructures = (sync.placedStructures as any[]).map((s) => ({
+        ...s,
+        type: s.type || s.structureType,
+      }));
+      for (const s of survivalEngine.placedStructures) {
+        if (s.type === "wood_wall") {
+          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
+          tile.isBlocked = true;
+        } else if (s.type === "wood_door") {
+          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
+          tile.isBlocked = !s.isOpen;
+        }
+      }
+    }
+    if (sync.depletedResourceIds) {
+      for (const rid of sync.depletedResourceIds) {
+        survivalEngine.worldManager.markResourceDepleted(rid);
+      }
     }
 
     // Synchronize remote players with interpolated positions
@@ -1608,6 +1647,18 @@ function setupNetworkClientHandlers() {
         ev.payload.y,
         "#94a3b8",
       );
+    } else if (ev.type === "TREE_DESTROYED" || ev.type === "ROCK_DESTROYED") {
+      const rid = (ev.payload as any)?.resourceId;
+      if (rid !== undefined) {
+        survivalEngine.worldManager.markResourceDepleted(rid);
+      }
+      if (ev.type === "TREE_DESTROYED") {
+        GameAudio.playChop();
+        (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#a16207");
+      } else {
+        GameAudio.playMine();
+        (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#94a3b8");
+      }
     } else if (ev.type === "ANIMAL_PETTED" || ev.type === "ANIMAL_FED") {
       GameAudio.playHeartChime();
       (survivalEngine as any).emitHeart(ev.payload.x, ev.payload.y);
