@@ -52,13 +52,16 @@ export class LifeformManager {
     setGlobalRngSeed(settlementData.seed || 12345);
     this.detector.updateSettlementData(settlementData);
 
-    // 1. Spawn Player in Village Center or near first house
-    const spawnX = settlementData.houses[0]?.door?.x ?? Math.floor(settlementData.width / 2);
-    const spawnY = settlementData.houses[0]?.door?.y ? settlementData.houses[0].door.y + 1 : Math.floor(settlementData.height / 2);
+    // 1. Spawn Player in Village Center or near first house (centered on walkable tile)
+    const baseSpawnX = settlementData.houses[0]?.door?.x ?? Math.floor(settlementData.width / 2);
+    const baseSpawnY = settlementData.houses[0]?.door?.y ? settlementData.houses[0].door.y + 1 : Math.floor(settlementData.height / 2);
+    const spawnX = baseSpawnX + 0.5;
+    const spawnY = baseSpawnY + 0.5;
 
-    const validPlayerSpot = this.detector.isWalkable(spawnX, spawnY)
+    const validPlayerSpot = this.detector.isAreaWalkable(spawnX, spawnY)
       ? { x: spawnX, y: spawnY }
-      : this.detector.findSpawnLocation(['VILLAGE', 'GRASSLAND'], 30, () => generateRandom(0)) || { x: 10, y: 10 };
+      : this.findWalkableOffset(spawnX, spawnY, 4.0) ||
+        this.detector.findSpawnLocation(['VILLAGE', 'GRASSLAND'], 30, () => generateRandom(0)) || { x: 10, y: 10 };
 
     this.player = new Player(this.nextEntityId++, SPECIES_CONFIGS.player, validPlayerSpot.x, validPlayerSpot.y);
 

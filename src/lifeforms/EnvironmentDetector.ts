@@ -71,8 +71,11 @@ export class EnvironmentDetector {
   /**
    * Checks if a logical tile coordinate is traversable for entities.
    */
+  /**
+   * Checks if a logical tile coordinate is traversable for entities.
+   */
   public isWalkable(x: number, y: number, allowWater: boolean = false, waterOnly: boolean = false): boolean {
-    const margin = 0.6;
+    const margin = 0.5;
     if (
       x < margin ||
       x >= this.settlementData.width - margin ||
@@ -89,11 +92,11 @@ export class EnvironmentDetector {
     const cell = row[tileX];
     if (!cell) return false;
 
-    const isCellWater = cell.isWater || cell.terrain?.startsWith('water_');
+    const isCellWater = Boolean(cell.isWater || cell.terrain?.startsWith('water_'));
 
     // If creature is swimming (e.g. ducks in pond)
     if (waterOnly) {
-      return Boolean(isCellWater || cell.terrain === 'shore_transition_01');
+      return isCellWater;
     }
 
     // Land creature walking into water
@@ -101,40 +104,90 @@ export class EnvironmentDetector {
       return false;
     }
 
-    // Buildings & solid structures (houses)
-    for (const house of this.settlementData.houses) {
-      if (
-        x >= house.x - 0.2 &&
-        x <= house.x + house.footprintW + 0.2 &&
-        y >= house.y - 0.2 &&
-        y <= house.y + house.footprintH + 0.2
-      ) {
-        return false;
+    // Buildings & solid structures (houses): ALL of house is solid & non-passable (including doorway)
+    if (this.settlementData.houses) {
+      for (const house of this.settlementData.houses) {
+        if (
+          x >= house.x &&
+          x < house.x + house.footprintW &&
+          y >= house.y &&
+          y < house.y + house.footprintH
+        ) {
+          return false;
+        }
+      }
+    }
+
+    // Farm objects: fences, closed gates, chests, crates, troughs, water bowls
+    if (this.settlementData.farmObjects) {
+      for (const obj of this.settlementData.farmObjects) {
+        if (obj.id === 'fence_wood_gate_open') continue;
+        const w = obj.footprintW || 1;
+        const h = obj.footprintH || 1;
+        if (
+          x >= obj.x &&
+          x < obj.x + w &&
+          y >= obj.y &&
+          y < obj.y + h
+        ) {
+          return false;
+        }
       }
     }
 
     // Wells
-    for (const well of this.settlementData.wells) {
-      if (
-        x >= well.x - 0.2 &&
-        x <= well.x + well.footprintW + 0.2 &&
-        y >= well.y - 0.2 &&
-        y <= well.y + well.footprintH + 0.2
-      ) {
-        return false;
+    if (this.settlementData.wells) {
+      for (const well of this.settlementData.wells) {
+        const w = well.footprintW || 1;
+        const h = well.footprintH || 1;
+        if (
+          x >= well.x &&
+          x < well.x + w &&
+          y >= well.y &&
+          y < well.y + h
+        ) {
+          return false;
+        }
       }
     }
 
-    // Solid tree trunks (small 0.6x0.6 radius around trunk center)
-    for (const tree of this.settlementData.trees) {
-      const trunkX = tree.x + (tree.footprintW || 1) / 2;
-      const trunkY = tree.y + (tree.footprintH || 1) / 2;
-      if (Math.hypot(x - trunkX, y - trunkY) < 0.5) {
-        return false;
+    // Trees of all types and stages (tree_01 - tree_05, saplings, stumps): solid trunk/base
+    if (this.settlementData.trees) {
+      for (const tree of this.settlementData.trees) {
+        const w = tree.footprintW || 2;
+        const h = tree.footprintH || 2;
+        const startY = h > 1 ? tree.y + h - 1 : tree.y;
+        if (
+          x >= tree.x + 0.15 &&
+          x < tree.x + w - 0.15 &&
+          y >= startY &&
+          y < tree.y + h
+        ) {
+          return false;
+        }
       }
     }
 
     return true;
+  }
+
+  /**
+   * Checks if an entity foot bounding area is traversable without clipping into walls or water.
+   */
+  public isAreaWalkable(
+    x: number,
+    y: number,
+    radiusX: number = 0.20,
+    radiusY: number = 0.14,
+    allowWater: boolean = false,
+    waterOnly: boolean = false
+  ): boolean {
+    return (
+      this.isWalkable(x - radiusX, y - radiusY, allowWater, waterOnly) &&
+      this.isWalkable(x + radiusX, y - radiusY, allowWater, waterOnly) &&
+      this.isWalkable(x - radiusX, y + radiusY, allowWater, waterOnly) &&
+      this.isWalkable(x + radiusX, y + radiusY, allowWater, waterOnly)
+    );
   }
 
   /**

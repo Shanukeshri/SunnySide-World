@@ -75,6 +75,7 @@ export class WorldRoom {
 
     this.eventBus = new EventBus();
     this.gameState = new GameState(seed, this.eventBus);
+    this.gameState.worldManager.updatePlayerLocation(22, 18, 5);
 
     this.persistence = new PersistenceManager("./saves", `room_${this.inviteCode}.json`);
     this.persistence.loadSnapshot(this.gameState);
@@ -210,6 +211,7 @@ export class WorldRoom {
     } else {
       player = this.gameState.addPlayer(socket.id, name, hairstyle);
     }
+    this.gameState.worldManager.updatePlayerLocation(player.x, player.y, 5);
     return player;
   }
 

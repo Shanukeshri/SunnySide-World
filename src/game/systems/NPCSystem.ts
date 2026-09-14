@@ -86,7 +86,8 @@ export class NPCSystem {
     const nextY = npc.y + (dy / dist) * step;
 
     const tile = this.gameState.worldManager.getTile(Math.floor(nextX), Math.floor(nextY));
-    if (!tile.isWater && !tile.isBlocked) {
+    const hitsTrunk = this.gameState.worldManager.isBlockedByTreeTrunk(nextX + 0.5, nextY + 0.5);
+    if (!tile.isWater && !tile.isBlocked && !hitsTrunk) {
       npc.x = nextX;
       npc.y = nextY;
       npc.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "RIGHT" : "LEFT") : (dy > 0 ? "DOWN" : "UP");

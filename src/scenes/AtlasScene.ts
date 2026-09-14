@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { ASSET_ATLAS_DATA, AssetItem, AssetCategory } from '../data/assetRegistry';
 
+import { isAssetCollidable } from '../data/assetCollision';
+export { isAssetCollidable };
+
 export class AtlasScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasdKeys!: { [key: string]: Phaser.Input.Keyboard.Key };
@@ -8,6 +11,7 @@ export class AtlasScene extends Phaser.Scene {
   private selectedCard: Phaser.GameObjects.Container | null = null;
   private itemMap: Map<string, { item: AssetItem; card: Phaser.GameObjects.Container; category: AssetCategory }> = new Map();
   private createdFrames: Set<string> = new Set();
+  private currentCollisionFilter: 'all' | 'flat' | 'collidable' = 'all';
 
   constructor() {
     super({ key: 'AtlasScene' });
@@ -141,6 +145,7 @@ export class AtlasScene extends Phaser.Scene {
       setZoom: (delta: number) => this.adjustZoom(delta),
       resetZoom: () => this.resetZoom(),
       zoomToFit: () => this.zoomToFit(),
+      setCollisionFilter: (filter: 'all' | 'flat' | 'collidable') => this.setCollisionFilter(filter),
       getItem: (itemId: string) => this.itemMap.get(itemId)?.item
     };
 
@@ -230,11 +235,18 @@ export class AtlasScene extends Phaser.Scene {
     const cardW = itm.cardW;
     const cardH = itm.cardH;
 
-    // Card background graphics
+    const isCollidable = isAssetCollidable(itm, cat.id);
+    card.setData('isCollidable', isCollidable);
+
+    // Card background graphics with distinct border for flat vs collidable
     const bg = this.add.graphics();
-    bg.fillStyle(0x1a2234, 0.9);
+    bg.fillStyle(0x1a2234, 0.92);
     bg.fillRoundedRect(0, 0, cardW, cardH, 8);
-    bg.lineStyle(1, 0x334155, 0.8);
+    if (isCollidable) {
+      bg.lineStyle(1.5, 0xef4444, 0.65); // Red border for solid/collidable
+    } else {
+      bg.lineStyle(1.5, 0x10b981, 0.55); // Green border for flat/walkable
+    }
     bg.strokeRoundedRect(0, 0, cardW, cardH, 8);
     card.add(bg);
 
@@ -247,6 +259,48 @@ export class AtlasScene extends Phaser.Scene {
     previewWell.lineStyle(1, 0x1e293b, 0.6);
     previewWell.strokeRoundedRect(wellPad, wellPad, cardW - wellPad * 2, wellH, 6);
     card.add(previewWell);
+
+    // Collision type pill badge in top right corner
+    const badgeG = this.add.graphics();
+    if (cardW >= 60) {
+      if (isCollidable) {
+        badgeG.fillStyle(0x450a0a, 0.9);
+        badgeG.fillRoundedRect(cardW - 38, 4, 34, 13, 3);
+        badgeG.lineStyle(1, 0xef4444, 0.8);
+        badgeG.strokeRoundedRect(cardW - 38, 4, 34, 13, 3);
+        card.add(badgeG);
+        const badgeTxt = this.add.text(cardW - 21, 10, 'SOLID', {
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: '8px',
+          fontStyle: 'bold',
+          color: '#f87171'
+        }).setOrigin(0.5);
+        card.add(badgeTxt);
+      } else {
+        badgeG.fillStyle(0x064e3b, 0.9);
+        badgeG.fillRoundedRect(cardW - 36, 4, 32, 13, 3);
+        badgeG.lineStyle(1, 0x10b981, 0.8);
+        badgeG.strokeRoundedRect(cardW - 36, 4, 32, 13, 3);
+        card.add(badgeG);
+        const badgeTxt = this.add.text(cardW - 20, 10, 'FLAT', {
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: '8px',
+          fontStyle: 'bold',
+          color: '#34d399'
+        }).setOrigin(0.5);
+        card.add(badgeTxt);
+      }
+    } else {
+      // Dot badge for compact cards
+      if (isCollidable) {
+        badgeG.fillStyle(0xef4444, 0.95);
+        badgeG.fillCircle(cardW - 7, 7, 3);
+      } else {
+        badgeG.fillStyle(0x10b981, 0.95);
+        badgeG.fillCircle(cardW - 7, 7, 3);
+      }
+      card.add(badgeG);
+    }
 
     // Center position for preview sprite
     const centerX = cardW / 2;
@@ -317,6 +371,7 @@ export class AtlasScene extends Phaser.Scene {
         detail: {
           item: itm,
           category: cat,
+          isCollidable,
           pointerX: pointer.event ? (pointer.event as MouseEvent).clientX : undefined,
           pointerY: pointer.event ? (pointer.event as MouseEvent).clientY : undefined
         }
@@ -344,7 +399,8 @@ export class AtlasScene extends Phaser.Scene {
         window.dispatchEvent(new CustomEvent('asset-select', {
           detail: {
             item: itm,
-            category: cat
+            category: cat,
+            isCollidable
           }
         }));
       }
@@ -473,10 +529,15 @@ export class AtlasScene extends Phaser.Scene {
   private resetCardStyle(card: Phaser.GameObjects.Container) {
     const bg = card.getAt(0) as Phaser.GameObjects.Graphics;
     if (bg) {
+      const isCollidable = card.getData('isCollidable');
       bg.clear();
-      bg.fillStyle(0x1a2234, 0.9);
+      bg.fillStyle(0x1a2234, 0.92);
       bg.fillRoundedRect(0, 0, card.width, card.height, 8);
-      bg.lineStyle(1, 0x334155, 0.8);
+      if (isCollidable) {
+        bg.lineStyle(1.5, 0xef4444, 0.65);
+      } else {
+        bg.lineStyle(1.5, 0x10b981, 0.55);
+      }
       bg.strokeRoundedRect(0, 0, card.width, card.height, 8);
     }
   }
@@ -570,5 +631,19 @@ export class AtlasScene extends Phaser.Scene {
     this.cameras.main.zoomTo(0.35, 300, 'Cubic.easeOut');
     this.cameras.main.pan(1200, 3800, 300, 'Cubic.easeOut');
     window.dispatchEvent(new CustomEvent('zoom-change', { detail: { zoom: 0.35 } }));
+  }
+
+  public setCollisionFilter(filter: 'all' | 'flat' | 'collidable') {
+    this.currentCollisionFilter = filter;
+    for (const entry of this.itemMap.values()) {
+      const isCollidable = entry.card.getData('isCollidable');
+      if (filter === 'all') {
+        entry.card.setAlpha(1.0);
+      } else if (filter === 'flat') {
+        entry.card.setAlpha(isCollidable ? 0.15 : 1.0);
+      } else if (filter === 'collidable') {
+        entry.card.setAlpha(!isCollidable ? 0.15 : 1.0);
+      }
+    }
   }
 }

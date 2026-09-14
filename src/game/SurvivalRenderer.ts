@@ -155,6 +155,18 @@ const SPRITE_DEFS: Record<string, { path: string; w: number; h: number }> = {
     path: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Gamemaker/sprites/spr_deco_truffle/e6dbb225-174c-41bd-ab66-36e9fff04f0a.png",
     w: 10, h: 10,
   },
+  ui_expression_love: {
+    path: "/assets/ui/expression_love.png",
+    w: 16, h: 16,
+  },
+  ui_expression_chat: {
+    path: "/assets/ui/expression_chat.png",
+    w: 16, h: 16,
+  },
+  ui_expression_alerted: {
+    path: "/assets/ui/expression_alerted.png",
+    w: 16, h: 16,
+  },
 };
 
 function getCropPath(cropId: string): string {
@@ -249,12 +261,11 @@ export class SurvivalRenderer {
 
     ctx.imageSmoothingEnabled = false;
 
-    // Fix 1 & 2: Camera follows the authoritative predicted position, NOT the visual
-    // (error-offset) position, so server corrections never cause camera shudder.
+    // Camera follows smooth continuous visual position so reconciliation never causes camera pop.
     // Smoothing uses exponential decay so it's identical at all frame rates.
     const pred = (engine as any).networkPrediction;
-    const targetCamX = pred ? pred.predictedX : engine.player.x;
-    const targetCamY = pred ? pred.predictedY : engine.player.y;
+    const targetCamX = pred ? pred.getVisualPosition().x : engine.player.x;
+    const targetCamY = pred ? pred.getVisualPosition().y : engine.player.y;
     const smoothing = 1 - Math.exp(-10 * dt);
     this.cameraX += (targetCamX - this.cameraX) * smoothing;
     this.cameraY += (targetCamY - this.cameraY) * smoothing;
@@ -709,6 +720,18 @@ export class SurvivalRenderer {
           ctx.fillStyle = "#fef08a";
           ctx.textAlign = "center";
           ctx.fillText(title, screen.sx + cellSize / 2, screen.sy - 27);
+
+          // Overhead chat bubble indicator when player is in speaking range
+          const distToPlayer = Math.hypot(engine.player.x - npc.position.x, engine.player.y - npc.position.y);
+          if (distToPlayer <= 2.2) {
+            const chatImg = this.getSpriteImage("ui_expression_chat");
+            if (chatImg) {
+              const bsz = 18 * (this.zoom / 2);
+              const bob = Math.sin(Date.now() / 250) * 3;
+              ctx.imageSmoothingEnabled = false;
+              ctx.drawImage(chatImg, screen.sx + cellSize / 2 - bsz / 2, screen.sy - 58 + bob, bsz, bsz);
+            }
+          }
         },
       });
     }
@@ -928,10 +951,17 @@ export class SurvivalRenderer {
       const screen = worldToScreen(heart.x, heart.y);
       ctx.save();
       ctx.globalAlpha = heart.alpha;
-      ctx.font = `${16 * (this.zoom / 2)}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#f43f5e";
-      ctx.fillText("♥", screen.sx, screen.sy);
+      const loveImg = this.getSpriteImage("ui_expression_love");
+      if (loveImg) {
+        const sz = 16 * (this.zoom / 2);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(loveImg, screen.sx - sz / 2, screen.sy - sz / 2, sz, sz);
+      } else {
+        ctx.font = `${16 * (this.zoom / 2)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#f43f5e";
+        ctx.fillText("♥", screen.sx, screen.sy);
+      }
       ctx.restore();
     }
 

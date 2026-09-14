@@ -32,6 +32,8 @@ import {
 } from "./game/GameTypes";
 import { NetworkClient } from "./client/NetworkClient";
 import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
+import { isAssetCollidable } from "./data/assetCollision";
+import { WorldManager } from "./game/WorldManager";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -328,6 +330,15 @@ function openInspector(item: AssetItem, category: AssetCategory) {
   inspectId.textContent = item.id;
   inspectCoords.textContent = `X: ${item.x}, Y: ${item.y}`;
   inspectSize.textContent = `${item.w} × ${item.h} px`;
+  const isCollidable = isAssetCollidable(item, category.id);
+  const inspectCollisionType = document.getElementById("inspect-collision-type");
+  if (inspectCollisionType) {
+    if (isCollidable) {
+      inspectCollisionType.innerHTML = `<span class="badge-collidable">🧱 Collidable / Solid (Blocks movement)</span>`;
+    } else {
+      inspectCollisionType.innerHTML = `<span class="badge-flat">🌿 Flat / Walkable (Open ground)</span>`;
+    }
+  }
   inspectFrames.textContent = `${item.frames} frame${item.frames > 1 ? "s" : ""} (${item.fps} FPS)`;
   inspectDesc.textContent = item.desc;
   inspectPath.value = item.sourcePath || "Generated Procedural";
@@ -430,6 +441,19 @@ if (assetCountBadge) {
   assetCountBadge.innerHTML = `<span>${ASSET_ATLAS_DATA.totalItems} Assets</span>`;
 }
 
+// Wire up collision filter buttons
+const collisionFilterButtons = document.querySelectorAll<HTMLButtonElement>(
+  "#atlas-collision-filters .filter-pill"
+);
+collisionFilterButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    collisionFilterButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const filter = btn.getAttribute("data-filter") as "all" | "flat" | "collidable";
+    (window as any).AtlasViewer?.setCollisionFilter(filter);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════
 // PHASER EVENTS
 // ═══════════════════════════════════════════════════════════════════
@@ -440,7 +464,11 @@ window.addEventListener("cursor-world-move", ((e: CustomEvent) => {
 window.addEventListener("asset-hover", ((e: CustomEvent) => {
   const i = e.detail.item as AssetItem;
   const c = e.detail.category as AssetCategory;
-  hoveredAssetLabel.innerHTML = `<strong>${i.name}</strong> <span style="color:#94a3b8;">(${c.title})</span> &bull; <span style="font-family:var(--font-mono);color:#38bdf8;">${i.w}×${i.h}px</span>`;
+  const isCollidable = e.detail.isCollidable !== undefined ? e.detail.isCollidable : isAssetCollidable(i, c.id);
+  const collBadge = isCollidable
+    ? `<span style="color:#f87171;font-weight:600;background:rgba(239,68,68,0.15);padding:1px 6px;border-radius:4px;border:1px solid rgba(239,68,68,0.4);">🧱 Solid</span>`
+    : `<span style="color:#34d399;font-weight:600;background:rgba(16,185,129,0.15);padding:1px 6px;border-radius:4px;border:1px solid rgba(16,185,129,0.4);">🌿 Flat</span>`;
+  hoveredAssetLabel.innerHTML = `<strong>${i.name}</strong> <span style="color:#94a3b8;">(${c.title})</span> &bull; ${collBadge} &bull; <span style="font-family:var(--font-mono);color:#38bdf8;">${i.w}×${i.h}px</span>`;
 
   // Position floating tooltip
   const px = e.detail.pointerX ?? 0;
@@ -450,6 +478,7 @@ window.addEventListener("asset-hover", ((e: CustomEvent) => {
       <div class="tooltip-title">${i.name}</div>
       <div class="tooltip-meta">
         <span class="tooltip-cat">${c.title}</span>
+        <span class="tooltip-badge ${isCollidable ? 'collidable' : 'flat'}">${isCollidable ? '🧱 Solid' : '🌿 Flat'}</span>
         <span class="tooltip-dim">${i.w}×${i.h}px</span>
       </div>
       <div class="tooltip-desc">${i.desc}</div>
@@ -928,7 +957,7 @@ const settlementViewport = document.getElementById(
 ) as HTMLElement;
 
 let currentSettlementData: SettlementData | null = null;
-let currentSeed = Math.floor(Math.random() * 1000000);
+let currentSeed = 42891;
 let currentZoomLevel = 1.5;
 let optShowGrid = false;
 let optShowClearance = false;
@@ -1349,11 +1378,11 @@ let isSurvivalInitialized = false;
 
 // HUD Elements
 const hudHpVal = document.getElementById("hud-hp-val")!;
-const hudHpBar = document.getElementById("hud-hp-bar")!;
+const hudHpImg = document.getElementById("hud-hp-img") as HTMLImageElement | null;
 const hudHungerVal = document.getElementById("hud-hunger-val")!;
-const hudHungerBar = document.getElementById("hud-hunger-bar")!;
+const hudHungerImg = document.getElementById("hud-hunger-img") as HTMLImageElement | null;
 const hudStaminaVal = document.getElementById("hud-stamina-val")!;
-const hudStaminaBar = document.getElementById("hud-stamina-bar")!;
+const hudStaminaImg = document.getElementById("hud-stamina-img") as HTMLImageElement | null;
 const hudClockIcon = document.getElementById("hud-clock-icon")!;
 const hudClockTime = document.getElementById("hud-clock-time")!;
 const hudClockPhase = document.getElementById("hud-clock-phase")!;
@@ -1439,6 +1468,22 @@ function setupNetworkClientHandlers() {
 
   networkClient.onInit((init) => {
     if (!survivalEngine) return;
+
+    // CRITICAL FIX: Rebuild client WorldManager with the server's authoritative seed
+    // so that client-side collision checks (canMoveTo) match the actual rendered world.
+    // Without this, the client checks collisions against a world generated with a
+    // different seed, causing the player to walk through houses, fences, trees, etc.
+    if (init.seed !== undefined && init.seed !== (survivalEngine as any)._lastSyncedSeed) {
+      survivalEngine.worldManager = new WorldManager(init.seed);
+      (survivalEngine as any)._lastSyncedSeed = init.seed;
+      console.log(`[Collision] Rebuilt client WorldManager with server seed: ${init.seed}`);
+    }
+
+    if (init.player) {
+      survivalEngine.player.x = init.player.x;
+      survivalEngine.player.y = init.player.y;
+      survivalEngine.worldManager.updatePlayerLocation(init.player.x, init.player.y);
+    }
     if (init.placedStructures) {
       survivalEngine.placedStructures = (init.placedStructures as any[]).map((s) => ({
         ...s,
@@ -1465,11 +1510,6 @@ function setupNetworkClientHandlers() {
     if (init.worldTime) {
       survivalEngine.worldTime = init.worldTime;
     }
-    if (init.player) {
-      survivalEngine.player.x = init.player.x;
-      survivalEngine.player.y = init.player.y;
-      survivalEngine.worldManager.updatePlayerLocation(init.player.x, init.player.y);
-    }
   });
 
   networkClient.onSync((sync) => {
@@ -1477,7 +1517,7 @@ function setupNetworkClientHandlers() {
 
     if (hudPlayerCount) {
       const total = 1 + (sync.otherPlayers?.length || 0);
-      hudPlayerCount.textContent = `👥 ${total} Online`;
+      hudPlayerCount.textContent = ` ${total} Online`;
     }
 
     // Synchronize local player authoritative stats
@@ -1742,36 +1782,40 @@ function showInviteModal(inviteId: string, fromName: string): void {
     modal.id = "mp-invite-modal";
     modal.style.cssText = `
       position:fixed; bottom:24px; right:24px; z-index:9999;
-      background:linear-gradient(135deg,#1e293b,#0f172a);
-      border:1.5px solid #38bdf8; border-radius:16px;
-      padding:20px 24px; min-width:280px;
+      border: 14px solid transparent;
+      border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer2.png') 16 fill / 16px stretch;
+      image-rendering: pixelated;
+      padding:16px 20px; min-width:280px;
       box-shadow:0 8px 32px rgba(0,0,0,0.6);
-      font-family:'Inter',sans-serif; color:#e2e8f0;
+      color:#fef08a;
       animation: slideInRight 0.3s ease;
     `;
     document.body.appendChild(modal);
   }
 
   modal.innerHTML = `
-    <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;">🌍 Multiplayer Invite</div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:14px;">
-      <span style="color:#38bdf8">${fromName}</span> invited you to join their world!
+    <div style="font-size:12px;color:#cbd5e1;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+      <img src="/assets/ui/playercount.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Players" />
+      Multiplayer Invite
+    </div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px;color:#fff;">
+      <span style="color:#fef08a">${fromName}</span> invited you to join their world!
     </div>
     <div style="display:flex;gap:10px;">
       <button id="mp-accept-btn" style="
-        flex:1;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;
-        background:linear-gradient(135deg,#22c55e,#16a34a);
-        color:#fff;font-weight:700;font-size:13px;
-        box-shadow:0 2px 8px rgba(34,197,94,0.3);
-        transition:opacity 0.2s;
-      ">✅ Accept</button>
+        flex:1;padding:6px 12px;border:8px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
+        image-rendering:pixelated;cursor:pointer;
+        color:#86efac;font-weight:700;font-size:12px;
+        display:flex;align-items:center;justify-content:center;gap:6px;
+      "><img src="/assets/ui/confirm.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Accept" /> Accept</button>
       <button id="mp-decline-btn" style="
-        flex:1;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;
-        background:linear-gradient(135deg,#ef4444,#dc2626);
-        color:#fff;font-weight:700;font-size:13px;
-        box-shadow:0 2px 8px rgba(239,68,68,0.3);
-        transition:opacity 0.2s;
-      ">❌ Decline</button>
+        flex:1;padding:6px 12px;border:8px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
+        image-rendering:pixelated;cursor:pointer;
+        color:#fca5a5;font-weight:700;font-size:12px;
+        display:flex;align-items:center;justify-content:center;gap:6px;
+      "><img src="/assets/ui/cancel.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Decline" /> Decline</button>
     </div>
   `;
   modal.classList.remove("hidden");
@@ -1799,54 +1843,60 @@ function initMultiplayerUI(): void {
       @keyframes slideInRight { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
       #mp-toast {
         position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-        background:rgba(15,23,42,0.95); color:#e2e8f0;
-        border:1px solid #334155; border-radius:12px;
-        padding:10px 20px; font-size:14px; font-family:'Inter',sans-serif;
-        box-shadow:0 4px 20px rgba(0,0,0,0.5); z-index:10000;
+        border: 12px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer1.png') 16 fill / 16px stretch;
+        image-rendering: pixelated;
+        color:#fef08a; padding:6px 16px; font-size:13px; font-weight:700;
+        box-shadow:0 6px 20px rgba(0,0,0,0.6); z-index:10000;
         transition:opacity 0.3s;
       }
       #mp-toast.hidden { display:none; }
       #mp-panel {
         position:fixed; top:70px; right:16px; z-index:5000;
-        background:linear-gradient(135deg,rgba(15,23,42,0.96),rgba(30,41,59,0.96));
-        border:1.5px solid #334155; border-radius:16px;
-        padding:16px; min-width:240px;
-        box-shadow:0 8px 32px rgba(0,0,0,0.5);
-        font-family:'Inter',sans-serif; color:#e2e8f0;
+        border: 14px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer2.png') 16 fill / 16px stretch;
+        image-rendering: pixelated;
+        padding:8px 12px; min-width:250px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.6);
+        color:#fef08a;
         display:none;
       }
       #mp-panel.open { display:block; animation:slideInRight 0.25s ease; }
       #mp-host-banner {
-        background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(56,189,248,0.1));
-        border:1px solid #0ea5e9; border-radius:10px;
-        padding:10px 12px; margin-top:12px;
+        border: 10px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer4.png') 12 fill / 12px stretch;
+        image-rendering: pixelated;
+        padding:6px 10px; margin-top:10px;
       }
       #mp-host-banner.hidden { display:none; }
       .mp-btn {
-        width:100%; padding:9px 14px; border-radius:10px; border:none;
-        cursor:pointer; font-weight:600; font-size:13px;
-        margin-top:8px; transition:opacity 0.2s,transform 0.1s;
+        width:100%; padding:6px 10px; border: 8px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
+        image-rendering: pixelated;
+        cursor:pointer; font-weight:700; font-size:12px; color:#fef08a;
+        margin-top:8px; transition:transform 0.1s;
+        display:flex; align-items:center; justify-content:center; gap:6px;
       }
-      .mp-btn:hover { opacity:0.9; transform:scale(0.98); }
-      .mp-btn-host { background:linear-gradient(135deg,#8b5cf6,#6d28d9); color:#fff; }
-      .mp-btn-join { background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; }
+      .mp-btn:hover { transform:scale(1.02); }
       .mp-input {
-        width:100%; padding:8px 10px; border-radius:8px;
-        border:1.5px solid #334155; background:#0f172a;
-        color:#e2e8f0; font-size:13px; box-sizing:border-box; margin-top:8px;
+        width:100%; padding:6px 8px; border:1.5px solid #78350f; background:#1e1b18;
+        color:#fef08a; font-size:13px; box-sizing:border-box; margin-top:6px;
       }
-      .mp-input:focus { outline:none; border-color:#38bdf8; }
-      .mp-label { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:12px; display:block; }
+      .mp-input:focus { outline:none; border-color:#eab308; }
+      .mp-label { font-size:11px; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.5px; margin-top:10px; display:block; }
       #mp-toggle-btn {
         position:fixed; top:14px; right:80px; z-index:5001;
-        background:linear-gradient(135deg,#8b5cf6,#6d28d9);
-        border:none; border-radius:10px; color:#fff;
-        padding:7px 14px; font-size:13px; font-weight:600;
-        cursor:pointer; font-family:'Inter',sans-serif;
-        box-shadow:0 2px 10px rgba(139,92,246,0.4);
-        transition:opacity 0.2s;
+        border: 8px solid transparent;
+        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
+        image-rendering: pixelated;
+        color:#fef08a;
+        padding:4px 10px; font-size:12px; font-weight:700;
+        cursor:pointer;
+        box-shadow:0 4px 12px rgba(0,0,0,0.5);
+        transition:transform 0.1s;
+        display:flex; align-items:center; gap:6px;
       }
-      #mp-toggle-btn:hover { opacity:0.88; }
+      #mp-toggle-btn:hover { transform:scale(1.04); }
     `;
     document.head.appendChild(style);
   }
@@ -1863,7 +1913,7 @@ function initMultiplayerUI(): void {
   if (!document.getElementById("mp-toggle-btn")) {
     const btn = document.createElement("button");
     btn.id = "mp-toggle-btn";
-    btn.textContent = "🌐 Multiplayer";
+    btn.innerHTML = `<img src="/assets/ui/playercount.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Multiplayer`;
     btn.addEventListener("click", () => {
       const panel = document.getElementById("mp-panel");
       if (panel) panel.classList.toggle("open");
@@ -1876,28 +1926,36 @@ function initMultiplayerUI(): void {
     const panel = document.createElement("div");
     panel.id = "mp-panel";
     panel.innerHTML = `
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">🌍 Multiplayer</div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:4px;">Play with friends in a shared world.</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+        <img src="/assets/ui/playercount.png" style="width:16px;height:16px;image-rendering:pixelated;" alt="" /> Multiplayer
+      </div>
+      <div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">Play with friends in a shared world.</div>
 
-      <button id="mp-host-btn" class="mp-btn mp-btn-host">🏠 Host World</button>
+      <button id="mp-host-btn" class="mp-btn mp-btn-host">
+        <img src="/assets/ui/plan alt.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Host World
+      </button>
 
       <span class="mp-label">Join via Invite Code</span>
       <input id="mp-join-code-input" class="mp-input" type="text" placeholder="SUNNY-4821" maxlength="10" style="text-transform:uppercase;" />
-      <button id="mp-join-btn" class="mp-btn mp-btn-join">🔗 Join World</button>
+      <button id="mp-join-btn" class="mp-btn mp-btn-join">
+        <img src="/assets/ui/confirm.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Join World
+      </button>
 
       <div id="mp-host-banner" class="hidden">
-        <div style="font-size:11px;color:#0ea5e9;margin-bottom:4px;">📋 Your Invite Code</div>
+        <div style="font-size:11px;color:#fef08a;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
+          <img src="/assets/ui/indicator.png" style="width:12px;height:12px;image-rendering:pixelated;" alt="" /> Your Invite Code
+        </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span id="mp-invite-code-display" style="
-            font-size:20px;font-weight:800;letter-spacing:2px;color:#38bdf8;
+            font-size:18px;font-weight:800;letter-spacing:2px;color:#fef08a;
             font-family:'Courier New',monospace;
           ">——</span>
           <button id="mp-copy-code-btn" style="
-            background:#1e293b;border:1px solid #334155;border-radius:6px;
-            color:#94a3b8;font-size:11px;padding:4px 8px;cursor:pointer;
+            background:#26201b;border:1px solid #78350f;border-radius:4px;
+            color:#fef08a;font-size:11px;padding:3px 8px;cursor:pointer;
           ">Copy</button>
         </div>
-        <div style="font-size:11px;color:#475569;margin-top:4px;">Share this code with a friend to invite them.</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Share this code with a friend to invite them.</div>
       </div>
     `;
     document.body.appendChild(panel);
@@ -1910,7 +1968,7 @@ function initMultiplayerUI(): void {
       networkClient.hostWorld(name, hairstyle);
       const toast = document.getElementById("mp-toast");
       if (toast) {
-        toast.textContent = "🌍 Hosting world... waiting for invite code...";
+        toast.textContent = "Hosting world... waiting for invite code...";
         toast.classList.remove("hidden");
         setTimeout(() => toast.classList.add("hidden"), 3000);
       }
@@ -1924,7 +1982,7 @@ function initMultiplayerUI(): void {
       if (!code || code.length < 6) {
         const toast = document.getElementById("mp-toast");
         if (toast) {
-          toast.textContent = "⚠️ Please enter a valid invite code (e.g. SUNNY-4821)";
+          toast.textContent = "Please enter a valid invite code (e.g. SUNNY-4821)";
           toast.classList.remove("hidden");
           setTimeout(() => toast.classList.add("hidden"), 3000);
         }
@@ -1935,7 +1993,7 @@ function initMultiplayerUI(): void {
       networkClient.joinWorld(code, name, hairstyle);
       const toast = document.getElementById("mp-toast");
       if (toast) {
-        toast.textContent = `🔗 Joining world ${code}...`;
+        toast.textContent = `Joining world ${code}...`;
         toast.classList.remove("hidden");
         setTimeout(() => toast.classList.add("hidden"), 3000);
       }
@@ -2201,15 +2259,21 @@ function updateSurvivalHUD() {
   const p = survivalEngine.player;
   const wt = survivalEngine.worldTime;
 
-  // Meters
+  // Meters (Pixel Art Sprite Bars)
   hudHpVal.textContent = `${Math.ceil(p.health)}/${p.maxHealth}`;
-  hudHpBar.style.width = `${Math.max(0, (p.health / p.maxHealth) * 100)}%`;
+  const hpRatio = Math.max(0, Math.min(1, p.health / p.maxHealth));
+  const hpFrame = Math.max(0, Math.min(6, Math.floor(hpRatio * 6)));
+  if (hudHpImg) hudHpImg.src = `/assets/ui/redbar_0${hpFrame}.png`;
 
   hudHungerVal.textContent = `${Math.ceil(p.hunger)}/${p.maxHunger}`;
-  hudHungerBar.style.width = `${Math.max(0, (p.hunger / p.maxHunger) * 100)}%`;
+  const hungerRatio = Math.max(0, Math.min(1, p.hunger / p.maxHunger));
+  const hungerFrame = Math.max(0, Math.min(6, Math.floor(hungerRatio * 6)));
+  if (hudHungerImg) hudHungerImg.src = `/assets/ui/greenbar_0${hungerFrame}.png`;
 
   hudStaminaVal.textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
-  hudStaminaBar.style.width = `${Math.max(0, (p.stamina / p.maxStamina) * 100)}%`;
+  const staminaRatio = Math.max(0, Math.min(1, p.stamina / p.maxStamina));
+  const staminaFrame = Math.max(0, Math.min(5, Math.floor(staminaRatio * 5)));
+  if (hudStaminaImg) hudStaminaImg.src = `/assets/ui/bluebar_0${staminaFrame}.png`;
 
   // World Clock
   const hrPad = String(wt.hour).padStart(2, "0");
@@ -2217,14 +2281,6 @@ function updateSurvivalHUD() {
   const isPM = wt.hour >= 12;
   const displayHour = wt.hour % 12 === 0 ? 12 : wt.hour % 12;
   hudClockTime.textContent = `${String(displayHour).padStart(2, "0")}:${minPad} ${isPM ? "PM" : "AM"}`;
-  hudClockIcon.textContent =
-    wt.timeOfDay === "Night"
-      ? "🌙"
-      : wt.timeOfDay === "Sunset"
-        ? "🌇"
-        : wt.timeOfDay === "Morning"
-          ? "🌅"
-          : "☀️";
   hudClockPhase.textContent = `Day ${wt.dayNumber} • ${wt.timeOfDay}`;
 
   // Discovered Villages (out of max 4)
@@ -2255,11 +2311,11 @@ function updateSurvivalHUD() {
 function getItemIconHtml(itemKey: ItemId | null): string {
   if (!itemKey) return "";
   const def = ITEM_CATALOG[itemKey];
-  if (!def) return "📦";
+  if (!def) return `<img src="/assets/ui/basket.png" class="slot-pixel-icon" alt="Item" />`;
   if (def.spritePath) {
     return `<img src="${def.spritePath}" class="slot-pixel-icon" alt="${def.name}" draggable="false" />`;
   }
-  return `<span class="slot-item-icon">${def.icon}</span>`;
+  return `<img src="/assets/ui/basket.png" class="slot-pixel-icon" alt="${def.name}" draggable="false" />`;
 }
 
 function renderHotbar() {
@@ -2267,11 +2323,28 @@ function renderHotbar() {
   hotbarSlotsContainer.innerHTML = "";
 
   survivalEngine.hotbar.forEach((slot, idx) => {
+    const isActive = idx === survivalEngine?.activeHotbarIndex;
     const slotEl = document.createElement("div");
-    slotEl.className = `hotbar-slot ${idx === survivalEngine?.activeHotbarIndex ? "active" : ""}`;
+    slotEl.className = `hotbar-slot ${isActive ? "active" : ""}`;
     slotEl.addEventListener("click", () => {
       if (survivalEngine) survivalEngine.activeHotbarIndex = idx;
     });
+
+    // 4 Corner Selection Brackets from Sunnyside UI for the active slot
+    if (isActive) {
+      const cornerTL = document.createElement("span");
+      cornerTL.className = "selectbox-corner corner-tl";
+      const cornerTR = document.createElement("span");
+      cornerTR.className = "selectbox-corner corner-tr";
+      const cornerBL = document.createElement("span");
+      cornerBL.className = "selectbox-corner corner-bl";
+      const cornerBR = document.createElement("span");
+      cornerBR.className = "selectbox-corner corner-br";
+      slotEl.appendChild(cornerTL);
+      slotEl.appendChild(cornerTR);
+      slotEl.appendChild(cornerBL);
+      slotEl.appendChild(cornerBR);
+    }
 
     const keyEl = document.createElement("span");
     keyEl.className = "slot-key-num";
@@ -2481,10 +2554,11 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
     networkClient.prediction.updateSmoothing(dt);
 
     if (dx !== 0 || dy !== 0) {
+      const canSprint = survivalEngine.player.isSprinting && survivalEngine.player.stamina > 10;
       const input = networkClient.prediction.predictMovement(
         dx,
         dy,
-        survivalEngine.player.isSprinting,
+        canSprint,
         survivalEngine.player.isSwimming,
         dt,
         (x, y) => (survivalEngine as any).canMoveTo(x, y),
@@ -2740,7 +2814,13 @@ function initSurvivalUI() {
   btnToggleAudio.addEventListener("click", () => {
     const isMuted = GameAudio.toggleMute();
     const icon = document.getElementById("audio-icon");
-    if (icon) icon.textContent = isMuted ? "🔊" : "🔇";
+    if (icon) {
+      if (isMuted) {
+        icon.classList.add("audio-muted");
+      } else {
+        icon.classList.remove("audio-muted");
+      }
+    }
   });
 
   // Modals open/close

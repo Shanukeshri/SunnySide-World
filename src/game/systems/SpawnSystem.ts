@@ -121,9 +121,16 @@ export class SpawnSystem {
       const spawnY = player.y + Math.sin(angle) * dist;
 
       const tile = this.gameState.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY));
-      if (!tile.isWater && !tile.isBlocked) {
-        const speciesList: AnimalEntityState["species"][] = ["cow", "sheep", "chicken", "rabbit", "deer"];
-        const chosen = randomChoice(0, speciesList);
+      const isWater = tile.isWater;
+      const isLandWalkable = !tile.isWater && !tile.isBlocked;
+      if (isWater || isLandWalkable) {
+        let chosen: AnimalEntityState["species"];
+        if (isWater) {
+          chosen = "duck";
+        } else {
+          const speciesList: AnimalEntityState["species"][] = ["cow", "sheep", "chicken", "rabbit", "deer"];
+          chosen = randomChoice(0, speciesList);
+        }
 
         const animal: AnimalEntityState = {
           id: this.gameState.getNextId(),

@@ -133,6 +133,8 @@ export class ClientPrediction {
     }
 
     // 4. Determine discrepancy between previous prediction and replayed truth
+    const currentVisX = this.predictedX + this.errorOffsetX;
+    const currentVisY = this.predictedY + this.errorOffsetY;
     const errorX = this.predictedX - replayedX;
     const errorY = this.predictedY - replayedY;
     const errorDist = Math.hypot(errorX, errorY);
@@ -145,11 +147,11 @@ export class ClientPrediction {
       this.errorOffsetY = 0;
     } else if (errorDist > 0.035) {
       // Small discrepancy -> adjust prediction to replayed truth,
-      // and preserve visual continuity through smoothly decaying error offset without compounding
+      // and preserve 100% visual continuity by absorbing the difference seamlessly
       this.predictedX = replayedX;
       this.predictedY = replayedY;
-      this.errorOffsetX = errorX;
-      this.errorOffsetY = errorY;
+      this.errorOffsetX = currentVisX - replayedX;
+      this.errorOffsetY = currentVisY - replayedY;
     }
   }
 
@@ -159,13 +161,13 @@ export class ClientPrediction {
    */
   public updateSmoothing(dt: number): void {
     if (this.errorOffsetX !== 0 || this.errorOffsetY !== 0) {
-      // Exponential decay: reduces error offset smoothly over ~100ms
-      const factor = Math.exp(-18 * dt);
+      // Exponential decay: reduces error offset smoothly over ~120ms without rapid oscillation
+      const factor = Math.exp(-9 * dt);
       this.errorOffsetX *= factor;
       this.errorOffsetY *= factor;
 
-      if (Math.abs(this.errorOffsetX) < 0.002) this.errorOffsetX = 0;
-      if (Math.abs(this.errorOffsetY) < 0.002) this.errorOffsetY = 0;
+      if (Math.abs(this.errorOffsetX) < 0.001) this.errorOffsetX = 0;
+      if (Math.abs(this.errorOffsetY) < 0.001) this.errorOffsetY = 0;
     }
   }
 

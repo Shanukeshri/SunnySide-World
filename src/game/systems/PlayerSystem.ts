@@ -42,6 +42,7 @@ export class PlayerSystem {
     for (const player of this.gameState.players.values()) {
       if (player.isDead) continue;
 
+      this.gameState.worldManager.updatePlayerLocation(player.x, player.y, 4);
       this.updatePlayerMovement(player, dt);
       this.updatePlayerTimers(player, dt);
     }
@@ -200,18 +201,21 @@ export class PlayerSystem {
         Math.floor(p.x),
         Math.floor(p.y)
       );
-      if (tile.isBlocked) return false;
+      if (tile.isWater || tile.isBlocked) return false;
       if (this.isBlockedByStructure(footX, footY)) return false;
     }
+    if (this.gameState.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
     return true;
   }
 
   private isBlockedByStructure(footX: number, footY: number): boolean {
     for (const struct of this.gameState.placedStructures) {
-      if (
+      const isSolid =
         struct.structureType === "wood_wall" ||
-        (struct.structureType === "wood_door" && !struct.isOpen)
-      ) {
+        struct.structureType === "chest" ||
+        struct.structureType === "workbench" ||
+        (struct.structureType === "wood_door" && !struct.isOpen);
+      if (isSolid) {
         const sx = struct.x + 0.5;
         const sy = struct.y + 0.5;
         if (

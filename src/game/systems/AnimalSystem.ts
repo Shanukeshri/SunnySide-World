@@ -108,7 +108,9 @@ export class AnimalSystem {
           const targetY = animal.y + Math.sin(angle) * dist;
 
           const tile = this.gameState.worldManager.getTile(Math.floor(targetX), Math.floor(targetY));
-          if (!tile.isWater && !tile.isBlocked) {
+          const isAquatic = animal.species === "duck";
+          const canWander = isAquatic ? tile.isWater : (!tile.isWater && !tile.isBlocked);
+          if (canWander) {
             animal.targetX = targetX;
             animal.targetY = targetY;
             animal.behaviorState = "WANDER";
@@ -138,7 +140,10 @@ export class AnimalSystem {
     const nextY = animal.y + (dy / dist) * step;
 
     const tile = this.gameState.worldManager.getTile(Math.floor(nextX), Math.floor(nextY));
-    if (!tile.isWater && !tile.isBlocked) {
+    const isAquatic = animal.species === "duck";
+    const hitsTrunk = !isAquatic && this.gameState.worldManager.isBlockedByTreeTrunk(nextX + 0.5, nextY + 0.5);
+    const canMove = isAquatic ? tile.isWater : (!tile.isWater && !tile.isBlocked && !hitsTrunk);
+    if (canMove) {
       animal.x = nextX;
       animal.y = nextY;
       animal.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "RIGHT" : "LEFT") : (dy > 0 ? "DOWN" : "UP");

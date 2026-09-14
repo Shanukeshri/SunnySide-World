@@ -39,13 +39,13 @@ export class Player extends LivingEntity {
         this.direction = dirY > 0 ? 'DOWN' : 'UP';
       }
 
-      // Try full move or axis sliding
-      if (detector.isWalkable(nx, ny)) {
+      // Try full move or axis sliding with foot collision area
+      if (detector.isAreaWalkable(nx, ny, 0.18, 0.12)) {
         this.position.x = nx;
         this.position.y = ny;
-      } else if (detector.isWalkable(nx, this.position.y)) {
+      } else if (detector.isAreaWalkable(nx, this.position.y, 0.18, 0.12)) {
         this.position.x = nx;
-      } else if (detector.isWalkable(this.position.x, ny)) {
+      } else if (detector.isAreaWalkable(this.position.x, ny, 0.18, 0.12)) {
         this.position.y = ny;
       }
 

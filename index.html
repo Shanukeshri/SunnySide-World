@@ -49,6 +49,11 @@
 
       <!-- Right Controls (only shown on Atlas Map tab) -->
       <div class="header-right" id="atlas-controls">
+        <div class="atlas-filter-group" id="atlas-collision-filters" role="group" aria-label="Filter assets by collision">
+          <button class="filter-pill active" data-filter="all" title="Show All Assets">All</button>
+          <button class="filter-pill filter-flat" data-filter="flat" title="Show Flat / Walkable Tiles Only">🌿 Flat</button>
+          <button class="filter-pill filter-collidable" data-filter="collidable" title="Show Collidable / Solid Tiles Only">🧱 Solid</button>
+        </div>
         <div class="search-box">
           <span class="search-icon">🔍</span>
           <input type="text" id="asset-search-input" placeholder="Search assets..." autocomplete="off" />
@@ -132,6 +137,10 @@
               <div class="detail-row">
                 <span class="detail-label">Native Dimensions</span>
                 <span class="detail-val mono" id="inspect-size">48 &times; 48 px</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Tile Collision</span>
+                <span class="detail-val" id="inspect-collision-type"><span class="badge-flat">🌿 Flat / Walkable</span></span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Animation Frames</span>
@@ -324,36 +333,36 @@
             <!-- Health -->
             <div class="stat-bar-group" title="Player Health (Starvation or monster damage drains health)">
               <div class="stat-label-row">
-                <span class="stat-icon">❤️</span>
+                <span class="stat-icon"><img src="/assets/ui/expression_love.png" class="stat-pixel-icon" alt="Health" /></span>
                 <span class="stat-name">Health</span>
                 <span class="stat-val" id="hud-hp-val">100/100</span>
               </div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill bar-hp" id="hud-hp-bar" style="width: 100%;"></div>
+              <div class="stat-bar-container">
+                <img id="hud-hp-img" class="pixel-stat-bar" src="/assets/ui/redbar_06.png" alt="Health Bar" />
               </div>
             </div>
 
             <!-- Hunger -->
             <div class="stat-bar-group" title="Player Hunger (Drains slowly; restored by berries, bread, meat)">
               <div class="stat-label-row">
-                <span class="stat-icon">🍗</span>
+                <span class="stat-icon"><img src="/assets/ui/basket.png" class="stat-pixel-icon" alt="Hunger" /></span>
                 <span class="stat-name">Hunger</span>
                 <span class="stat-val" id="hud-hunger-val">100/100</span>
               </div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill bar-hunger" id="hud-hunger-bar" style="width: 100%;"></div>
+              <div class="stat-bar-container">
+                <img id="hud-hunger-img" class="pixel-stat-bar" src="/assets/ui/greenbar_06.png" alt="Hunger Bar" />
               </div>
             </div>
 
             <!-- Stamina -->
             <div class="stat-bar-group" title="Stamina (Consumed by sprint [Shift]; recovers automatically)">
               <div class="stat-label-row">
-                <span class="stat-icon">⚡</span>
+                <span class="stat-icon"><img src="/assets/ui/sword.png" class="stat-pixel-icon" alt="Stamina" /></span>
                 <span class="stat-name">Stamina</span>
                 <span class="stat-val" id="hud-stamina-val">100/100</span>
               </div>
-              <div class="stat-bar-track">
-                <div class="stat-bar-fill bar-stamina" id="hud-stamina-bar" style="width: 100%;"></div>
+              <div class="stat-bar-container">
+                <img id="hud-stamina-img" class="pixel-stat-bar" src="/assets/ui/bluebar_05.png" alt="Stamina Bar" />
               </div>
             </div>
           </div>
@@ -361,39 +370,40 @@
           <!-- Center: World Clock & Realm Villages Badge -->
           <div class="world-status-card">
             <div class="clock-display">
-              <span class="clock-icon" id="hud-clock-icon">☀️</span>
+              <span class="clock-icon" id="hud-clock-icon"><img src="/assets/ui/stopwatch.png" class="hud-pixel-icon" alt="Clock" /></span>
               <span class="clock-time" id="hud-clock-time">08:30 AM</span>
               <span class="clock-phase-badge" id="hud-clock-phase">Day 1 &bull; Midday</span>
             </div>
             <div class="village-realm-badge" id="hud-village-badge" title="Discovered Villages across the Realm (Gap between villages is 2 to 4 village equivalents, max 4)">
-              <span>🏘️ Villages Discovered: <strong id="hud-villages-count">1/4</strong></span>
+              <span class="badge-icon-wrap"><img src="/assets/ui/plan alt.png" class="hud-pixel-icon" alt="Villages" /></span>
+              <span>Villages Discovered: <strong id="hud-villages-count">1/4</strong></span>
               <span class="badge-sub" id="hud-nearest-village">Current: Oakvale</span>
             </div>
             <!-- Authoritative Server Status & Multiplayer Presence -->
-            <div class="server-status-badge" id="hud-server-badge" style="display:flex;align-items:center;gap:6px;background:rgba(15,23,42,0.85);padding:4px 10px;border-radius:9999px;border:1px solid rgba(56,189,248,0.25);font-size:11px;font-family:'JetBrains Mono',monospace;color:#94a3b8;margin-top:4px;">
-              <span class="server-dot" id="hud-server-dot" style="width:8px;height:8px;border-radius:50%;background:#eab308;display:inline-block;box-shadow:0 0 6px #eab308;"></span>
+            <div class="server-status-badge" id="hud-server-badge">
+              <span class="server-dot" id="hud-server-dot"></span>
               <span id="hud-server-status">Authoritative Server: Connecting...</span>
-              <span style="opacity:0.4;">|</span>
-              <span id="hud-player-count">👥 1 Online</span>
+              <span class="badge-pipe">|</span>
+              <span class="badge-players-wrap"><img src="/assets/ui/playercount.png" class="hud-pixel-icon mini-icon" alt="Players" /><span id="hud-player-count"> 1 Online</span></span>
             </div>
           </div>
 
           <!-- Right: Action Buttons & Utilities -->
           <div class="game-hud-actions">
             <button id="btn-toggle-fullscreen" class="hud-action-btn" title="Toggle Fullscreen (⛶)">
-              <span>⛶</span>
+              <img src="/assets/ui/arrow_up.png" class="hud-pixel-icon" alt="Fullscreen" />
               <span class="btn-text">Fullscreen</span>
             </button>
             <button id="btn-toggle-audio" class="hud-action-btn" title="Toggle Sound">
-              <span id="audio-icon">🔊</span>
+              <img id="audio-icon" src="/assets/PixelInventoryDiaryUI_FreeDemo/Icons_Demo/UI_Icon_Headphones.png" class="hud-pixel-icon" alt="Sound" />
               <span class="btn-text">Sound</span>
             </button>
             <button id="btn-open-inventory" class="hud-action-btn primary-hud-btn" title="Inventory & Crafting (I / C)">
-              <span>🎒</span>
+              <img src="/assets/ui/basket.png" class="hud-pixel-icon" alt="Inventory" />
               <span class="btn-text">Inventory [I]</span>
             </button>
-            <button id="btn-open-pause" class="hud-action-btn" title="Help & Menu (ESC)">
-              <span>⚙️</span>
+            <button id="btn-open-pause" class="hud-action-btn pause-hud-btn" title="Help & Menu (ESC)">
+              <img src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SettingsButton.png" class="hud-pixel-icon settings-icon" alt="Settings" />
             </button>
           </div>
         </header>
@@ -403,7 +413,7 @@
           <!-- Village Compass / Radar Widget -->
           <div class="radar-card" id="radar-card">
             <div class="radar-header">
-              <span>🧭 Realm Navigator</span>
+              <span class="header-title-wrap"><img src="/assets/ui/indicator.png" class="hud-pixel-icon" alt="Compass" /> Realm Navigator</span>
               <span class="radar-badge">2-4x Gap Rule</span>
             </div>
             <div class="radar-viewport">
@@ -436,7 +446,7 @@
           <!-- Quest & Objective Tracker -->
           <div class="quest-card">
             <div class="quest-header">
-              <span>📜 Objectives</span>
+              <span class="header-title-wrap"><img src="/assets/ui/plan alt.png" class="hud-pixel-icon" alt="Quests" /> Objectives</span>
             </div>
             <div class="quest-list" id="quest-list-items"></div>
           </div>
@@ -444,10 +454,14 @@
 
         <!-- BOTTOM HUD: ACTION PROMPT & 8-SLOT HOTBAR -->
         <footer class="game-hud-bottom">
-          <!-- Center Action Tooltip Prompt -->
+          <!-- Center Action Tooltip Prompt (3-Piece Sunnyside Stretchable Label) -->
           <div class="action-prompt-pill hidden" id="game-action-prompt">
-            <span class="prompt-key">[E]</span>
-            <span class="prompt-desc">Pet Cow</span>
+            <span class="prompt-cap-left"></span>
+            <div class="prompt-body">
+              <span class="prompt-key">[E]</span>
+              <span class="prompt-desc">Pet Cow</span>
+            </div>
+            <span class="prompt-cap-right"></span>
           </div>
 
           <!-- 8-Slot Quick Hotbar -->
@@ -466,10 +480,10 @@
           <div class="survival-modal-box">
             <div class="modal-header">
               <div class="modal-title-wrap">
-                <span class="modal-icon">🎒</span>
+                <span class="modal-icon"><img src="/assets/ui/basket.png" class="modal-pixel-icon" alt="Backpack" /></span>
                 <h2>Backpack & Crafting</h2>
               </div>
-              <button class="modal-close-btn" id="btn-close-inventory">&times;</button>
+              <button class="modal-close-btn" id="btn-close-inventory" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
             </div>
 
             <div class="modal-two-columns">
@@ -504,10 +518,10 @@
           <div class="survival-modal-box dialogue-box">
             <div class="modal-header">
               <div class="modal-title-wrap">
-                <span class="modal-icon">🧑‍🌾</span>
+                <span class="modal-icon"><img src="/assets/ui/expression_chat.png" class="modal-pixel-icon" alt="Dialogue" /></span>
                 <h2 id="dialogue-npc-name">Village Merchant</h2>
               </div>
-              <button class="modal-close-btn" id="btn-close-dialogue">&times;</button>
+              <button class="modal-close-btn" id="btn-close-dialogue" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
             </div>
             <div class="dialogue-body">
               <p class="dialogue-text" id="dialogue-npc-text">
@@ -528,10 +542,10 @@
           <div class="survival-modal-box">
             <div class="modal-header">
               <div class="modal-title-wrap">
-                <span class="modal-icon">📦</span>
+                <span class="modal-icon"><img src="/assets/ui/basket.png" class="modal-pixel-icon" alt="Chest" /></span>
                 <h2>Storage Chest</h2>
               </div>
-              <button class="modal-close-btn" id="btn-close-chest">&times;</button>
+              <button class="modal-close-btn" id="btn-close-chest" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
             </div>
             <div class="modal-two-columns">
               <div class="modal-col">
@@ -552,8 +566,11 @@
         <div class="game-modal-overlay hidden" id="modal-pause">
           <div class="survival-modal-box pause-box">
             <div class="modal-header">
-              <h2>Game Paused</h2>
-              <button class="modal-close-btn" id="btn-close-pause">&times;</button>
+              <div class="modal-title-wrap">
+                <span class="modal-icon"><img src="/assets/ui/sandtimer.png" class="modal-pixel-icon" alt="Paused" /></span>
+                <h2>Game Paused</h2>
+              </div>
+              <button class="modal-close-btn" id="btn-close-pause" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
             </div>
             <div class="pause-body">
               <div class="guide-section">
@@ -574,9 +591,9 @@
 
               <div class="pause-actions-row">
                 <button id="btn-resume-game" class="btn-primary-action">Resume Game</button>
-                <button id="btn-save-game" class="btn-secondary-action">💾 Save World</button>
-                <button id="btn-load-game" class="btn-secondary-action">📂 Load Save</button>
-                <button id="btn-reset-game" class="btn-secondary-action" style="border-color:#ef4444; color:#f87171;">New World</button>
+                <button id="btn-save-game" class="btn-secondary-action">Save World</button>
+                <button id="btn-load-game" class="btn-secondary-action">Load Save</button>
+                <button id="btn-reset-game" class="btn-secondary-action btn-danger-action">New World</button>
               </div>
             </div>
           </div>

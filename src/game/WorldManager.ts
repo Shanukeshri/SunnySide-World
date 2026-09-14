@@ -271,6 +271,25 @@ export class WorldManager {
     this.stampVillageIntoChunks(realmVillage);
   }
 
+  public isInsideAnyVillage(wx: number, wy: number): boolean {
+    for (const v of this.villages) {
+      if (wx >= v.gridX && wx < v.gridX + v.width && wy >= v.gridY && wy < v.gridY + v.height) {
+        return true;
+      }
+    }
+    for (const site of this.villagePlannedSites) {
+      if (
+        wx >= site.targetX &&
+        wx < site.targetX + VILLAGE_WIDTH &&
+        wy >= site.targetY &&
+        wy < site.targetY + VILLAGE_HEIGHT
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Stamps village terrain, roads, houses, farms, wells, and trees into existing or new chunks.
    */
@@ -281,6 +300,23 @@ export class WorldManager {
     const startX = v.gridX;
     const startY = v.gridY;
     const data = v.data;
+
+    // Purge any procedural wilderness resources that were generated in the overlapping chunks
+    const minChunkX = Math.floor(startX / CHUNK_SIZE);
+    const maxChunkX = Math.floor((startX + v.width) / CHUNK_SIZE);
+    const minChunkY = Math.floor(startY / CHUNK_SIZE);
+    const maxChunkY = Math.floor((startY + v.height) / CHUNK_SIZE);
+
+    for (let cy = minChunkY; cy <= maxChunkY; cy++) {
+      for (let cx = minChunkX; cx <= maxChunkX; cx++) {
+        const chunk = this.chunks.get(`${cx},${cy}`);
+        if (chunk) {
+          chunk.resources = chunk.resources.filter(
+            (r) => !(r.x >= startX && r.x < startX + v.width && r.y >= startY && r.y < startY + v.height)
+          );
+        }
+      }
+    }
 
     for (let ly = 0; ly < v.height; ly++) {
       for (let lx = 0; lx < v.width; lx++) {
@@ -303,17 +339,12 @@ export class WorldManager {
       }
     }
 
-    // Mark house footprints as blocked: block from row 1 to end (skip row 0 = roof/overhang).
-    // This ensures the visually solid upper walls are walkable-blocked, while the top
-    // row (transparent canopy/roof) is not blocked. The doorway tile remains walkable.
+    // House collision hitbox: ALL of the house is collideable and non-passable (including doorway)
     for (const house of data.houses) {
-      for (let dy = 1; dy < house.footprintH; dy++) {
+      for (let dy = 0; dy < house.footprintH; dy++) {
         for (let dx = 0; dx < house.footprintW; dx++) {
           const wx = startX + house.x + dx;
           const wy = startY + house.y + dy;
-          if (house.door && (startX + house.door.x) === wx && (startY + house.door.y) === wy) {
-            continue; // Keep doorway walkable
-          }
           this.getTile(wx, wy).isBlocked = true;
         }
       }
@@ -322,13 +353,12 @@ export class WorldManager {
     // Mark fences as blocked (openings / gates remain walkable)
     if (data.farmObjects) {
       for (const obj of data.farmObjects) {
-        if (typeof obj.id === 'string' && obj.id.startsWith('fence') && obj.id !== 'fence_wood_gate') {
+        if (typeof obj.id === 'string' && obj.id.startsWith('fence') && obj.id !== 'fence_wood_gate_open') {
           this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
         }
       }
 
-      // Fix 6: Mark visually solid farm objects as blocked
-      // Previously trough, crate, and chest were fully walkable despite appearing solid.
+      // Mark visually solid farm objects as blocked (chests, crates, troughs, bowls)
       const SOLID_FARM_OBJECTS = [
         'farm_trough', 'farm_waterbowl',
         'farm_crate_01', 'farm_crate_02',
@@ -352,14 +382,9 @@ export class WorldManager {
       const wy = startY + t.y;
       const w = t.footprintW || 2;
       const h = t.footprintH || 2;
-      // Fix 4 (village trees): Block both bottom tiles of the tree footprint.
-      // For a 2-wide tree: block (trunkX, trunkY) and (trunkX+1, trunkY) — the full bottom row.
-      const trunkY = wy + h - 1;
-      const trunkX = wx;
-      this.getTile(trunkX, trunkY).isBlocked = true;
-      this.getTile(trunkX + 1, trunkY).isBlocked = true;
-      if (w > 2) {
-        this.getTile(trunkX - 1, trunkY).isBlocked = true;
+      // Mark trunk base on tilemap
+      for (let fdx = 0; fdx < w; fdx++) {
+        this.getTile(wx + fdx, wy + h - 1).isBlocked = true;
       }
       this.addResourceToWorld({
         id: this.nextResourceId++,
@@ -413,6 +438,29 @@ export class WorldManager {
         });
       });
     });
+
+    // Enforce: Nothing may spawn on water bodies, remove everything below them
+    if (data.waterBodies) {
+      for (const wb of data.waterBodies) {
+        for (const cell of wb.cells) {
+          const wx = startX + cell.x;
+          const wy = startY + cell.y;
+          const tile = this.getTile(wx, wy);
+          tile.isWater = true;
+          tile.isBlocked = true;
+
+          const cx = Math.floor(wx / CHUNK_SIZE);
+          const cy = Math.floor(wy / CHUNK_SIZE);
+          const chunk = this.chunks.get(`${cx},${cy}`);
+          if (chunk) {
+            chunk.resources = chunk.resources.filter((res) => {
+              const overlaps = wx >= res.x && wx < res.x + res.w && wy >= res.y && wy < res.y + res.h;
+              return !overlaps;
+            });
+          }
+        }
+      }
+    }
   }
 
   private addResourceToWorld(res: ResourceNode) {
@@ -576,7 +624,8 @@ export class WorldManager {
         const wy = chunk.chunkY * CHUNK_SIZE + ty;
         const tile = chunk.tiles[ty][tx];
 
-        // Do not spawn on water, roads, or occupied tiles
+        // Do not spawn wilderness resources inside villages or on water, roads, or occupied tiles
+        if (this.isInsideAnyVillage(wx, wy)) continue;
         if (tile.isWater || tile.isRoad || tile.isBlocked) continue;
 
         const forestNoise = this.noiseForest(wx * 0.04, wy * 0.04);
@@ -585,6 +634,26 @@ export class WorldManager {
         // 1. Trees: High density in forest/jungle regions, sparse in open plains
         const treeChance = forestNoise > 0.3 ? 0.45 : forestNoise > 0.05 ? 0.22 : 0.07;
         if (roll < treeChance) {
+          // Check full 2x2 footprint: must not touch water, road, blocked tiles, or village
+          let canPlaceTree = true;
+          for (let fdy = 0; fdy < 2; fdy++) {
+            for (let fdx = 0; fdx < 2; fdx++) {
+              const checkTile = chunk.tiles[ty + fdy]?.[tx + fdx];
+              if (
+                !checkTile ||
+                checkTile.isWater ||
+                checkTile.isRoad ||
+                checkTile.isBlocked ||
+                this.isInsideAnyVillage(wx + fdx, wy + fdy)
+              ) {
+                canPlaceTree = false;
+                break;
+              }
+            }
+            if (!canPlaceTree) break;
+          }
+          if (!canPlaceTree) continue;
+
           chunk.resources.push({
             id: this.nextResourceId++,
             type: "tree",
@@ -598,11 +667,8 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          // Fix 4: Block BOTH bottom tiles of the 2×2 tree footprint.
-          // Previously only (tx+1, ty+1) was blocked, causing the player to
-          // walk through the left side of tree trunks visually.
-          chunk.tiles[ty + 1][tx].isBlocked = true;
-          chunk.tiles[ty + 1][tx + 1].isBlocked = true;
+          if (chunk.tiles[ty + 1]?.[tx]) chunk.tiles[ty + 1][tx].isBlocked = true;
+          if (chunk.tiles[ty + 1]?.[tx + 1]) chunk.tiles[ty + 1][tx + 1].isBlocked = true;
           continue;
         }
 
@@ -657,11 +723,11 @@ export class WorldManager {
         const lx = ax - chunk.chunkX * CHUNK_SIZE;
         const ly = ay - chunk.chunkY * CHUNK_SIZE;
         const tile = chunk.tiles[ly]?.[lx];
-        if (tile && !tile.isBlocked && tile.inVillageId === undefined) {
+        if (tile && !this.isInsideAnyVillage(ax, ay)) {
           let species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck' = 'chicken';
           if (tile.isWater) {
             species = 'duck';
-          } else {
+          } else if (!tile.isBlocked) {
             const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
             if (forestNoise > 0.3) {
               species = rng() < 0.5 ? 'deer' : 'rabbit';
@@ -672,6 +738,8 @@ export class WorldManager {
               else if (r < 0.75) species = 'pig';
               else species = 'chicken';
             }
+          } else {
+            continue;
           }
           chunk.spawnedWildlife.push({ species, x: ax + 0.5, y: ay + 0.5 });
         }
@@ -765,6 +833,39 @@ export class WorldManager {
         }
       }
     }
+  }
+
+  /**
+   * Checks if foot coordinates collide with the wooden trunk of any nearby living tree.
+   * Allows players to walk under tree foliage/canopy from behind or either side,
+   * colliding only with the solid central trunk base.
+   */
+  public isBlockedByTreeTrunk(footX: number, footY: number): boolean {
+    const minCx = Math.floor((footX - 2) / CHUNK_SIZE);
+    const maxCx = Math.floor((footX + 2) / CHUNK_SIZE);
+    const minCy = Math.floor((footY - 2) / CHUNK_SIZE);
+    const maxCy = Math.floor((footY + 2) / CHUNK_SIZE);
+
+    for (let cy = minCy; cy <= maxCy; cy++) {
+      for (let cx = minCx; cx <= maxCx; cx++) {
+        const chunk = this.chunks.get(`${cx},${cy}`);
+        if (!chunk) continue;
+
+        for (const res of chunk.resources) {
+          if ((res.type === 'tree' || res.type.startsWith('tree_')) && !res.isDepleted) {
+            const w = res.w || 2;
+            const h = res.h || 2;
+            const cx = res.x + w / 2;
+            const cy = res.y + h - 0.45;
+            if (Math.abs(footX - cx) < w * 0.45 && Math.abs(footY - cy) < 0.45) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**

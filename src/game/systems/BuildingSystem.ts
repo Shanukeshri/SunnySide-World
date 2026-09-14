@@ -92,7 +92,7 @@ export class BuildingSystem {
     };
 
     this.gameState.placedStructures.push(newStruct);
-    tile.isBlocked = structType === "wood_wall";
+    tile.isBlocked = structType === "wood_wall" || structType === "chest" || structType === "workbench";
 
     this.gameState.eventBus.emit("BUILDING_PLACED", {
       playerId: player.id,

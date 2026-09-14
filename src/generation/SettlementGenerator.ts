@@ -1251,9 +1251,8 @@ export class SettlementGenerator {
         }
 
         if (footprintValid) {
-          // Collision hitbox: rectangle equal to length of base and exactly half height (bottom half)
-          const baseStartY = Math.floor(template.h / 2);
-          for (let dy = baseStartY; dy < template.h; dy++) {
+          // Collision clearance: mark full footprint in generator grid so no trees/wells/objects spawn inside house
+          for (let dy = 0; dy < template.h; dy++) {
             for (let dx = 0; dx < template.w; dx++) {
               this.grid[ay + dy][ax + dx].blocked = true;
             }
@@ -1315,13 +1314,13 @@ export class SettlementGenerator {
       if (!closestRoad) continue;
 
       // Smallest path joining to the nearest road:
-      // Step vertically down from door towards road, then horizontally
+      // Step vertically down from immediately outside the door towards road, then horizontally
       let cx = startX;
-      let cy = startY;
+      let cy = startY + 1;
 
       while (cy < this.height) {
-        // If we stepped and hit an existing road (after the initial door cell), connect completed
-        if ((cx !== startX || cy !== startY) && this.grid[cy][cx].isRoad) {
+        // If we stepped and hit an existing road, connect completed
+        if (this.grid[cy][cx].isRoad) {
           break;
         }
 
@@ -1424,7 +1423,9 @@ export class SettlementGenerator {
     const placeTreeAt = (tx: number, ty: number, treeId: string) => {
       for (let dy = 0; dy < 2; dy++) {
         for (let dx = 0; dx < 2; dx++) {
-          this.grid[ty + dy][tx + dx].blocked = true;
+          if (ty + dy < this.height && tx + dx < this.width) {
+            this.grid[ty + dy][tx + dx].blocked = true;
+          }
         }
       }
       this.trees.push({
@@ -1475,10 +1476,6 @@ export class SettlementGenerator {
           { dx: -2, dy: 2 },
           { dx: 2, dy: -2 },
           { dx: -2, dy: -2 },
-          { dx: 2, dy: 1 },
-          { dx: -2, dy: 1 },
-          { dx: 1, dy: 2 },
-          { dx: 1, dy: -2 },
         ];
         // Shuffle offsets
         for (let i = offsets.length - 1; i > 0; i--) {

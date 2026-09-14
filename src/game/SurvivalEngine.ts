@@ -500,6 +500,25 @@ export class SurvivalEngine {
       this.animals.push(animal);
     });
 
+    // Spawn swimming ducks in village pond
+    const starterVillage = this.worldManager.villages[0];
+    if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
+      const pond = starterVillage.data.waterBodies[0];
+      const duckConfig = SPECIES_CONFIGS["duck"];
+      const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
+      for (let i = 0; i < duckCount; i++) {
+        const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
+        const cell = pond.cells[cellIndex];
+        const duck = new Animal(
+          this.nextEntityId++,
+          duckConfig,
+          starterVillage.gridX + cell.x + 0.5,
+          starterVillage.gridY + cell.y + 0.5
+        );
+        this.animals.push(duck);
+      }
+    }
+
     // Spawn 8 specialized village NPCs using each composite animation
     const compositeRoles: ("blacksmith" | "builder" | "farmer" | "fisher" | "guide" | "merchant" | "child" | "villager")[] = [
       "blacksmith",
@@ -783,15 +802,21 @@ export class SurvivalEngine {
     ];
     for (const p of pts) {
       const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
-      if (tile.isBlocked) return false;
+      if (tile.isWater || tile.isBlocked) return false;
       if (this.isBlockedByStructure(footX, footY)) return false;
     }
+    if (this.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
     return true;
   }
 
   private isBlockedByStructure(footX: number, footY: number): boolean {
     for (const struct of this.placedStructures) {
-      if (struct.type === "wood_wall" || (struct.type === "wood_door" && !struct.isOpen)) {
+      const isSolid =
+        struct.type === "wood_wall" ||
+        struct.type === "chest" ||
+        struct.type === "workbench" ||
+        (struct.type === "wood_door" && !struct.isOpen);
+      if (isSolid) {
         const sx = struct.x + 0.5;
         const sy = struct.y + 0.5;
         if (Math.abs(footX - sx) < 0.62 && Math.abs(footY - sy) < 0.62) {
@@ -1538,7 +1563,7 @@ export class SurvivalEngine {
     };
 
     this.placedStructures.push(struct);
-    tile.isBlocked = structType === "wood_wall";
+    tile.isBlocked = structType === "wood_wall" || structType === "chest" || structType === "workbench";
     GameAudio.playBuild();
     this.addFloatingText(`Placed ${ITEM_CATALOG[pieceId]?.name}`, tileX, tileY - 0.5, "#22c55e");
 

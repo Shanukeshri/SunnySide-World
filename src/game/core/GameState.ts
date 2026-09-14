@@ -113,6 +113,37 @@ export class GameState {
       }
     }
 
+    // Spawn swimming ducks in starter village pond for server simulation
+    const starterVillage = this.worldManager.villages[0];
+    if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
+      const pond = starterVillage.data.waterBodies[0];
+      const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
+      for (let i = 0; i < duckCount; i++) {
+        const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
+        const cell = pond.cells[cellIndex];
+        this.animals.push({
+          id: this.getNextId(),
+          kind: "animal",
+          species: "duck",
+          x: starterVillage.gridX + cell.x + 0.5,
+          y: starterVillage.gridY + cell.y + 0.5,
+          direction: "DOWN",
+          behaviorState: "IDLE",
+          health: 20,
+          maxHealth: 20,
+          hunger: 0,
+          speed: 0.8,
+          targetX: null,
+          targetY: null,
+          eatingBobOffset: 0,
+          isPetted: false,
+          pettedTimer: 0,
+          pettingCooldown: 0,
+          fleeTimer: 0,
+        });
+      }
+    }
+
     // Populate specialized village NPCs around starter village (Oakvale)
     const compositeRoles = [
       { role: "blacksmith", name: "Goran the Smith", hairstyle: "mohawk" },
