@@ -170,8 +170,12 @@ export class Animal extends LivingEntity {
       const dist = randomRange(this.id, minWanderDist, maxWanderDist);
       const targetX = this.movement.wanderOriginX + Math.cos(angle) * dist;
       const targetY = this.movement.wanderOriginY + Math.sin(angle) * dist;
-
-      if (detector.isWalkable(targetX, targetY, Boolean(this.config.isAquatic), Boolean(this.config.isAquatic))) {
+      const isAmphibious = Boolean(this.config.isAmphibious);
+      const isAquatic = Boolean(this.config.isAquatic);
+      const allowWater = isAmphibious || isAquatic;
+      const waterOnly = isAquatic && !isAmphibious;
+      
+      if (detector.isWalkable(targetX, targetY, allowWater, waterOnly)) {
         this.behaviorState = 'WANDER';
         this.stateTimer = randomRange(
           this.id,
@@ -254,8 +258,12 @@ export class Animal extends LivingEntity {
       const angle = baseAngle + offset;
       const targetX = this.position.x + Math.cos(angle) * sprintDistance;
       const targetY = this.position.y + Math.sin(angle) * sprintDistance;
+      const isAmphibious = Boolean(this.config.isAmphibious);
+      const isAquatic = Boolean(this.config.isAquatic);
+      const allowWater = isAmphibious || isAquatic;
+      const waterOnly = isAquatic && !isAmphibious;
 
-      if (detector.isWalkable(targetX, targetY, Boolean(this.config.isAquatic), Boolean(this.config.isAquatic))) {
+      if (detector.isWalkable(targetX, targetY, allowWater, waterOnly)) {
         this.setTarget(targetX, targetY);
         return;
       }

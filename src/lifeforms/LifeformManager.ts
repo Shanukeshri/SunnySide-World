@@ -92,7 +92,8 @@ export class LifeformManager {
     this.spawnAnimalHerd('sheep', 4, ['GRASSLAND']);
     this.spawnAnimalHerd('pig', 3, ['VILLAGE', 'GRASSLAND']);
     this.spawnAnimalHerd('chicken', 4, ['VILLAGE', 'GRASSLAND']);
-    this.spawnAnimalHerd('duck', 3, ['WATER', 'GRASSLAND']);
+    this.spawnAnimalHerd('cow', 2, ['WATER', 'GRASSLAND']);
+    this.spawnAnimalHerd('pig', 2, ['WATER', 'GRASSLAND']);
     this.spawnAnimalHerd('rabbit', 3, ['GRASSLAND', 'JUNGLE']);
     this.spawnAnimalHerd('deer', 2, ['JUNGLE', 'GRASSLAND']);
   }
@@ -125,7 +126,12 @@ export class LifeformManager {
     for (let i = 0; i < count; i++) {
       if (this.animals.length >= this.maxWildlife) break;
 
-      const pos = this.findWalkableOffset(center.x, center.y, 3.0, Boolean(config.isAquatic));
+      const isAmphibious = Boolean(config.isAmphibious);
+      const isAquatic = Boolean(config.isAquatic);
+      const allowWater = isAmphibious || isAquatic;
+      const waterOnly = isAquatic && !isAmphibious;
+
+      const pos = this.findWalkableOffset(center.x, center.y, 3.0, allowWater, waterOnly);
       if (pos) {
         const animal = new Animal(this.nextEntityId++, config, pos.x, pos.y);
         animal.movement.wanderOriginX = center.x;
@@ -142,18 +148,19 @@ export class LifeformManager {
     cx: number,
     cy: number,
     radius: number,
-    isAquatic: boolean = false
+    allowWater: boolean = false,
+    waterOnly: boolean = false
   ): { x: number; y: number } | null {
     for (let attempt = 0; attempt < 16; attempt++) {
       const angle = generateRandom(0) * Math.PI * 2;
       const dist = randomRange(0, 0.2, radius);
       const x = cx + Math.cos(angle) * dist;
       const y = cy + Math.sin(angle) * dist;
-      if (this.detector.isWalkable(x, y, isAquatic, isAquatic)) {
+      if (this.detector.isWalkable(x, y, allowWater, waterOnly)) {
         return { x, y };
       }
     }
-    return this.detector.isWalkable(cx, cy, isAquatic, isAquatic) ? { x: cx, y: cy } : null;
+    return this.detector.isWalkable(cx, cy, allowWater, waterOnly) ? { x: cx, y: cy } : null;
   }
 
   /**

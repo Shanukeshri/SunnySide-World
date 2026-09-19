@@ -8,9 +8,110 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/style.css">
+  <link rel="stylesheet" href="/src/main-menu.css">
 </head>
 <body>
   <div id="app">
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- LOAD SCREEN & MAIN MENU                         -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="loading-screen" class="active">
+      <div class="loading-content">
+        <h1 class="loading-title">Sunnyside RTS</h1>
+        <div class="loading-bar-container">
+          <div id="loading-bar-fill" class="loading-bar-fill"></div>
+        </div>
+        <p id="loading-text">Loading Assets...</p>
+      </div>
+    </div>
+
+    <div id="main-menu" class="hidden">
+      <!-- Background rendering canvas will be injected here by MenuBackgroundRenderer -->
+      <div id="main-menu-bg-container"></div>
+      
+      <!-- UI Overlay -->
+      <div class="main-menu-ui">
+        <div class="menu-brand">
+          <h1 class="menu-title">Sunnyside RTS</h1>
+          <p class="menu-subtitle">Cozy Survival & Village Building</p>
+        </div>
+        
+        <div class="menu-buttons">
+          <button id="btn-menu-singleplayer" class="menu-btn primary-menu-btn">
+            <img src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/PlayButton.png" alt="Play" class="menu-btn-icon" />
+            <span>Single Player</span>
+          </button>
+          
+          <button id="btn-menu-multiplayer" class="menu-btn primary-menu-btn">
+            <img src="/assets/ui/playercount.png" alt="Multiplayer" class="menu-btn-icon" style="filter: brightness(0) invert(1);" />
+            <span>Multiplayer</span>
+          </button>
+          
+          <button id="btn-menu-friends" class="menu-btn secondary-menu-btn">
+            <img src="/assets/ui/expression_chat.png" alt="Friends" class="menu-btn-icon" />
+            <span>Friends</span>
+          </button>
+
+          <button id="btn-menu-settings" class="menu-btn secondary-menu-btn">
+            <img src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SettingsButton.png" alt="Settings" class="menu-btn-icon" />
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- MAIN MENU MODALS (Multiplayer / Friends)        -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <div id="modal-multiplayer" class="game-modal-overlay hidden" style="z-index: 9999;">
+      <div class="survival-modal-box">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <h2>Multiplayer</h2>
+          </div>
+          <button class="modal-close-btn" id="btn-close-multiplayer" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
+        </div>
+        <div class="modal-two-columns">
+          <div class="modal-col">
+            <h3>Host a Game</h3>
+            <p style="font-size: 14px; margin-bottom: 10px; color: #cbd5e1;">Create a new world or load an existing one and get an Invite Code to share with friends.</p>
+            <button id="btn-host-game" class="btn-primary-action" style="width: 100%;">Host World</button>
+          </div>
+          <div class="modal-col">
+            <h3>Join a Game</h3>
+            <p style="font-size: 14px; margin-bottom: 10px; color: #cbd5e1;">Enter an Invite Code from a friend to join their world.</p>
+            <input type="text" id="invite-code-input" placeholder="e.g. SUNNY-1234" class="menu-text-input" style="width: 100%; margin-bottom: 10px;" />
+            <button id="btn-join-game" class="btn-primary-action" style="width: 100%;">Join World</button>
+            <p id="join-error-text" style="color: #ef4444; font-size: 12px; margin-top: 5px; display: none;">Invalid Invite Code or Server Offline</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-friends" class="game-modal-overlay hidden" style="z-index: 9999;">
+      <div class="survival-modal-box" style="max-width: 400px;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <h2>Friends List</h2>
+          </div>
+          <button class="modal-close-btn" id="btn-close-friends" title="Close"><img src="/assets/ui/cancel.png" class="pixel-close-img" alt="Close" /></button>
+        </div>
+        <div class="friends-body">
+          <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+            <input type="text" id="add-friend-input" placeholder="Enter Player Name..." class="menu-text-input" style="flex: 1;" />
+            <button id="btn-add-friend" class="btn-secondary-action">Add</button>
+          </div>
+          <div id="friends-list-container" class="friends-list-container">
+            <!-- Friend rows injected here -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Friend Invite Toast Notification Container -->
+    <div id="invite-toast-container" class="invite-toast-container"></div>
+
 
     <!-- ═══════════════════════════════════════════════ -->
     <!-- TOP TAB BAR                                     -->

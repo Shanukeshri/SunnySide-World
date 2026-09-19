@@ -17,6 +17,67 @@ export class AnimalSystem {
     this.gameState = gameState;
   }
 
+  /**
+   * Checks whether a position is traversable for the given animal species.
+   * Uses a bounding-box check (4 corners) to prevent any visual overlap with invalid tiles.
+   */
+  private isPositionValidForAnimal(x: number, y: number, species: AnimalEntityState["species"]): boolean {
+    const isAmphibious = species === "duck" || species === "cow" || species === "pig";
+    const radius = 0.4; // animal visual half-width
+
+    // Check all 4 corners of the bounding box
+    const corners = [
+      { cx: x - radius, cy: y - radius },
+      { cx: x + radius, cy: y - radius },
+      { cx: x - radius, cy: y + radius },
+      { cx: x + radius, cy: y + radius },
+    ];
+
+    for (const corner of corners) {
+      const tile = this.gameState.worldManager.getTile(Math.floor(corner.cx), Math.floor(corner.cy));
+      if (isAmphibious) {
+        if (tile.isBlocked && !tile.isWater) return false;
+      } else {
+        if (tile.isWater || tile.isBlocked) return false;
+      }
+    }
+
+    // Land animals also check tree trunk collision at center
+    if (!isAmphibious) {
+      if (this.gameState.worldManager.isBlockedByTreeTrunk(x + 0.5, y + 0.5)) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Relocates a misplaced animal to the nearest valid tile.
+   * Land animals in water → moved to nearest land. Ducks on land → moved to nearest water.
+   */
+  private relocateAnimalToValidTile(animal: AnimalEntityState): void {
+    // Search in expanding rings around the animal's current position
+    for (let radius = 1; radius <= 12; radius++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue; // Only check ring edge
+          const testX = animal.x + dx;
+          const testY = animal.y + dy;
+          if (this.isPositionValidForAnimal(testX, testY, animal.species)) {
+            animal.x = testX;
+            animal.y = testY;
+            animal.targetX = null;
+            animal.targetY = null;
+            animal.behaviorState = "IDLE";
+            return;
+          }
+        }
+      }
+    }
+
+    // If no valid tile found in 12-tile radius, remove the animal
+    animal.behaviorState = "DEAD";
+  }
+
   public update(dt: number): void {
     // Find active player positions for chunk culling
     const playerPositions: { x: number; y: number }[] = [];
@@ -42,6 +103,11 @@ export class AnimalSystem {
         }
       }
       if (!isNearPlayer) continue;
+
+      // Fix misplaced animals: land animals on water get relocated, ducks on land get relocated
+      if (!this.isPositionValidForAnimal(animal.x, animal.y, animal.species)) {
+        this.relocateAnimalToValidTile(animal);
+      }
 
       this.updateAnimalAI(animal, dt);
       this.updateAnimalMovement(animal, dt);
@@ -107,10 +173,7 @@ export class AnimalSystem {
           const targetX = animal.x + Math.cos(angle) * dist;
           const targetY = animal.y + Math.sin(angle) * dist;
 
-          const tile = this.gameState.worldManager.getTile(Math.floor(targetX), Math.floor(targetY));
-          const isAquatic = animal.species === "duck";
-          const canWander = isAquatic ? tile.isWater : (!tile.isWater && !tile.isBlocked);
-          if (canWander) {
+          if (this.isPositionValidForAnimal(targetX, targetY, animal.species)) {
             animal.targetX = targetX;
             animal.targetY = targetY;
             animal.behaviorState = "WANDER";
@@ -139,15 +202,12 @@ export class AnimalSystem {
     const nextX = animal.x + (dx / dist) * step;
     const nextY = animal.y + (dy / dist) * step;
 
-    const tile = this.gameState.worldManager.getTile(Math.floor(nextX), Math.floor(nextY));
-    const isAquatic = animal.species === "duck";
-    const hitsTrunk = !isAquatic && this.gameState.worldManager.isBlockedByTreeTrunk(nextX + 0.5, nextY + 0.5);
-    const canMove = isAquatic ? tile.isWater : (!tile.isWater && !tile.isBlocked && !hitsTrunk);
-    if (canMove) {
+    if (this.isPositionValidForAnimal(nextX, nextY, animal.species)) {
       animal.x = nextX;
       animal.y = nextY;
       animal.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "RIGHT" : "LEFT") : (dy > 0 ? "DOWN" : "UP");
     } else {
+      // Can't move to target — abort and go idle
       animal.targetX = null;
       animal.targetY = null;
       animal.behaviorState = "IDLE";
@@ -209,9 +269,37 @@ export class AnimalSystem {
     animal.fleeTimer = 4.0;
     animal.speed = 3.2; // sprint speed
 
-    const angle = Math.atan2(animal.y - sourceY, animal.x - sourceX);
-    animal.targetX = animal.x + Math.cos(angle) * 12;
-    animal.targetY = animal.y + Math.sin(angle) * 12;
+    const isAquatic = animal.species === "duck";
+    const fleeAngle = Math.atan2(animal.y - sourceY, animal.x - sourceX);
+
+    // Validate flee target — try multiple distances/angles to find valid terrain
+    let bestX = animal.x;
+    let bestY = animal.y;
+    let found = false;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      // Jitter the angle slightly on retries to find passable terrain
+      const angle = fleeAngle + (attempt > 0 ? (Math.random() - 0.5) * Math.PI * 0.5 : 0);
+      const dist = 12 - attempt; // Reduce distance on retries
+      const testX = animal.x + Math.cos(angle) * dist;
+      const testY = animal.y + Math.sin(angle) * dist;
+      if (this.isPositionValidForAnimal(testX, testY, animal.species)) {
+        bestX = testX;
+        bestY = testY;
+        found = true;
+        break;
+      }
+    }
+
+    if (found) {
+      animal.targetX = bestX;
+      animal.targetY = bestY;
+    } else {
+      // No valid flee target found — just stay put
+      animal.targetX = null;
+      animal.targetY = null;
+      animal.behaviorState = "IDLE";
+      animal.speed = 1.5;
+    }
 
     this.gameState.eventBus.emit("ANIMAL_HURT", {
       animalId: animal.id,

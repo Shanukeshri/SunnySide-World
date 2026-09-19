@@ -261,11 +261,12 @@ export class SurvivalRenderer {
 
     ctx.imageSmoothingEnabled = false;
 
-    // Camera follows smooth continuous visual position so reconciliation never causes camera pop.
+    // Fix 1 & 2: Camera follows the authoritative predicted position, NOT the visual
+    // (error-offset) position, so server corrections never cause camera shudder.
     // Smoothing uses exponential decay so it's identical at all frame rates.
     const pred = (engine as any).networkPrediction;
-    const targetCamX = pred ? pred.getVisualPosition().x : engine.player.x;
-    const targetCamY = pred ? pred.getVisualPosition().y : engine.player.y;
+    const targetCamX = pred ? pred.predictedX : engine.player.x;
+    const targetCamY = pred ? pred.predictedY : engine.player.y;
     const smoothing = 1 - Math.exp(-10 * dt);
     this.cameraX += (targetCamX - this.cameraX) * smoothing;
     this.cameraY += (targetCamY - this.cameraY) * smoothing;

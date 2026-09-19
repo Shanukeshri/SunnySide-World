@@ -92,6 +92,7 @@ export interface SpeciesConfig {
   canFeed: boolean;
   health: number;
   isAquatic?: boolean;
+  isAmphibious?: boolean;
 
   // Compatibility helpers
   defaultSpeed: number;

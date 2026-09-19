@@ -188,8 +188,8 @@ export class PlayerSystem {
   public canMoveTo(x: number, y: number): boolean {
     const footX = x + 0.5;
     const footY = y + 0.65;
-    const rx = 0.22;
-    const ry = 0.16;
+    const rx = 0.35;
+    const ry = 0.25;
     const pts = [
       { x: footX - rx, y: footY - ry },
       { x: footX + rx, y: footY - ry },

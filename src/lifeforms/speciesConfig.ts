@@ -32,6 +32,7 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     canPet: true,
     canFeed: true,
     health: 100,
+    isAmphibious: true,
     shadowRadiusX: 13,
     shadowRadiusY: 5.5,
     spriteAsset: {
@@ -227,6 +228,7 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     canPet: true,
     canFeed: true,
     health: 90,
+    isAmphibious: true,
     shadowRadiusX: 10,
     shadowRadiusY: 4.5,
     spriteAsset: {

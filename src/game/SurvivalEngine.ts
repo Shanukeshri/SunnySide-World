@@ -490,23 +490,29 @@ export class SurvivalEngine {
     speciesList.forEach((species, i) => {
       const offsetX = (i % 4) * 4 - 6 + (Math.random() * 2 - 1);
       const offsetY = Math.floor(i / 4) * 4 - 4 + (Math.random() * 2 - 1);
+      const spawnX = this.player.x + offsetX;
+      const spawnY = this.player.y + offsetY;
+
+      // Skip if position lands on water or blocked tile
+      if (!this.detector.isWalkable(spawnX, spawnY, false, false)) return;
+
       const config = SPECIES_CONFIGS[species];
       const animal = new Animal(
         this.nextEntityId++,
         config,
-        this.player.x + offsetX,
-        this.player.y + offsetY
+        spawnX,
+        spawnY
       );
       this.animals.push(animal);
     });
 
-    // Spawn swimming ducks in village pond
+    // Spawn swimming cows and pigs in village pond
     const starterVillage = this.worldManager.villages[0];
     if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
       const pond = starterVillage.data.waterBodies[0];
-      const duckConfig = SPECIES_CONFIGS["duck"];
       const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
       for (let i = 0; i < duckCount; i++) {
+        const duckConfig = SPECIES_CONFIGS[Math.random() < 0.5 ? "cow" : "pig"];
         const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
         const cell = pond.cells[cellIndex];
         const duck = new Animal(
@@ -613,6 +619,11 @@ export class SurvivalEngine {
           for (const wild of chunk.spawnedWildlife) {
             const config = SPECIES_CONFIGS[wild.species];
             if (config) {
+              // Validate position: skip non-amphibious animals on water
+              const isAmphibious = wild.species === "cow" || wild.species === "pig" || wild.species === "duck";
+              const tile = this.worldManager.getTile(Math.floor(wild.x), Math.floor(wild.y));
+              if (!isAmphibious && (tile.isWater || tile.isBlocked)) continue;
+
               const animal = new Animal(this.nextEntityId++, config, wild.x, wild.y);
               this.animals.push(animal);
             }
@@ -676,20 +687,17 @@ export class SurvivalEngine {
    * Updates player position with collision detection against water, trees, and walls.
    */
   private updatePlayerMovement(dt: number) {
-    const curTile = this.worldManager.getTile(Math.floor(this.player.x), Math.floor(this.player.y));
-    this.player.isSwimming = curTile.isWater;
+    // Player never swims — water is always a solid collision barrier
+    this.player.isSwimming = false;
 
-    // Sprint & swimming speed logic
+    // Sprint speed logic (no swimming modifier)
     let baseSpeed =
       this.player.isSprinting && this.player.stamina > 10
         ? this.player.sprintSpeed
         : this.player.speed;
-    if (this.player.isSwimming) {
-      baseSpeed *= 0.65;
-    }
     const currentSpeed = baseSpeed;
 
-    if (this.player.isSprinting && (this.player.vx !== 0 || this.player.vy !== 0) && !this.player.isSwimming) {
+    if (this.player.isSprinting && (this.player.vx !== 0 || this.player.vy !== 0)) {
       this.player.stamina = Math.max(0, this.player.stamina - dt * 18);
     } else {
       this.player.stamina = Math.min(this.player.maxStamina, this.player.stamina + dt * 14);
@@ -792,19 +800,30 @@ export class SurvivalEngine {
   public canMoveTo(x: number, y: number): boolean {
     const footX = x + 0.5;
     const footY = y + 0.65;
-    const rx = 0.22;
-    const ry = 0.16;
+    const rx = 0.35;
+    const ry = 0.25;
+
+    // Check 4 corners + center foot point + 4 edge midpoints for robust diagonal collision.
+    // This prevents corner-cutting through diagonally adjacent water/blocked tiles.
     const pts = [
+      // 4 corners of foot bounding box
       { x: footX - rx, y: footY - ry },
       { x: footX + rx, y: footY - ry },
       { x: footX - rx, y: footY + ry },
       { x: footX + rx, y: footY + ry },
+      // Center foot point (catches diagonal tiles the corners miss)
+      { x: footX, y: footY },
+      // 4 edge midpoints for extra diagonal coverage
+      { x: footX, y: footY - ry },   // top-center
+      { x: footX, y: footY + ry },   // bottom-center
+      { x: footX - rx, y: footY },   // left-center
+      { x: footX + rx, y: footY },   // right-center
     ];
     for (const p of pts) {
       const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
       if (tile.isWater || tile.isBlocked) return false;
-      if (this.isBlockedByStructure(footX, footY)) return false;
     }
+    if (this.isBlockedByStructure(footX, footY)) return false;
     if (this.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
     return true;
   }

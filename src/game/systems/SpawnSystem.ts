@@ -122,15 +122,53 @@ export class SpawnSystem {
 
       const tile = this.gameState.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY));
       const isWater = tile.isWater;
-      const isLandWalkable = !tile.isWater && !tile.isBlocked;
-      if (isWater || isLandWalkable) {
-        let chosen: AnimalEntityState["species"];
-        if (isWater) {
-          chosen = "duck";
-        } else {
-          const speciesList: AnimalEntityState["species"][] = ["cow", "sheep", "chicken", "rabbit", "deer"];
-          chosen = randomChoice(0, speciesList);
-        }
+      const hitsTrunk = this.gameState.worldManager.isBlockedByTreeTrunk(spawnX + 0.5, spawnY + 0.5);
+      const isLandWalkable = !tile.isWater && !tile.isBlocked && !hitsTrunk;
+
+      if (isWater) {
+        // Water tile → spawn cow or pig instead of duck
+        const species = Math.random() < 0.5 ? 'cow' : 'pig';
+        const animal: AnimalEntityState = {
+          id: this.gameState.getNextId(),
+          kind: "animal",
+          species: species,
+          x: spawnX,
+          y: spawnY,
+          direction: "DOWN",
+          behaviorState: "IDLE",
+          health: 30,
+          maxHealth: 30,
+          hunger: 0,
+          speed: 1.5,
+          targetX: null,
+          targetY: null,
+          eatingBobOffset: 0,
+          isPetted: false,
+          pettedTimer: 0,
+          pettingCooldown: 0,
+          fleeTimer: 0,
+        };
+        this.gameState.animals.push(animal);
+        this.gameState.eventBus.emit("ENTITY_SPAWNED", {
+          entityId: animal.id,
+          kind: "animal",
+          species: "duck",
+          x: spawnX,
+          y: spawnY,
+        });
+      } else if (isLandWalkable) {
+        // Land tile → verify no adjacent water tiles (prevent animals from immediately wandering into water)
+        const neighbors = [
+          this.gameState.worldManager.getTile(Math.floor(spawnX) - 1, Math.floor(spawnY)),
+          this.gameState.worldManager.getTile(Math.floor(spawnX) + 1, Math.floor(spawnY)),
+          this.gameState.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY) - 1),
+          this.gameState.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY) + 1),
+        ];
+        const nearWater = neighbors.some((n) => n.isWater);
+        if (nearWater) return; // Don't spawn land animals right next to water
+
+        const speciesList: AnimalEntityState["species"][] = ["cow", "sheep", "chicken", "rabbit", "deer", "pig"];
+        const chosen = randomChoice(0, speciesList);
 
         const animal: AnimalEntityState = {
           id: this.gameState.getNextId(),
@@ -152,7 +190,6 @@ export class SpawnSystem {
           pettingCooldown: 0,
           fleeTimer: 0,
         };
-
         this.gameState.animals.push(animal);
         this.gameState.eventBus.emit("ENTITY_SPAWNED", {
           entityId: animal.id,

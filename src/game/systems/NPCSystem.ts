@@ -56,7 +56,8 @@ export class NPCSystem {
         const ty = npc.y + Math.sin(angle) * dist;
 
         const tile = this.gameState.worldManager.getTile(Math.floor(tx), Math.floor(ty));
-        if (!tile.isWater && !tile.isBlocked) {
+        const hitsTrunk = this.gameState.worldManager.isBlockedByTreeTrunk(tx + 0.5, ty + 0.5);
+        if (!tile.isWater && !tile.isBlocked && !hitsTrunk) {
           npc.targetX = tx;
           npc.targetY = ty;
           npc.behaviorState = "WANDER";

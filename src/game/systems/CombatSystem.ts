@@ -89,7 +89,8 @@ export class CombatSystem {
 
       const nextX = enemy.x + enemy.vx * dt;
       const nextY = enemy.y + enemy.vy * dt;
-      if (this.gameState.worldManager.isWalkable(nextX, nextY)) {
+      const hitsTrunk = this.gameState.worldManager.isBlockedByTreeTrunk(nextX + 0.5, nextY + 0.5);
+      if (this.gameState.worldManager.isWalkable(nextX, nextY) && !hitsTrunk) {
         enemy.x = nextX;
         enemy.y = nextY;
       }

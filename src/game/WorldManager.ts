@@ -726,8 +726,16 @@ export class WorldManager {
         if (tile && !this.isInsideAnyVillage(ax, ay)) {
           let species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck' = 'chicken';
           if (tile.isWater) {
-            species = 'duck';
+            species = rng() < 0.5 ? 'cow' : 'pig';
           } else if (!tile.isBlocked) {
+            // Check adjacent tiles for water — land animals shouldn't spawn right next to water
+            const adjUp = chunk.tiles[ly - 1]?.[lx];
+            const adjDown = chunk.tiles[ly + 1]?.[lx];
+            const adjLeft = chunk.tiles[ly]?.[lx - 1];
+            const adjRight = chunk.tiles[ly]?.[lx + 1];
+            const nearWater = (adjUp?.isWater) || (adjDown?.isWater) || (adjLeft?.isWater) || (adjRight?.isWater);
+            if (nearWater) continue; // Skip this spawn — too close to water for a land animal
+
             const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
             if (forestNoise > 0.3) {
               species = rng() < 0.5 ? 'deer' : 'rabbit';

@@ -32,6 +32,12 @@ export class WorldSystem {
           const chunk = this.gameState.worldManager.chunks.get(`${pcx + dx},${pcy + dy}`);
           if (chunk && chunk.spawnedWildlife && chunk.spawnedWildlife.length > 0) {
             for (const wild of chunk.spawnedWildlife) {
+              // Validate position against current tile state (post-village stamp)
+              const isAquatic = wild.species === "duck";
+              const tile = this.gameState.worldManager.getTile(Math.floor(wild.x), Math.floor(wild.y));
+              if (!isAquatic && (tile.isWater || tile.isBlocked)) continue;
+              if (isAquatic && !tile.isWater) continue;
+
               const animal: AnimalEntityState = {
                 id: this.gameState.getNextId(),
                 kind: "animal",

@@ -22,6 +22,7 @@ import {
   ITEM_CATALOG,
   CRAFTING_RECIPES,
 } from "./game/SurvivalEngine";
+import { MainMenuUI } from "./client/MainMenuUI";
 import { SurvivalRenderer } from "./game/SurvivalRenderer";
 import { GameAudio } from "./game/GameAudio";
 import {
@@ -453,6 +454,48 @@ collisionFilterButtons.forEach((btn) => {
     (window as any).AtlasViewer?.setCollisionFilter(filter);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN MENU BOOTSTRAP
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener("DOMContentLoaded", () => {
+  // Hide all tabs for the actual game experience
+  const topTabBar = document.querySelector(".top-tab-bar") as HTMLElement;
+  if (topTabBar) topTabBar.style.display = "none";
+  
+  // Init Menu UI
+  const mainMenu = new MainMenuUI();
+  mainMenu.showMenu();
+  
+  mainMenu.setOnStartGame((mode, inviteCode) => {
+    // Hide atlas/settlement stuff, switch to game tab
+    switchTab("game");
+    
+    // In multiplayer, we use the network client
+    if (mode === "multi") {
+      if (inviteCode) {
+        console.log("Joining game with invite code:", inviteCode);
+        setTimeout(() => {
+          networkClient?.joinWorld(inviteCode, "Player", "mophair");
+        }, 500);
+      } else {
+        console.log("Hosting a new multiplayer game");
+        setTimeout(() => {
+          networkClient?.hostWorld("Host", "mophair");
+        }, 500);
+      }
+    } else {
+      // Single player
+      if (networkClient) {
+        networkClient.disconnect();
+      }
+      if (survivalEngine) {
+        (survivalEngine as any).networkPrediction = null;
+      }
+    }
+  });
+});
+
 
 // ═══════════════════════════════════════════════════════════════════
 // PHASER EVENTS
@@ -1595,6 +1638,9 @@ function setupNetworkClientHandlers() {
         existing.health = sa.health;
         existing.direction = sa.direction;
         existing.behaviorState = sa.behaviorState as any;
+        // Sync authoritative position from server (critical for collision relocation)
+        existing.position.x = sa.x;
+        existing.position.y = sa.y;
       }
     }
 
@@ -1622,6 +1668,9 @@ function setupNetworkClientHandlers() {
         }
         existing.direction = sn.direction;
         existing.behaviorState = sn.behaviorState as any;
+        // Sync authoritative position from server
+        existing.position.x = sn.x;
+        existing.position.y = sn.y;
       }
     }
 

@@ -88,6 +88,13 @@ export class GameState {
     for (const chunk of this.worldManager.chunks.values()) {
       if (chunk.spawnedWildlife && chunk.spawnedWildlife.length > 0) {
         for (const wild of chunk.spawnedWildlife) {
+          // Validate position against CURRENT tile state (post-village stamping)
+          // Land animals must NOT be on water or blocked tiles
+          const isAquatic = wild.species === "duck";
+          const tile = this.worldManager.getTile(Math.floor(wild.x), Math.floor(wild.y));
+          if (!isAquatic && (tile.isWater || tile.isBlocked)) continue; // Skip: this tile became water/blocked after village stamp
+          if (isAquatic && !tile.isWater) continue; // Ducks must be on water
+
           this.animals.push({
             id: this.getNextId(),
             kind: "animal",
@@ -113,34 +120,36 @@ export class GameState {
       }
     }
 
-    // Spawn swimming ducks in starter village pond for server simulation
+    // Spawn swimming ducks in ALL village water bodies (ponds, lakes)
     const starterVillage = this.worldManager.villages[0];
     if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
-      const pond = starterVillage.data.waterBodies[0];
-      const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
-      for (let i = 0; i < duckCount; i++) {
-        const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
-        const cell = pond.cells[cellIndex];
-        this.animals.push({
-          id: this.getNextId(),
-          kind: "animal",
-          species: "duck",
-          x: starterVillage.gridX + cell.x + 0.5,
-          y: starterVillage.gridY + cell.y + 0.5,
-          direction: "DOWN",
-          behaviorState: "IDLE",
-          health: 20,
-          maxHealth: 20,
-          hunger: 0,
-          speed: 0.8,
-          targetX: null,
-          targetY: null,
-          eatingBobOffset: 0,
-          isPetted: false,
-          pettedTimer: 0,
-          pettingCooldown: 0,
-          fleeTimer: 0,
-        });
+      for (const pond of starterVillage.data.waterBodies) {
+        if (pond.cells.length === 0) continue;
+        const duckCount = Math.min(5, Math.max(2, Math.floor(pond.cells.length / 4)));
+        for (let i = 0; i < duckCount; i++) {
+          const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
+          const cell = pond.cells[cellIndex];
+          this.animals.push({
+            id: this.getNextId(),
+            kind: "animal",
+            species: "duck",
+            x: starterVillage.gridX + cell.x + 0.5,
+            y: starterVillage.gridY + cell.y + 0.5,
+            direction: "DOWN",
+            behaviorState: "IDLE",
+            health: 20,
+            maxHealth: 20,
+            hunger: 0,
+            speed: 0.8,
+            targetX: null,
+            targetY: null,
+            eatingBobOffset: 0,
+            isPetted: false,
+            pettedTimer: 0,
+            pettingCooldown: 0,
+            fleeTimer: 0,
+          });
+        }
       }
     }
 
