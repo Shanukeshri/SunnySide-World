@@ -267,7 +267,7 @@ export class SurvivalRenderer {
     const pred = (engine as any).networkPrediction;
     const targetCamX = pred ? pred.predictedX : engine.player.x;
     const targetCamY = pred ? pred.predictedY : engine.player.y;
-    const smoothing = 1 - Math.exp(-10 * dt);
+    const smoothing = 1 - Math.exp(-1 * dt);
     this.cameraX += (targetCamX - this.cameraX) * smoothing;
     this.cameraY += (targetCamY - this.cameraY) * smoothing;
 
