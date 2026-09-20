@@ -12,8 +12,8 @@ import { Server as SocketIOServer } from "socket.io";
 import { GameServer } from "./GameServer";
 
 const PORT = parseInt(process.env.PORT || "4000", 10);
-const SEED = parseInt(process.env.WORLD_SEED || "42891", 10);
-const TICK_RATE = parseInt(process.env.TICK_RATE || "20", 10);
+const SEED = Math.floor(Math.random() * 1000000);
+const TICK_RATE = 20;
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
