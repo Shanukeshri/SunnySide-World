@@ -1,11 +1,16 @@
 /**
  * SurvivalEngine.ts - Complete Single-Player Survival Sandbox Simulation
- * 
+ *
  * Implements the full gameplay loop from gameLogicV1.txt:
  * Explore -> Gather -> Craft -> Build -> Survive -> Combat -> Wildlife/NPCs.
  */
 
-import { Direction, Position2D, HeartParticle, SpeciesType } from "../lifeforms/types";
+import {
+  Direction,
+  Position2D,
+  HeartParticle,
+  SpeciesType,
+} from "../lifeforms/types";
 import { Animal } from "../lifeforms/Animal";
 import { NPC } from "../lifeforms/NPC";
 import { Player } from "../lifeforms/Player";
@@ -30,59 +35,503 @@ import { GameAudio } from "./GameAudio";
 
 // Item Catalog Definition
 export const ITEM_CATALOG: Record<ItemId, ItemDef> = {
-  wood: { id: "wood", name: "Oak Wood", category: "resource", description: "Sturdy wood logs chopped from trees.", icon: "🪵", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png", maxStack: 99 },
-  stick: { id: "stick", name: "Sticks", category: "resource", description: "Thin wooden branches for crafting tools.", icon: "🥢", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png", maxStack: 99 },
-  stone: { id: "stone", name: "Cobblestone", category: "resource", description: "Rough stone mined from boulders.", icon: "🪨", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png", maxStack: 99 },
-  coal: { id: "coal", name: "Lump of Coal", category: "resource", description: "Combustible fuel for campfires and torches.", icon: "⚫", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png", maxStack: 99 },
-  iron_ore: { id: "iron_ore", name: "Iron Ore", category: "resource", description: "Unrefined iron extracted from mineral veins.", icon: "⛏️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png", maxStack: 99 },
-  iron_ingot: { id: "iron_ingot", name: "Iron Ingot", category: "resource", description: "Smelted iron bar for superior tools.", icon: "🪙", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png", maxStack: 99 },
-  fiber: { id: "fiber", name: "Plant Fiber", category: "resource", description: "Tough fibers for binding and crafting.", icon: "🌿", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/plant.png", maxStack: 99 },
-  berries: { id: "berries", name: "Sweet Berries", category: "food", description: "Juicy forest berries. Restores 15 hunger.", icon: "🍓", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_05.png", maxStack: 50, hungerRestore: 15, healthRestore: 4 },
-  apple: { id: "apple", name: "Red Apple", category: "food", description: "Crisp wild apple. Restores 20 hunger.", icon: "🍎", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_05.png", maxStack: 50, hungerRestore: 20, healthRestore: 8 },
-  raw_meat: { id: "raw_meat", name: "Raw Meat", category: "food", description: "Raw cut of meat. Cook before eating.", icon: "🥩", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 10, healthRestore: -5 },
-  cooked_meat: { id: "cooked_meat", name: "Roasted Meat", category: "food", description: "Savory meat roasted over fire. Restores 45 hunger.", icon: "🍖", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 45, healthRestore: 25 },
-  wheat: { id: "wheat", name: "Golden Wheat", category: "resource", description: "Harvested grain for baking bread.", icon: "🌾", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_05.png", maxStack: 99 },
-  bread: { id: "bread", name: "Hearty Bread", category: "food", description: "Fresh baked loaf. Restores 35 hunger.", icon: "🍞", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_04.png", maxStack: 30, hungerRestore: 35, healthRestore: 15 },
-  seeds: { id: "seeds", name: "Crop Seeds", category: "resource", description: "Seeds to plant crops in tilled farm soil.", icon: "🌱", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png", maxStack: 99 },
-  slime_gel: { id: "slime_gel", name: "Slime Gel", category: "resource", description: "Sticky gooey residue dropped by slimes.", icon: "🧪", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png", maxStack: 99 },
+  wood: {
+    id: "wood",
+    name: "Oak Wood",
+    category: "resource",
+    description: "Sturdy wood logs chopped from trees.",
+    icon: "🪵",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 99,
+  },
+  stick: {
+    id: "stick",
+    name: "Sticks",
+    category: "resource",
+    description: "Thin wooden branches for crafting tools.",
+    icon: "🥢",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png",
+    maxStack: 99,
+  },
+  stone: {
+    id: "stone",
+    name: "Cobblestone",
+    category: "resource",
+    description: "Rough stone mined from boulders.",
+    icon: "🪨",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 99,
+  },
+  coal: {
+    id: "coal",
+    name: "Lump of Coal",
+    category: "resource",
+    description: "Combustible fuel for campfires and torches.",
+    icon: "⚫",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 99,
+  },
+  iron_ore: {
+    id: "iron_ore",
+    name: "Iron Ore",
+    category: "resource",
+    description: "Unrefined iron extracted from mineral veins.",
+    icon: "⛏️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 99,
+  },
+  iron_ingot: {
+    id: "iron_ingot",
+    name: "Iron Ingot",
+    category: "resource",
+    description: "Smelted iron bar for superior tools.",
+    icon: "🪙",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 99,
+  },
+  fiber: {
+    id: "fiber",
+    name: "Plant Fiber",
+    category: "resource",
+    description: "Tough fibers for binding and crafting.",
+    icon: "🌿",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/plant.png",
+    maxStack: 99,
+  },
+  berries: {
+    id: "berries",
+    name: "Sweet Berries",
+    category: "food",
+    description: "Juicy forest berries. Restores 15 hunger.",
+    icon: "🍓",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/radish_05.png",
+    maxStack: 50,
+    hungerRestore: 15,
+    healthRestore: 4,
+  },
+  apple: {
+    id: "apple",
+    name: "Red Apple",
+    category: "food",
+    description: "Crisp wild apple. Restores 20 hunger.",
+    icon: "🍎",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/carrot_05.png",
+    maxStack: 50,
+    hungerRestore: 20,
+    healthRestore: 8,
+  },
+  raw_meat: {
+    id: "raw_meat",
+    name: "Raw Meat",
+    category: "food",
+    description: "Raw cut of meat. Cook before eating.",
+    icon: "🥩",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png",
+    maxStack: 30,
+    hungerRestore: 10,
+    healthRestore: -5,
+  },
+  cooked_meat: {
+    id: "cooked_meat",
+    name: "Roasted Meat",
+    category: "food",
+    description: "Savory meat roasted over fire. Restores 45 hunger.",
+    icon: "🍖",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png",
+    maxStack: 30,
+    hungerRestore: 45,
+    healthRestore: 25,
+  },
+  wheat: {
+    id: "wheat",
+    name: "Golden Wheat",
+    category: "resource",
+    description: "Harvested grain for baking bread.",
+    icon: "🌾",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_05.png",
+    maxStack: 99,
+  },
+  bread: {
+    id: "bread",
+    name: "Hearty Bread",
+    category: "food",
+    description: "Fresh baked loaf. Restores 35 hunger.",
+    icon: "🍞",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_04.png",
+    maxStack: 30,
+    hungerRestore: 35,
+    healthRestore: 15,
+  },
+  seeds: {
+    id: "seeds",
+    name: "Crop Seeds",
+    category: "resource",
+    description: "Seeds to plant crops in tilled farm soil.",
+    icon: "🌱",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds_generic.png",
+    maxStack: 99,
+  },
+  slime_gel: {
+    id: "slime_gel",
+    name: "Slime Gel",
+    category: "resource",
+    description: "Sticky gooey residue dropped by slimes.",
+    icon: "🧪",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png",
+    maxStack: 99,
+  },
 
   // Tools & Weapons
-  wooden_axe: { id: "wooden_axe", name: "Wooden Axe", category: "tool", description: "Basic woodcutter axe. Effective on trees.", icon: "🪓", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png", maxStack: 1, durability: 40, maxDurability: 40, damage: 5, gatherPower: 10, gatherType: "wood" },
-  stone_axe: { id: "stone_axe", name: "Stone Axe", category: "tool", description: "Sharpened stone axe with greater durability.", icon: "🪓", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png", maxStack: 1, durability: 90, maxDurability: 90, damage: 9, gatherPower: 16, gatherType: "wood" },
-  iron_axe: { id: "iron_axe", name: "Iron Axe", category: "tool", description: "Heavy iron axe. Chops trees with ease.", icon: "🪓", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png", maxStack: 1, durability: 200, maxDurability: 200, damage: 15, gatherPower: 25, gatherType: "wood" },
+  wooden_axe: {
+    id: "wooden_axe",
+    name: "Wooden Axe",
+    category: "tool",
+    description: "Basic woodcutter axe. Effective on trees.",
+    icon: "🪓",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png",
+    maxStack: 1,
+    durability: 40,
+    maxDurability: 40,
+    damage: 5,
+    gatherPower: 10,
+    gatherType: "wood",
+  },
+  stone_axe: {
+    id: "stone_axe",
+    name: "Stone Axe",
+    category: "tool",
+    description: "Sharpened stone axe with greater durability.",
+    icon: "🪓",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png",
+    maxStack: 1,
+    durability: 90,
+    maxDurability: 90,
+    damage: 9,
+    gatherPower: 16,
+    gatherType: "wood",
+  },
+  iron_axe: {
+    id: "iron_axe",
+    name: "Iron Axe",
+    category: "tool",
+    description: "Heavy iron axe. Chops trees with ease.",
+    icon: "🪓",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png",
+    maxStack: 1,
+    durability: 200,
+    maxDurability: 200,
+    damage: 15,
+    gatherPower: 25,
+    gatherType: "wood",
+  },
 
-  wooden_pickaxe: { id: "wooden_pickaxe", name: "Wooden Pickaxe", category: "tool", description: "Crude pickaxe for breaking soft rock.", icon: "⛏️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png", maxStack: 1, durability: 35, maxDurability: 35, damage: 4, gatherPower: 8, gatherType: "stone" },
-  stone_pickaxe: { id: "stone_pickaxe", name: "Stone Pickaxe", category: "tool", description: "Sturdy pickaxe for mining stone and iron.", icon: "⛏️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png", maxStack: 1, durability: 85, maxDurability: 85, damage: 7, gatherPower: 15, gatherType: "stone" },
-  iron_pickaxe: { id: "iron_pickaxe", name: "Iron Pickaxe", category: "tool", description: "High-grade iron pickaxe for rapid mining.", icon: "⛏️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png", maxStack: 1, durability: 180, maxDurability: 180, damage: 12, gatherPower: 24, gatherType: "stone" },
+  wooden_pickaxe: {
+    id: "wooden_pickaxe",
+    name: "Wooden Pickaxe",
+    category: "tool",
+    description: "Crude pickaxe for breaking soft rock.",
+    icon: "⛏️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png",
+    maxStack: 1,
+    durability: 35,
+    maxDurability: 35,
+    damage: 4,
+    gatherPower: 8,
+    gatherType: "stone",
+  },
+  stone_pickaxe: {
+    id: "stone_pickaxe",
+    name: "Stone Pickaxe",
+    category: "tool",
+    description: "Sturdy pickaxe for mining stone and iron.",
+    icon: "⛏️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png",
+    maxStack: 1,
+    durability: 85,
+    maxDurability: 85,
+    damage: 7,
+    gatherPower: 15,
+    gatherType: "stone",
+  },
+  iron_pickaxe: {
+    id: "iron_pickaxe",
+    name: "Iron Pickaxe",
+    category: "tool",
+    description: "High-grade iron pickaxe for rapid mining.",
+    icon: "⛏️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/pickaxe.png",
+    maxStack: 1,
+    durability: 180,
+    maxDurability: 180,
+    damage: 12,
+    gatherPower: 24,
+    gatherType: "stone",
+  },
 
-  wooden_sword: { id: "wooden_sword", name: "Wooden Club", category: "weapon", description: "Carved wooden club for basic defense.", icon: "🗡️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png", maxStack: 1, durability: 50, maxDurability: 50, damage: 12 },
-  stone_sword: { id: "stone_sword", name: "Stone Blade", category: "weapon", description: "Flint-edged shortsword for combat.", icon: "⚔️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png", maxStack: 1, durability: 110, maxDurability: 110, damage: 20 },
-  iron_sword: { id: "iron_sword", name: "Iron Broadsword", category: "weapon", description: "Forged iron sword dealing lethal damage.", icon: "🗡️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png", maxStack: 1, durability: 220, maxDurability: 220, damage: 32 },
+  wooden_sword: {
+    id: "wooden_sword",
+    name: "Wooden Club",
+    category: "weapon",
+    description: "Carved wooden club for basic defense.",
+    icon: "🗡️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png",
+    maxStack: 1,
+    durability: 50,
+    maxDurability: 50,
+    damage: 12,
+  },
+  stone_sword: {
+    id: "stone_sword",
+    name: "Stone Blade",
+    category: "weapon",
+    description: "Flint-edged shortsword for combat.",
+    icon: "⚔️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png",
+    maxStack: 1,
+    durability: 110,
+    maxDurability: 110,
+    damage: 20,
+  },
+  iron_sword: {
+    id: "iron_sword",
+    name: "Iron Broadsword",
+    category: "weapon",
+    description: "Forged iron sword dealing lethal damage.",
+    icon: "🗡️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/sword.png",
+    maxStack: 1,
+    durability: 220,
+    maxDurability: 220,
+    damage: 32,
+  },
 
-  wooden_shovel: { id: "wooden_shovel", name: "Wooden Shovel", category: "tool", description: "Tills soil for crops and digs ground.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 40, maxDurability: 40, damage: 3, gatherPower: 10, gatherType: "all" },
-  stone_shovel: { id: "stone_shovel", name: "Stone Shovel", category: "tool", description: "Sturdy shovel for excavation and tilling.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 80, maxDurability: 80, damage: 6, gatherPower: 15, gatherType: "all" },
-  iron_shovel: { id: "iron_shovel", name: "Iron Shovel", category: "tool", description: "High-grade shovel for rapid digging.", icon: "🪴", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png", maxStack: 1, durability: 160, maxDurability: 160, damage: 10, gatherPower: 22, gatherType: "all" },
+  wooden_shovel: {
+    id: "wooden_shovel",
+    name: "Wooden Shovel",
+    category: "tool",
+    description: "Tills soil for crops and digs ground.",
+    icon: "🪴",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png",
+    maxStack: 1,
+    durability: 40,
+    maxDurability: 40,
+    damage: 3,
+    gatherPower: 10,
+    gatherType: "all",
+  },
+  stone_shovel: {
+    id: "stone_shovel",
+    name: "Stone Shovel",
+    category: "tool",
+    description: "Sturdy shovel for excavation and tilling.",
+    icon: "🪴",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png",
+    maxStack: 1,
+    durability: 80,
+    maxDurability: 80,
+    damage: 6,
+    gatherPower: 15,
+    gatherType: "all",
+  },
+  iron_shovel: {
+    id: "iron_shovel",
+    name: "Iron Shovel",
+    category: "tool",
+    description: "High-grade shovel for rapid digging.",
+    icon: "🪴",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/shovel.png",
+    maxStack: 1,
+    durability: 160,
+    maxDurability: 160,
+    damage: 10,
+    gatherPower: 22,
+    gatherType: "all",
+  },
 
-  watering_can: { id: "watering_can", name: "Watering Can", category: "tool", description: "Waters crops and hydrated dry farmland.", icon: "🚰", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png", maxStack: 1, durability: 60, maxDurability: 60 },
+  watering_can: {
+    id: "watering_can",
+    name: "Watering Can",
+    category: "tool",
+    description: "Waters crops and hydrated dry farmland.",
+    icon: "🚰",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png",
+    maxStack: 1,
+    durability: 60,
+    maxDurability: 60,
+  },
 
-  wooden_hammer: { id: "wooden_hammer", name: "Wooden Mallet", category: "tool", description: "Carpenter mallet for building and repairing.", icon: "🔨", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png", maxStack: 1, durability: 50, maxDurability: 50, damage: 6 },
-  iron_hammer: { id: "iron_hammer", name: "Smithing Hammer", category: "tool", description: "Heavy iron hammer for forging and construction.", icon: "🔨", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png", maxStack: 1, durability: 150, maxDurability: 150, damage: 14 },
+  wooden_hammer: {
+    id: "wooden_hammer",
+    name: "Wooden Mallet",
+    category: "tool",
+    description: "Carpenter mallet for building and repairing.",
+    icon: "🔨",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png",
+    maxStack: 1,
+    durability: 50,
+    maxDurability: 50,
+    damage: 6,
+  },
+  iron_hammer: {
+    id: "iron_hammer",
+    name: "Smithing Hammer",
+    category: "tool",
+    description: "Heavy iron hammer for forging and construction.",
+    icon: "🔨",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png",
+    maxStack: 1,
+    durability: 150,
+    maxDurability: 150,
+    damage: 14,
+  },
 
-  fishing_rod: { id: "fishing_rod", name: "Fishing Rod", category: "tool", description: "Casts into water to catch fresh fish.", icon: "🎣", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/rod.png", maxStack: 1, durability: 40, maxDurability: 40 },
+  fishing_rod: {
+    id: "fishing_rod",
+    name: "Fishing Rod",
+    category: "tool",
+    description: "Casts into water to catch fresh fish.",
+    icon: "🎣",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/rod.png",
+    maxStack: 1,
+    durability: 40,
+    maxDurability: 40,
+  },
 
-  raw_fish: { id: "raw_fish", name: "Raw Fish", category: "food", description: "Freshly caught river fish.", icon: "🐟", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 15, healthRestore: 5 },
-  cooked_fish: { id: "cooked_fish", name: "Grilled Fish", category: "food", description: "Delicious tender fish cooked over campfire.", icon: "🍣", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png", maxStack: 30, hungerRestore: 45, healthRestore: 20 },
+  raw_fish: {
+    id: "raw_fish",
+    name: "Raw Fish",
+    category: "food",
+    description: "Freshly caught river fish.",
+    icon: "🐟",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png",
+    maxStack: 30,
+    hungerRestore: 15,
+    healthRestore: 5,
+  },
+  cooked_fish: {
+    id: "cooked_fish",
+    name: "Grilled Fish",
+    category: "food",
+    description: "Delicious tender fish cooked over campfire.",
+    icon: "🍣",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/egg.png",
+    maxStack: 30,
+    hungerRestore: 45,
+    healthRestore: 20,
+  },
 
   // Survival & Stations
-  torch: { id: "torch", name: "Torch", category: "survival", description: "Provides portable illumination in dark night.", icon: "🔥", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png", maxStack: 20 },
-  campfire: { id: "campfire", name: "Campfire", category: "station", description: "Provides warmth, night light, and cooks meat.", icon: "🏕️", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/plant.png", maxStack: 5, isPlaceable: true },
-  workbench: { id: "workbench", name: "Crafting Bench", category: "station", description: "Unlocks advanced stone & iron recipes.", icon: "🧰", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png", maxStack: 5, isPlaceable: true },
-  chest: { id: "chest", name: "Storage Chest", category: "building", description: "Stores up to 16 item stacks safely.", icon: "📦", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/basket.png", maxStack: 5, isPlaceable: true },
+  torch: {
+    id: "torch",
+    name: "Torch",
+    category: "survival",
+    description: "Provides portable illumination in dark night.",
+    icon: "🔥",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png",
+    maxStack: 20,
+  },
+  campfire: {
+    id: "campfire",
+    name: "Campfire",
+    category: "station",
+    description: "Provides warmth, night light, and cooks meat.",
+    icon: "🏕️",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/plant.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  workbench: {
+    id: "workbench",
+    name: "Crafting Bench",
+    category: "station",
+    description: "Unlocks advanced stone & iron recipes.",
+    icon: "🧰",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/hammer.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  chest: {
+    id: "chest",
+    name: "Storage Chest",
+    category: "building",
+    description: "Stores up to 16 item stacks safely.",
+    icon: "📦",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/basket.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
 
   // Building Structures
-  wood_wall: { id: "wood_wall", name: "Wooden Wall", category: "building", description: "Solid timber wall section for shelter.", icon: "🧱", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png", maxStack: 50, isPlaceable: true },
-  wood_floor: { id: "wood_floor", name: "Wooden Floor", category: "building", description: "Plank floor tile for dry shelter base.", icon: "🪵", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png", maxStack: 50, isPlaceable: true },
-  wood_door: { id: "wood_door", name: "Wooden Door", category: "building", description: "Hinged wooden door that can be opened/closed.", icon: "🚪", spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png", maxStack: 10, isPlaceable: true },
+  wood_wall: {
+    id: "wood_wall",
+    name: "Wooden Wall",
+    category: "building",
+    description: "Solid timber wall section for shelter.",
+    icon: "🧱",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  wood_floor: {
+    id: "wood_floor",
+    name: "Wooden Floor",
+    category: "building",
+    description: "Plank floor tile for dry shelter base.",
+    icon: "🪵",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  wood_door: {
+    id: "wood_door",
+    name: "Wooden Door",
+    category: "building",
+    description: "Hinged wooden door that can be opened/closed.",
+    icon: "🚪",
+    spritePath:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png",
+    maxStack: 10,
+    isPlaceable: true,
+  },
 };
 
 // Crafting Recipes Catalog
@@ -386,13 +835,62 @@ export class SurvivalEngine {
 
   // Quests / Milestones
   public quests: Quest[] = [
-    { id: "gather_wood", title: "Gather Wood", desc: "Chop nearby trees to collect 5 wood logs.", progress: 0, goal: 5, completed: false },
-    { id: "craft_axe", title: "Craft an Axe", desc: "Craft sticks and a Wooden Axe in your crafting menu [C].", progress: 0, goal: 1, completed: false },
-    { id: "find_food", title: "Gather Food", desc: "Forage 5 Sweet Berries from bushes.", progress: 0, goal: 5, completed: false },
-    { id: "pet_animal", title: "Befriend Wildlife", desc: "Approach a cow or sheep and press [E] to pet it.", progress: 0, goal: 1, completed: false },
-    { id: "build_campfire", title: "Shelter & Warmth", desc: "Craft and place a Campfire before night falls.", progress: 0, goal: 1, completed: false },
-    { id: "discover_village", title: "Explore the Realm", desc: "Travel outward to discover another village in the world.", progress: 1, goal: 2, completed: false },
-    { id: "mine_iron", title: "Mine Mineral Veins", desc: "Mine boulders with a pickaxe to find Iron Ore.", progress: 0, goal: 3, completed: false },
+    {
+      id: "gather_wood",
+      title: "Gather Wood",
+      desc: "Chop nearby trees to collect 5 wood logs.",
+      progress: 0,
+      goal: 5,
+      completed: false,
+    },
+    {
+      id: "craft_axe",
+      title: "Craft an Axe",
+      desc: "Craft sticks and a Wooden Axe in your crafting menu [C].",
+      progress: 0,
+      goal: 1,
+      completed: false,
+    },
+    {
+      id: "find_food",
+      title: "Gather Food",
+      desc: "Forage 5 Sweet Berries from bushes.",
+      progress: 0,
+      goal: 5,
+      completed: false,
+    },
+    {
+      id: "pet_animal",
+      title: "Befriend Wildlife",
+      desc: "Approach a cow or sheep and press [E] to pet it.",
+      progress: 0,
+      goal: 1,
+      completed: false,
+    },
+    {
+      id: "build_campfire",
+      title: "Shelter & Warmth",
+      desc: "Craft and place a Campfire before night falls.",
+      progress: 0,
+      goal: 1,
+      completed: false,
+    },
+    {
+      id: "discover_village",
+      title: "Explore the Realm",
+      desc: "Travel outward to discover another village in the world.",
+      progress: 1,
+      goal: 2,
+      completed: false,
+    },
+    {
+      id: "mine_iron",
+      title: "Mine Mineral Veins",
+      desc: "Mine boulders with a pickaxe to find Iron Ore.",
+      progress: 0,
+      goal: 3,
+      completed: false,
+    },
   ];
 
   // Building Preview State
@@ -468,13 +966,48 @@ export class SurvivalEngine {
     }
 
     // Starter tools with animations in Human folder
-    this.hotbar[0] = { item: "wooden_axe", count: 1, durability: 40, maxDurability: 40 };
-    this.hotbar[1] = { item: "wooden_pickaxe", count: 1, durability: 35, maxDurability: 35 };
-    this.hotbar[2] = { item: "wooden_sword", count: 1, durability: 50, maxDurability: 50 };
-    this.hotbar[3] = { item: "wooden_shovel", count: 1, durability: 40, maxDurability: 40 };
-    this.hotbar[4] = { item: "watering_can", count: 1, durability: 50, maxDurability: 50 };
-    this.hotbar[5] = { item: "wooden_hammer", count: 1, durability: 40, maxDurability: 40 };
-    this.hotbar[6] = { item: "fishing_rod", count: 1, durability: 30, maxDurability: 30 };
+    this.hotbar[0] = {
+      item: "wooden_axe",
+      count: 1,
+      durability: 40,
+      maxDurability: 40,
+    };
+    this.hotbar[1] = {
+      item: "wooden_pickaxe",
+      count: 1,
+      durability: 35,
+      maxDurability: 35,
+    };
+    this.hotbar[2] = {
+      item: "wooden_sword",
+      count: 1,
+      durability: 50,
+      maxDurability: 50,
+    };
+    this.hotbar[3] = {
+      item: "wooden_shovel",
+      count: 1,
+      durability: 40,
+      maxDurability: 40,
+    };
+    this.hotbar[4] = {
+      item: "watering_can",
+      count: 1,
+      durability: 50,
+      maxDurability: 50,
+    };
+    this.hotbar[5] = {
+      item: "wooden_hammer",
+      count: 1,
+      durability: 40,
+      maxDurability: 40,
+    };
+    this.hotbar[6] = {
+      item: "fishing_rod",
+      count: 1,
+      durability: 30,
+      maxDurability: 30,
+    };
     this.hotbar[7] = { item: "berries", count: 10 };
   }
 
@@ -484,7 +1017,14 @@ export class SurvivalEngine {
   private spawnInitialLifeforms() {
     // Spawn village wildlife
     const speciesList: ("cow" | "sheep" | "chicken" | "rabbit")[] = [
-      "cow", "cow", "sheep", "sheep", "chicken", "chicken", "rabbit", "rabbit"
+      "cow",
+      "cow",
+      "sheep",
+      "sheep",
+      "chicken",
+      "chicken",
+      "rabbit",
+      "rabbit",
     ];
 
     speciesList.forEach((species, i) => {
@@ -497,36 +1037,49 @@ export class SurvivalEngine {
       if (!this.detector.isWalkable(spawnX, spawnY, false, false)) return;
 
       const config = SPECIES_CONFIGS[species];
-      const animal = new Animal(
-        this.nextEntityId++,
-        config,
-        spawnX,
-        spawnY
-      );
+      const animal = new Animal(this.nextEntityId++, config, spawnX, spawnY);
       this.animals.push(animal);
     });
 
     // Spawn swimming cows and pigs in village pond
     const starterVillage = this.worldManager.villages[0];
-    if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
+    if (
+      starterVillage &&
+      starterVillage.data.waterBodies &&
+      starterVillage.data.waterBodies.length > 0
+    ) {
       const pond = starterVillage.data.waterBodies[0];
-      const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
+      const duckCount = Math.min(
+        4,
+        Math.max(2, Math.floor(pond.cells.length / 5)),
+      );
       for (let i = 0; i < duckCount; i++) {
         const duckConfig = SPECIES_CONFIGS[Math.random() < 0.5 ? "cow" : "pig"];
-        const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
+        const cellIndex = Math.floor(
+          ((i + 0.5) / duckCount) * pond.cells.length,
+        );
         const cell = pond.cells[cellIndex];
         const duck = new Animal(
           this.nextEntityId++,
           duckConfig,
           starterVillage.gridX + cell.x + 0.5,
-          starterVillage.gridY + cell.y + 0.5
+          starterVillage.gridY + cell.y + 0.5,
         );
         this.animals.push(duck);
       }
     }
 
     // Spawn 8 specialized village NPCs using each composite animation
-    const compositeRoles: ("blacksmith" | "builder" | "farmer" | "fisher" | "guide" | "merchant" | "child" | "villager")[] = [
+    const compositeRoles: (
+      | "blacksmith"
+      | "builder"
+      | "farmer"
+      | "fisher"
+      | "guide"
+      | "merchant"
+      | "child"
+      | "villager"
+    )[] = [
       "blacksmith",
       "builder",
       "farmer",
@@ -615,16 +1168,31 @@ export class SurvivalEngine {
     for (let dy = -4; dy <= 4; dy++) {
       for (let dx = -4; dx <= 4; dx++) {
         const chunk = this.worldManager.chunks.get(`${pcx + dx},${pcy + dy}`);
-        if (chunk && chunk.spawnedWildlife && chunk.spawnedWildlife.length > 0) {
+        if (
+          chunk &&
+          chunk.spawnedWildlife &&
+          chunk.spawnedWildlife.length > 0
+        ) {
           for (const wild of chunk.spawnedWildlife) {
             const config = SPECIES_CONFIGS[wild.species];
             if (config) {
               // Validate position: skip non-amphibious animals on water
-              const isAmphibious = wild.species === "cow" || wild.species === "pig" || wild.species === "duck";
-              const tile = this.worldManager.getTile(Math.floor(wild.x), Math.floor(wild.y));
+              const isAmphibious =
+                wild.species === "cow" ||
+                wild.species === "pig" ||
+                wild.species === "duck";
+              const tile = this.worldManager.getTile(
+                Math.floor(wild.x),
+                Math.floor(wild.y),
+              );
               if (!isAmphibious && (tile.isWater || tile.isBlocked)) continue;
 
-              const animal = new Animal(this.nextEntityId++, config, wild.x, wild.y);
+              const animal = new Animal(
+                this.nextEntityId++,
+                config,
+                wild.x,
+                wild.y,
+              );
               this.animals.push(animal);
             }
           }
@@ -655,12 +1223,14 @@ export class SurvivalEngine {
   private updateWorldTime(dt: number) {
     this.worldTime.totalSeconds += dt;
     const cycleLength = 480; // 8 minutes
-    const dayProgress = (this.worldTime.totalSeconds % cycleLength) / cycleLength;
+    const dayProgress =
+      (this.worldTime.totalSeconds % cycleLength) / cycleLength;
 
     const totalHours = dayProgress * 24;
     this.worldTime.hour = Math.floor(totalHours);
     this.worldTime.minute = Math.floor((totalHours % 1) * 60);
-    this.worldTime.dayNumber = Math.floor(this.worldTime.totalSeconds / cycleLength) + 1;
+    this.worldTime.dayNumber =
+      Math.floor(this.worldTime.totalSeconds / cycleLength) + 1;
 
     // Time of day & Light Level
     if (this.worldTime.hour >= 5 && this.worldTime.hour < 8) {
@@ -678,7 +1248,10 @@ export class SurvivalEngine {
     }
 
     // Quest check: Survive the night
-    if (this.worldTime.timeOfDay === "Morning" && this.worldTime.dayNumber >= 2) {
+    if (
+      this.worldTime.timeOfDay === "Morning" &&
+      this.worldTime.dayNumber >= 2
+    ) {
       this.completeQuest("build_campfire");
     }
   }
@@ -697,10 +1270,16 @@ export class SurvivalEngine {
         : this.player.speed;
     const currentSpeed = baseSpeed;
 
-    if (this.player.isSprinting && (this.player.vx !== 0 || this.player.vy !== 0)) {
+    if (
+      this.player.isSprinting &&
+      (this.player.vx !== 0 || this.player.vy !== 0)
+    ) {
       this.player.stamina = Math.max(0, this.player.stamina - dt * 18);
     } else {
-      this.player.stamina = Math.min(this.player.maxStamina, this.player.stamina + dt * 14);
+      this.player.stamina = Math.min(
+        this.player.maxStamina,
+        this.player.stamina + dt * 14,
+      );
     }
 
     const nextX = this.player.x + this.player.vx * currentSpeed * dt;
@@ -737,14 +1316,23 @@ export class SurvivalEngine {
     // Visual hop/jump animation (smooth, longer 0.55s graceful parabolic arc)
     if (this.player.hopTimer > 0) {
       this.player.hopTimer -= dt;
-      const progress = Math.max(0, Math.min(1, 1 - this.player.hopTimer / 0.55));
+      const progress = Math.max(
+        0,
+        Math.min(1, 1 - this.player.hopTimer / 0.55),
+      );
       this.player.hopOffset = Math.sin(progress * Math.PI) * 0.55;
     } else {
       this.player.hopOffset = 0;
     }
 
     // Still / idle detection for WAITING animation (> 3 seconds still)
-    if (this.player.vx === 0 && this.player.vy === 0 && this.player.swingTimer <= 0 && this.player.hopTimer <= 0 && !this.player.isSwimming) {
+    if (
+      this.player.vx === 0 &&
+      this.player.vy === 0 &&
+      this.player.swingTimer <= 0 &&
+      this.player.hopTimer <= 0 &&
+      !this.player.isSwimming
+    ) {
       this.player.idleStillTimer += dt;
       if (this.player.idleStillTimer >= 3.0) {
         this.player.isWaiting = true;
@@ -779,7 +1367,12 @@ export class SurvivalEngine {
           this.player.fishingState = "CAUGHT";
           this.player.fishingTimer = 1.0;
           this.addItemToInventory("raw_fish", 1);
-          this.addFloatingText("+1 Raw Fish 🐟", this.player.x, this.player.y - 1, "#38bdf8");
+          this.addFloatingText(
+            "+1 Raw Fish 🐟",
+            this.player.x,
+            this.player.y - 1,
+            "#38bdf8",
+          );
         } else {
           this.player.fishingState = "NONE";
         }
@@ -788,7 +1381,12 @@ export class SurvivalEngine {
   }
 
   public jump(): void {
-    if (this.player.isDead || this.player.hopTimer > 0 || this.player.isSwimming) return;
+    if (
+      this.player.isDead ||
+      this.player.hopTimer > 0 ||
+      this.player.isSwimming
+    )
+      return;
     this.player.hopTimer = 0.55;
     GameAudio.playJump();
   }
@@ -814,10 +1412,10 @@ export class SurvivalEngine {
       // Center foot point (catches diagonal tiles the corners miss)
       { x: footX, y: footY },
       // 4 edge midpoints for extra diagonal coverage
-      { x: footX, y: footY - ry },   // top-center
-      { x: footX, y: footY + ry },   // bottom-center
-      { x: footX - rx, y: footY },   // left-center
-      { x: footX + rx, y: footY },   // right-center
+      { x: footX, y: footY - ry }, // top-center
+      { x: footX, y: footY + ry }, // bottom-center
+      { x: footX - rx, y: footY }, // left-center
+      { x: footX + rx, y: footY }, // right-center
     ];
     for (const p of pts) {
       const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
@@ -860,9 +1458,15 @@ export class SurvivalEngine {
       // If starving (hunger == 0), take starvation damage
       if (this.player.hunger <= 0) {
         this.damagePlayer(4, "Starvation");
-      } else if (this.player.hunger >= 85 && this.player.health < this.player.maxHealth) {
+      } else if (
+        this.player.hunger >= 85 &&
+        this.player.health < this.player.maxHealth
+      ) {
         // Passive natural health regeneration when well-fed
-        this.player.health = Math.min(this.player.maxHealth, this.player.health + 2);
+        this.player.health = Math.min(
+          this.player.maxHealth,
+          this.player.health + 2,
+        );
       }
     }
   }
@@ -879,7 +1483,10 @@ export class SurvivalEngine {
       if (dist < 2.5) {
         // Magnet pull towards player
         const speed = (2.5 - dist) * 4;
-        const angle = Math.atan2(this.player.y - item.y, this.player.x - item.x);
+        const angle = Math.atan2(
+          this.player.y - item.y,
+          this.player.x - item.x,
+        );
         item.x += Math.cos(angle) * speed * dt;
         item.y += Math.sin(angle) * speed * dt;
 
@@ -887,13 +1494,21 @@ export class SurvivalEngine {
         if (dist < 0.7) {
           if (this.addItemToInventory(item.item, item.count)) {
             GameAudio.playPickup();
-            this.addFloatingText(`+${item.count} ${ITEM_CATALOG[item.item]?.name || item.item}`, item.x, item.y, "#38bdf8");
+            this.addFloatingText(
+              `+${item.count} ${ITEM_CATALOG[item.item]?.name || item.item}`,
+              item.x,
+              item.y,
+              "#38bdf8",
+            );
             this.droppedItems.splice(i, 1);
 
             // Check quest progress
-            if (item.item === "wood") this.updateQuestProgress("gather_wood", item.count);
-            if (item.item === "berries") this.updateQuestProgress("find_food", item.count);
-            if (item.item === "iron_ore") this.updateQuestProgress("mine_iron", item.count);
+            if (item.item === "wood")
+              this.updateQuestProgress("gather_wood", item.count);
+            if (item.item === "berries")
+              this.updateQuestProgress("find_food", item.count);
+            if (item.item === "iron_ore")
+              this.updateQuestProgress("mine_iron", item.count);
           }
         }
       }
@@ -962,7 +1577,10 @@ export class SurvivalEngine {
       // Detection & Chase
       if (dist < 8.0) {
         enemy.state = "CHASE";
-        const angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x);
+        const angle = Math.atan2(
+          this.player.y - enemy.y,
+          this.player.x - enemy.x,
+        );
         enemy.vx = Math.cos(angle) * enemy.speed;
         enemy.vy = Math.sin(angle) * enemy.speed;
 
@@ -1013,8 +1631,15 @@ export class SurvivalEngine {
         const spawnX = this.player.x + Math.cos(angle) * dist;
         const spawnY = this.player.y + Math.sin(angle) * dist;
 
-        const tile = this.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY));
-        if (!tile.isWater && !tile.isBlocked && tile.inVillageId === undefined) {
+        const tile = this.worldManager.getTile(
+          Math.floor(spawnX),
+          Math.floor(spawnY),
+        );
+        if (
+          !tile.isWater &&
+          !tile.isBlocked &&
+          tile.inVillageId === undefined
+        ) {
           this.spawnEnemy(spawnX, spawnY);
         }
       }
@@ -1029,12 +1654,23 @@ export class SurvivalEngine {
       const spawnX = this.player.x + Math.cos(angle) * dist;
       const spawnY = this.player.y + Math.sin(angle) * dist;
 
-      const tile = this.worldManager.getTile(Math.floor(spawnX), Math.floor(spawnY));
+      const tile = this.worldManager.getTile(
+        Math.floor(spawnX),
+        Math.floor(spawnY),
+      );
       if (!tile.isWater && !tile.isBlocked) {
-        const species: ("cow" | "sheep" | "chicken" | "rabbit" | "deer")[] = ["cow", "sheep", "chicken", "rabbit", "deer"];
+        const species: ("cow" | "sheep" | "chicken" | "rabbit" | "deer")[] = [
+          "cow",
+          "sheep",
+          "chicken",
+          "rabbit",
+          "deer",
+        ];
         const chosen = species[Math.floor(Math.random() * species.length)];
         const config = SPECIES_CONFIGS[chosen];
-        this.animals.push(new Animal(this.nextEntityId++, config, spawnX, spawnY));
+        this.animals.push(
+          new Animal(this.nextEntityId++, config, spawnX, spawnY),
+        );
       }
     }
   }
@@ -1054,7 +1690,7 @@ export class SurvivalEngine {
       health = 45;
       damage = 16;
       speed = 2.1;
-    } else if (roll < 0.90) {
+    } else if (roll < 0.9) {
       type = "goblin";
       name = "Forest Goblin";
       health = 40;
@@ -1142,7 +1778,10 @@ export class SurvivalEngine {
       hitY -= reach;
     } else if (this.player.direction === "DOWN") {
       hitY += reach;
-    } else if (this.player.direction === "LEFT" || this.player.facing === "LEFT") {
+    } else if (
+      this.player.direction === "LEFT" ||
+      this.player.facing === "LEFT"
+    ) {
       hitX -= reach;
     } else {
       hitX += reach;
@@ -1152,15 +1791,23 @@ export class SurvivalEngine {
 
     // 1. Check Living Animals in facing hit cone -> take damage & sprint away!
     for (const animal of this.animals) {
-      if (!animal.isActive || animal.behaviorState === 'DEAD') continue;
-      const dist = Math.hypot(hitX - animal.position.x, hitY - animal.position.y);
+      if (!animal.isActive || animal.behaviorState === "DEAD") continue;
+      const dist = Math.hypot(
+        hitX - animal.position.x,
+        hitY - animal.position.y,
+      );
       if (dist <= hitRadius) {
         const dmg = 15;
         animal.takeDamage(dmg);
         animal.fleeFrom(this.player.x, this.player.y, this.detector);
         GameAudio.playHurt();
         this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
-        this.addFloatingText(`-${dmg}`, animal.position.x, animal.position.y - 0.6, "#ef4444");
+        this.addFloatingText(
+          `-${dmg}`,
+          animal.position.x,
+          animal.position.y - 0.6,
+          "#ef4444",
+        );
         this.useActiveToolDurability();
         return true;
       }
@@ -1211,11 +1858,19 @@ export class SurvivalEngine {
 
     // Fishing Rod interaction on water
     if (activeItem === "fishing_rod") {
-      const clickTile = this.worldManager.getTile(Math.floor(wx), Math.floor(wy));
+      const clickTile = this.worldManager.getTile(
+        Math.floor(wx),
+        Math.floor(wy),
+      );
       if (clickTile.isWater) {
         this.player.fishingState = "CASTING";
         this.player.fishingTimer = 1.4;
-        this.addFloatingText("Casting line... 🎣", this.player.x, this.player.y - 1, "#67e8f9");
+        this.addFloatingText(
+          "Casting line... 🎣",
+          this.player.x,
+          this.player.y - 1,
+          "#67e8f9",
+        );
         return;
       }
     }
@@ -1248,16 +1903,24 @@ export class SurvivalEngine {
 
     // 1. Check if clicking on an animal within interaction reach -> hits and sprints away!
     for (const animal of this.animals) {
-      if (!animal.isActive || animal.behaviorState === 'DEAD') continue;
+      if (!animal.isActive || animal.behaviorState === "DEAD") continue;
       const dist = Math.hypot(wx - animal.position.x, wy - animal.position.y);
-      const playerDist = Math.hypot(this.player.x - animal.position.x, this.player.y - animal.position.y);
+      const playerDist = Math.hypot(
+        this.player.x - animal.position.x,
+        this.player.y - animal.position.y,
+      );
       if (dist < 1.3 && playerDist <= 3.2) {
         const dmg = 15;
         animal.takeDamage(dmg);
         animal.fleeFrom(this.player.x, this.player.y, this.detector);
         GameAudio.playHurt();
         this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
-        this.addFloatingText(`-${dmg}`, animal.position.x, animal.position.y - 0.6, "#ef4444");
+        this.addFloatingText(
+          `-${dmg}`,
+          animal.position.x,
+          animal.position.y - 0.6,
+          "#ef4444",
+        );
         this.useActiveToolDurability();
         return;
       }
@@ -1267,7 +1930,10 @@ export class SurvivalEngine {
     for (const enemy of this.enemies) {
       if (!enemy.isAlive) continue;
       const dist = Math.hypot(wx - enemy.x, wy - enemy.y);
-      if (dist < 1.4 && Math.hypot(this.player.x - enemy.x, this.player.y - enemy.y) < 3.2) {
+      if (
+        dist < 1.4 &&
+        Math.hypot(this.player.x - enemy.x, this.player.y - enemy.y) < 3.2
+      ) {
         this.attackEnemy(enemy);
         return;
       }
@@ -1276,7 +1942,10 @@ export class SurvivalEngine {
     // 3. Check if clicking on a resource node (tree, rock, bush, crop)
     const resource = this.worldManager.getResourceAt(wx, wy, 1.4);
     if (resource && !resource.isDepleted) {
-      const playerDist = Math.hypot(this.player.x - resource.x, this.player.y - resource.y);
+      const playerDist = Math.hypot(
+        this.player.x - resource.x,
+        this.player.y - resource.y,
+      );
       if (playerDist <= 3.2) {
         this.harvestResource(resource);
         return;
@@ -1306,7 +1975,9 @@ export class SurvivalEngine {
    */
   private attackEnemy(enemy: EnemyEntity) {
     const activeSlot = this.getActiveItemSlot();
-    const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
+    const activeItemDef = activeSlot?.item
+      ? ITEM_CATALOG[activeSlot.item]
+      : null;
 
     const baseDamage = activeItemDef?.damage || 6;
     const finalDamage = Math.round(baseDamage * (0.9 + Math.random() * 0.2));
@@ -1330,10 +2001,16 @@ export class SurvivalEngine {
 
       // Spawn loot drops
       if (enemy.type === "slime") {
-        this.spawnDroppedItem("slime_gel", Math.floor(1 + Math.random() * 2), enemy.x, enemy.y);
+        this.spawnDroppedItem(
+          "slime_gel",
+          Math.floor(1 + Math.random() * 2),
+          enemy.x,
+          enemy.y,
+        );
       } else {
         this.spawnDroppedItem("raw_meat", 1, enemy.x, enemy.y);
-        if (Math.random() < 0.5) this.spawnDroppedItem("iron_ore", 1, enemy.x, enemy.y);
+        if (Math.random() < 0.5)
+          this.spawnDroppedItem("iron_ore", 1, enemy.x, enemy.y);
       }
     }
   }
@@ -1346,12 +2023,17 @@ export class SurvivalEngine {
     if (res.isDepleted) return;
 
     const activeSlot = this.getActiveItemSlot();
-    const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
+    const activeItemDef = activeSlot?.item
+      ? ITEM_CATALOG[activeSlot.item]
+      : null;
 
     let power = 5;
     if (activeItemDef?.gatherType === "wood" && res.type === "tree") {
       power = activeItemDef.gatherPower || 12;
-    } else if (activeItemDef?.gatherType === "stone" && (res.type === "rock" || res.type === "iron_rock")) {
+    } else if (
+      activeItemDef?.gatherType === "stone" &&
+      (res.type === "rock" || res.type === "iron_rock")
+    ) {
       power = activeItemDef.gatherPower || 12;
     }
 
@@ -1375,7 +2057,12 @@ export class SurvivalEngine {
 
       if (res.type === "crop") {
         // Finite harvest: single wheat yield + chance of seeds
-        this.spawnDroppedItem("wheat", 1 + Math.floor(Math.random() * 2), res.x, res.y);
+        this.spawnDroppedItem(
+          "wheat",
+          1 + Math.floor(Math.random() * 2),
+          res.x,
+          res.y,
+        );
         if (Math.random() < 0.5) {
           this.spawnDroppedItem("seeds", 1, res.x + 0.2, res.y);
         }
@@ -1396,7 +2083,10 @@ export class SurvivalEngine {
       // Unblock all tiles if obstacle was cleared
       for (let dy = 0; dy < res.h; dy++) {
         for (let dx = 0; dx < res.w; dx++) {
-          const tile = this.worldManager.getTile(Math.floor(res.x + dx), Math.floor(res.y + dy));
+          const tile = this.worldManager.getTile(
+            Math.floor(res.x + dx),
+            Math.floor(res.y + dy),
+          );
           tile.isBlocked = false;
         }
       }
@@ -1409,7 +2099,12 @@ export class SurvivalEngine {
       slot.durability -= 1;
       if (slot.durability <= 0) {
         GameAudio.playHurt();
-        this.addFloatingText("Tool Broke!", this.player.x, this.player.y - 0.8, "#f87171");
+        this.addFloatingText(
+          "Tool Broke!",
+          this.player.x,
+          this.player.y - 0.8,
+          "#f87171",
+        );
         slot.item = null;
         slot.count = 0;
         slot.durability = undefined;
@@ -1437,7 +2132,10 @@ export class SurvivalEngine {
   public handleInteractKey() {
     // 1. Check for nearby NPC to talk to
     for (const npc of this.npcs) {
-      const dist = Math.hypot(this.player.x - npc.position.x, this.player.y - npc.position.y);
+      const dist = Math.hypot(
+        this.player.x - npc.position.x,
+        this.player.y - npc.position.y,
+      );
       if (dist < 2.4) {
         this.activeDialogueNPC = npc;
         GameAudio.playHeartChime();
@@ -1447,13 +2145,21 @@ export class SurvivalEngine {
 
     // 2. Check for nearby animal to pet
     for (const animal of this.animals) {
-      const dist = Math.hypot(this.player.x - animal.position.x, this.player.y - animal.position.y);
+      const dist = Math.hypot(
+        this.player.x - animal.position.x,
+        this.player.y - animal.position.y,
+      );
       if (dist < 2.2) {
         if (animal.pet()) {
           this.player.hopTimer = 0.35; // Player hops! (Section 24)
           GameAudio.playHeartChime();
           this.emitHeart(animal.position.x, animal.position.y - 0.5);
-          this.addFloatingText("♥ Loved!", animal.position.x, animal.position.y - 0.8, "#f43f5e");
+          this.addFloatingText(
+            "♥ Loved!",
+            animal.position.x,
+            animal.position.y - 0.8,
+            "#f43f5e",
+          );
           this.updateQuestProgress("pet_animal", 1);
           return;
         }
@@ -1466,7 +2172,10 @@ export class SurvivalEngine {
    */
   public handleFeedKey() {
     for (const animal of this.animals) {
-      const dist = Math.hypot(this.player.x - animal.position.x, this.player.y - animal.position.y);
+      const dist = Math.hypot(
+        this.player.x - animal.position.x,
+        this.player.y - animal.position.y,
+      );
       if (dist < 2.2) {
         // Check if player has food in hotbar/inventory
         const foodItems: ItemId[] = ["wheat", "seeds", "berries", "apple"];
@@ -1476,11 +2185,21 @@ export class SurvivalEngine {
             animal.feed();
             GameAudio.playHeartChime();
             this.emitHeart(animal.position.x, animal.position.y - 0.5);
-            this.addFloatingText("Fed +♥", animal.position.x, animal.position.y - 0.8, "#10b981");
+            this.addFloatingText(
+              "Fed +♥",
+              animal.position.x,
+              animal.position.y - 0.8,
+              "#10b981",
+            );
             return;
           }
         }
-        this.addFloatingText("Need food in inventory!", this.player.x, this.player.y - 0.8, "#f59e0b");
+        this.addFloatingText(
+          "Need food in inventory!",
+          this.player.x,
+          this.player.y - 0.8,
+          "#f59e0b",
+        );
         return;
       }
     }
@@ -1495,12 +2214,23 @@ export class SurvivalEngine {
 
     const def = ITEM_CATALOG[slot.item];
     if (def.category === "food" && def.hungerRestore) {
-      this.player.hunger = Math.min(this.player.maxHunger, this.player.hunger + def.hungerRestore);
+      this.player.hunger = Math.min(
+        this.player.maxHunger,
+        this.player.hunger + def.hungerRestore,
+      );
       if (def.healthRestore) {
-        this.player.health = Math.min(this.player.maxHealth, this.player.health + def.healthRestore);
+        this.player.health = Math.min(
+          this.player.maxHealth,
+          this.player.health + def.healthRestore,
+        );
       }
       GameAudio.playEat();
-      this.addFloatingText(`+${def.hungerRestore} Hunger`, this.player.x, this.player.y - 0.8, "#10b981");
+      this.addFloatingText(
+        `+${def.hungerRestore} Hunger`,
+        this.player.x,
+        this.player.y - 0.8,
+        "#10b981",
+      );
 
       slot.count -= 1;
       if (slot.count <= 0) slot.item = null;
@@ -1519,7 +2249,12 @@ export class SurvivalEngine {
     // Check station proximity if required
     if (recipe.requiresStation) {
       if (!this.isNearStation(recipe.requiresStation)) {
-        this.addFloatingText(`Requires nearby ${recipe.requiresStation}!`, this.player.x, this.player.y - 0.8, "#f59e0b");
+        this.addFloatingText(
+          `Requires nearby ${recipe.requiresStation}!`,
+          this.player.x,
+          this.player.y - 0.8,
+          "#f59e0b",
+        );
         return false;
       }
     }
@@ -1532,12 +2267,24 @@ export class SurvivalEngine {
     // Add crafted result
     const def = ITEM_CATALOG[recipe.result];
     this.player.doingTimer = 0.6;
-    this.addItemToInventory(recipe.result, recipe.count, def.durability, def.maxDurability);
+    this.addItemToInventory(
+      recipe.result,
+      recipe.count,
+      def.durability,
+      def.maxDurability,
+    );
     GameAudio.playCraft();
-    this.addFloatingText(`Crafted: ${def.name}`, this.player.x, this.player.y - 0.8, "#a855f7");
+    this.addFloatingText(
+      `Crafted: ${def.name}`,
+      this.player.x,
+      this.player.y - 0.8,
+      "#a855f7",
+    );
 
-    if (recipe.result === "wooden_axe") this.updateQuestProgress("craft_axe", 1);
-    if (recipe.result === "campfire") this.updateQuestProgress("build_campfire", 1);
+    if (recipe.result === "wooden_axe")
+      this.updateQuestProgress("craft_axe", 1);
+    if (recipe.result === "campfire")
+      this.updateQuestProgress("build_campfire", 1);
 
     return true;
   }
@@ -1545,7 +2292,9 @@ export class SurvivalEngine {
   public isNearStation(station: "workbench" | "campfire"): boolean {
     for (const struct of this.placedStructures) {
       if (struct.type === station) {
-        if (Math.hypot(this.player.x - struct.x, this.player.y - struct.y) <= 4.0) {
+        if (
+          Math.hypot(this.player.x - struct.x, this.player.y - struct.y) <= 4.0
+        ) {
           return true;
         }
       }
@@ -1578,13 +2327,24 @@ export class SurvivalEngine {
       y: tileY,
       w: 1,
       h: 1,
-      chestStorage: structType === "chest" ? Array.from({ length: 16 }, () => ({ item: null, count: 0 })) : undefined,
+      chestStorage:
+        structType === "chest"
+          ? Array.from({ length: 16 }, () => ({ item: null, count: 0 }))
+          : undefined,
     };
 
     this.placedStructures.push(struct);
-    tile.isBlocked = structType === "wood_wall" || structType === "chest" || structType === "workbench";
+    tile.isBlocked =
+      structType === "wood_wall" ||
+      structType === "chest" ||
+      structType === "workbench";
     GameAudio.playBuild();
-    this.addFloatingText(`Placed ${ITEM_CATALOG[pieceId]?.name}`, tileX, tileY - 0.5, "#22c55e");
+    this.addFloatingText(
+      `Placed ${ITEM_CATALOG[pieceId]?.name}`,
+      tileX,
+      tileY - 0.5,
+      "#22c55e",
+    );
 
     if (pieceId === "campfire") this.updateQuestProgress("build_campfire", 1);
 
@@ -1595,11 +2355,21 @@ export class SurvivalEngine {
     this.player.health = Math.max(0, this.player.health - amount);
     this.player.hurtTimer = 0.45;
     GameAudio.playHurt();
-    this.addFloatingText(`-${amount} HP`, this.player.x, this.player.y - 0.6, "#ef4444");
+    this.addFloatingText(
+      `-${amount} HP`,
+      this.player.x,
+      this.player.y - 0.6,
+      "#ef4444",
+    );
 
     if (this.player.health <= 0) {
       this.player.isDead = true;
-      this.addFloatingText(`Fallen to ${source}`, this.player.x, this.player.y - 1.0, "#dc2626");
+      this.addFloatingText(
+        `Fallen to ${source}`,
+        this.player.x,
+        this.player.y - 1.0,
+        "#dc2626",
+      );
     }
   }
 
@@ -1620,14 +2390,30 @@ export class SurvivalEngine {
     return this.hotbar[this.activeHotbarIndex] || null;
   }
 
-  public addItemToInventory(item: ItemId, count: number, durability?: number, maxDurability?: number): boolean {
+  public addItemToInventory(
+    item: ItemId,
+    count: number,
+    durability?: number,
+    maxDurability?: number,
+  ): boolean {
     const def = ITEM_CATALOG[item];
     if (!def) return false;
 
     // Requirement: only tools that have their animation in the Human folder can be picked in inventory
     if (def.category === "tool" || def.category === "weapon") {
-      const allowedToolKeywords = ["axe", "pickaxe", "sword", "shovel", "hoe", "water", "hammer", "rod"];
-      const isAllowed = allowedToolKeywords.some((kw) => item.toLowerCase().includes(kw));
+      const allowedToolKeywords = [
+        "axe",
+        "pickaxe",
+        "sword",
+        "shovel",
+        "hoe",
+        "water",
+        "hammer",
+        "rod",
+      ];
+      const isAllowed = allowedToolKeywords.some((kw) =>
+        item.toLowerCase().includes(kw),
+      );
       if (!isAllowed) {
         return false;
       }
@@ -1698,7 +2484,12 @@ export class SurvivalEngine {
       if (q.progress >= q.goal) {
         q.completed = true;
         GameAudio.playCraft();
-        this.addFloatingText(`★ Quest Complete: ${q.title}!`, this.player.x, this.player.y - 1.2, "#facc15");
+        this.addFloatingText(
+          `★ Quest Complete: ${q.title}!`,
+          this.player.x,
+          this.player.y - 1.2,
+          "#facc15",
+        );
       }
     }
   }
@@ -1709,7 +2500,12 @@ export class SurvivalEngine {
       q.completed = true;
       q.progress = q.goal;
       GameAudio.playCraft();
-      this.addFloatingText(`★ Quest Complete: ${q.title}!`, this.player.x, this.player.y - 1.2, "#facc15");
+      this.addFloatingText(
+        `★ Quest Complete: ${q.title}!`,
+        this.player.x,
+        this.player.y - 1.2,
+        "#facc15",
+      );
     }
   }
 
@@ -1748,7 +2544,12 @@ export class SurvivalEngine {
     }
   }
 
-  public addFloatingText(text: string, x: number, y: number, color = "#ffffff") {
+  public addFloatingText(
+    text: string,
+    x: number,
+    y: number,
+    color = "#ffffff",
+  ) {
     this.floatingTexts.push({
       id: this.nextParticleId++,
       text,

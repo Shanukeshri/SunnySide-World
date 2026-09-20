@@ -1,4 +1,4 @@
-import { SpeciesConfig, SpeciesType } from './types';
+import { SpeciesConfig, SpeciesType } from "./types";
 
 /**
  * Section 3: Species Configuration
@@ -8,14 +8,14 @@ import { SpeciesConfig, SpeciesType } from './types';
  */
 export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   cow: {
-    species: 'cow',
-    entityType: 'ANIMAL',
-    name: 'Cow',
+    species: "cow",
+    entityType: "ANIMAL",
+    name: "Cow",
     movementSpeed: 0.8,
     defaultSpeed: 0.8,
-    preferredEnvironment: ['GRASSLAND', 'VILLAGE'],
-    preferredEnvironments: ['GRASSLAND', 'VILLAGE'],
-    food: 'grass',
+    preferredEnvironment: ["GRASSLAND", "VILLAGE"],
+    preferredEnvironments: ["GRASSLAND", "VILLAGE"],
+    food: "grass",
     groupSize: { min: 2, max: 4 },
     groupSizeMin: 2,
     groupSizeMax: 4,
@@ -36,7 +36,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 13,
     shadowRadiusY: 5.5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_cow_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_cow_strip4.png",
       frameWidth: 32,
       frameHeight: 32,
       totalFrames: 4,
@@ -48,14 +49,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   sheep: {
-    species: 'sheep',
-    entityType: 'ANIMAL',
-    name: 'Sheep',
+    species: "sheep",
+    entityType: "ANIMAL",
+    name: "Sheep",
     movementSpeed: 1.1,
     defaultSpeed: 1.1,
-    preferredEnvironment: ['GRASSLAND'],
-    preferredEnvironments: ['GRASSLAND'],
-    food: 'grass',
+    preferredEnvironment: ["GRASSLAND"],
+    preferredEnvironments: ["GRASSLAND"],
+    food: "grass",
     groupSize: { min: 3, max: 6 },
     groupSizeMin: 3,
     groupSizeMax: 6,
@@ -75,7 +76,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 11,
     shadowRadiusY: 5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_sheep_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_sheep_01_strip4.png",
       frameWidth: 32,
       frameHeight: 32,
       totalFrames: 4,
@@ -87,14 +89,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   rabbit: {
-    species: 'rabbit',
-    entityType: 'ANIMAL',
-    name: 'Rabbit',
+    species: "rabbit",
+    entityType: "ANIMAL",
+    name: "Rabbit",
     movementSpeed: 1.8, // nimble & quick
     defaultSpeed: 1.8,
-    preferredEnvironment: ['GRASSLAND', 'JUNGLE'],
-    preferredEnvironments: ['GRASSLAND', 'JUNGLE'],
-    food: 'grass',
+    preferredEnvironment: ["GRASSLAND", "JUNGLE"],
+    preferredEnvironments: ["GRASSLAND", "JUNGLE"],
+    food: "grass",
     groupSize: { min: 2, max: 4 },
     groupSizeMin: 2,
     groupSizeMax: 4,
@@ -114,7 +116,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 6,
     shadowRadiusY: 2.5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_bird_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_bird_01_strip4.png",
       frameWidth: 16,
       frameHeight: 16,
       totalFrames: 4,
@@ -126,14 +129,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   chicken: {
-    species: 'chicken',
-    entityType: 'ANIMAL',
-    name: 'Chicken',
+    species: "chicken",
+    entityType: "ANIMAL",
+    name: "Chicken",
     movementSpeed: 1.3,
     defaultSpeed: 1.3,
-    preferredEnvironment: ['VILLAGE', 'GRASSLAND'],
-    preferredEnvironments: ['VILLAGE', 'GRASSLAND'],
-    food: 'seeds',
+    preferredEnvironment: ["VILLAGE", "GRASSLAND"],
+    preferredEnvironments: ["VILLAGE", "GRASSLAND"],
+    food: "seeds",
     groupSize: { min: 2, max: 5 },
     groupSizeMin: 2,
     groupSizeMax: 5,
@@ -153,7 +156,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 6,
     shadowRadiusY: 2.5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_chicken_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_chicken_01_strip4.png",
       frameWidth: 32,
       frameHeight: 32,
       totalFrames: 4,
@@ -165,14 +169,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   deer: {
-    species: 'deer',
-    entityType: 'ANIMAL',
-    name: 'Deer',
+    species: "deer",
+    entityType: "ANIMAL",
+    name: "Deer",
     movementSpeed: 1.6,
     defaultSpeed: 1.6,
-    preferredEnvironment: ['JUNGLE', 'GRASSLAND'],
-    preferredEnvironments: ['JUNGLE', 'GRASSLAND'],
-    food: 'grass',
+    preferredEnvironment: ["JUNGLE", "GRASSLAND"],
+    preferredEnvironments: ["JUNGLE", "GRASSLAND"],
+    food: "grass",
     groupSize: { min: 2, max: 4 },
     groupSizeMin: 2,
     groupSizeMax: 4,
@@ -192,7 +196,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 12,
     shadowRadiusY: 5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_sheep_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_sheep_01_strip4.png",
       frameWidth: 32,
       frameHeight: 32,
       totalFrames: 4,
@@ -204,14 +209,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   pig: {
-    species: 'pig',
-    entityType: 'ANIMAL',
-    name: 'Pig',
+    species: "pig",
+    entityType: "ANIMAL",
+    name: "Pig",
     movementSpeed: 1.0,
     defaultSpeed: 1.0,
-    preferredEnvironment: ['GRASSLAND', 'VILLAGE'],
-    preferredEnvironments: ['GRASSLAND', 'VILLAGE'],
-    food: 'carrots',
+    preferredEnvironment: ["GRASSLAND", "VILLAGE"],
+    preferredEnvironments: ["GRASSLAND", "VILLAGE"],
+    food: "carrots",
     groupSize: { min: 2, max: 4 },
     groupSizeMin: 2,
     groupSizeMax: 4,
@@ -232,7 +237,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 10,
     shadowRadiusY: 4.5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_pig_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_pig_01_strip4.png",
       frameWidth: 32,
       frameHeight: 32,
       totalFrames: 4,
@@ -244,14 +250,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   duck: {
-    species: 'duck',
-    entityType: 'ANIMAL',
-    name: 'Duck',
+    species: "duck",
+    entityType: "ANIMAL",
+    name: "Duck",
     movementSpeed: 1.1,
     defaultSpeed: 1.1,
-    preferredEnvironment: ['WATER'],
-    preferredEnvironments: ['WATER'],
-    food: 'grain',
+    preferredEnvironment: ["WATER"],
+    preferredEnvironments: ["WATER"],
+    food: "grain",
     groupSize: { min: 2, max: 5 },
     groupSizeMin: 2,
     groupSizeMax: 5,
@@ -272,7 +278,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 7,
     shadowRadiusY: 3.5,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_duck_01_strip4.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Animals/spr_deco_duck_01_strip4.png",
       frameWidth: 16,
       frameHeight: 16,
       totalFrames: 4,
@@ -284,14 +291,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   villager: {
-    species: 'villager',
-    entityType: 'NPC',
-    name: 'Villager',
+    species: "villager",
+    entityType: "NPC",
+    name: "Villager",
     movementSpeed: 1.2,
     defaultSpeed: 1.2,
-    preferredEnvironment: ['VILLAGE'],
-    preferredEnvironments: ['VILLAGE'],
-    food: 'none',
+    preferredEnvironment: ["VILLAGE"],
+    preferredEnvironments: ["VILLAGE"],
+    food: "none",
     groupSize: { min: 1, max: 2 },
     groupSizeMin: 1,
     groupSizeMax: 2,
@@ -311,7 +318,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 11,
     shadowRadiusY: 5.2,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png",
       frameWidth: 20,
       frameHeight: 24,
       totalFrames: 8,
@@ -326,14 +334,14 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
   },
 
   player: {
-    species: 'player',
-    entityType: 'PLAYER',
-    name: 'Player',
+    species: "player",
+    entityType: "PLAYER",
+    name: "Player",
     movementSpeed: 3.4,
     defaultSpeed: 3.4,
-    preferredEnvironment: ['VILLAGE'],
-    preferredEnvironments: ['VILLAGE'],
-    food: 'none',
+    preferredEnvironment: ["VILLAGE"],
+    preferredEnvironments: ["VILLAGE"],
+    food: "none",
     groupSize: { min: 1, max: 1 },
     groupSizeMin: 1,
     groupSizeMax: 1,
@@ -353,7 +361,8 @@ export const SPECIES_CONFIGS: Record<SpeciesType, SpeciesConfig> = {
     shadowRadiusX: 11,
     shadowRadiusY: 5.2,
     spriteAsset: {
-      sheetPath: '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png',
+      sheetPath:
+        "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Human/WALKING/base_walk_strip8.png",
       frameWidth: 20,
       frameHeight: 24,
       totalFrames: 8,

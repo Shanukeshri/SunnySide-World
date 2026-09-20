@@ -332,7 +332,9 @@ function openInspector(item: AssetItem, category: AssetCategory) {
   inspectCoords.textContent = `X: ${item.x}, Y: ${item.y}`;
   inspectSize.textContent = `${item.w} × ${item.h} px`;
   const isCollidable = isAssetCollidable(item, category.id);
-  const inspectCollisionType = document.getElementById("inspect-collision-type");
+  const inspectCollisionType = document.getElementById(
+    "inspect-collision-type",
+  );
   if (inspectCollisionType) {
     if (isCollidable) {
       inspectCollisionType.innerHTML = `<span class="badge-collidable">🧱 Collidable / Solid (Blocks movement)</span>`;
@@ -444,13 +446,16 @@ if (assetCountBadge) {
 
 // Wire up collision filter buttons
 const collisionFilterButtons = document.querySelectorAll<HTMLButtonElement>(
-  "#atlas-collision-filters .filter-pill"
+  "#atlas-collision-filters .filter-pill",
 );
 collisionFilterButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     collisionFilterButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    const filter = btn.getAttribute("data-filter") as "all" | "flat" | "collidable";
+    const filter = btn.getAttribute("data-filter") as
+      | "all"
+      | "flat"
+      | "collidable";
     (window as any).AtlasViewer?.setCollisionFilter(filter);
   });
 });
@@ -462,15 +467,15 @@ window.addEventListener("DOMContentLoaded", () => {
   // Hide all tabs for the actual game experience
   const topTabBar = document.querySelector(".top-tab-bar") as HTMLElement;
   if (topTabBar) topTabBar.style.display = "none";
-  
+
   // Init Menu UI
   const mainMenu = new MainMenuUI();
   mainMenu.showMenu();
-  
+
   mainMenu.setOnStartGame((mode, inviteCode) => {
     // Hide atlas/settlement stuff, switch to game tab
     switchTab("game");
-    
+
     // In multiplayer, we use the network client
     if (mode === "multi") {
       if (inviteCode) {
@@ -496,7 +501,6 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // PHASER EVENTS
 // ═══════════════════════════════════════════════════════════════════
@@ -507,7 +511,10 @@ window.addEventListener("cursor-world-move", ((e: CustomEvent) => {
 window.addEventListener("asset-hover", ((e: CustomEvent) => {
   const i = e.detail.item as AssetItem;
   const c = e.detail.category as AssetCategory;
-  const isCollidable = e.detail.isCollidable !== undefined ? e.detail.isCollidable : isAssetCollidable(i, c.id);
+  const isCollidable =
+    e.detail.isCollidable !== undefined
+      ? e.detail.isCollidable
+      : isAssetCollidable(i, c.id);
   const collBadge = isCollidable
     ? `<span style="color:#f87171;font-weight:600;background:rgba(239,68,68,0.15);padding:1px 6px;border-radius:4px;border:1px solid rgba(239,68,68,0.4);">🧱 Solid</span>`
     : `<span style="color:#34d399;font-weight:600;background:rgba(16,185,129,0.15);padding:1px 6px;border-radius:4px;border:1px solid rgba(16,185,129,0.4);">🌿 Flat</span>`;
@@ -521,7 +528,7 @@ window.addEventListener("asset-hover", ((e: CustomEvent) => {
       <div class="tooltip-title">${i.name}</div>
       <div class="tooltip-meta">
         <span class="tooltip-cat">${c.title}</span>
-        <span class="tooltip-badge ${isCollidable ? 'collidable' : 'flat'}">${isCollidable ? '🧱 Solid' : '🌿 Flat'}</span>
+        <span class="tooltip-badge ${isCollidable ? "collidable" : "flat"}">${isCollidable ? "🧱 Solid" : "🌿 Flat"}</span>
         <span class="tooltip-dim">${i.w}×${i.h}px</span>
       </div>
       <div class="tooltip-desc">${i.desc}</div>
@@ -1421,11 +1428,17 @@ let isSurvivalInitialized = false;
 
 // HUD Elements
 const hudHpVal = document.getElementById("hud-hp-val")!;
-const hudHpImg = document.getElementById("hud-hp-img") as HTMLImageElement | null;
+const hudHpImg = document.getElementById(
+  "hud-hp-img",
+) as HTMLImageElement | null;
 const hudHungerVal = document.getElementById("hud-hunger-val")!;
-const hudHungerImg = document.getElementById("hud-hunger-img") as HTMLImageElement | null;
+const hudHungerImg = document.getElementById(
+  "hud-hunger-img",
+) as HTMLImageElement | null;
 const hudStaminaVal = document.getElementById("hud-stamina-val")!;
-const hudStaminaImg = document.getElementById("hud-stamina-img") as HTMLImageElement | null;
+const hudStaminaImg = document.getElementById(
+  "hud-stamina-img",
+) as HTMLImageElement | null;
 const hudClockIcon = document.getElementById("hud-clock-icon")!;
 const hudClockTime = document.getElementById("hud-clock-time")!;
 const hudClockPhase = document.getElementById("hud-clock-phase")!;
@@ -1493,7 +1506,8 @@ function setupNetworkClientHandlers() {
       } else if (state === "LOCAL_SERVER") {
         hudServerDot.style.background = "#38bdf8";
         hudServerDot.style.boxShadow = "0 0 8px #38bdf8";
-        hudServerStatus.textContent = "Authoritative Server: Single Player (Local • 20Hz)";
+        hudServerStatus.textContent =
+          "Authoritative Server: Single Player (Local • 20Hz)";
         hudServerStatus.style.color = "#38bdf8";
       } else if (state === "CONNECTING") {
         hudServerDot.style.background = "#eab308";
@@ -1516,22 +1530,32 @@ function setupNetworkClientHandlers() {
     // so that client-side collision checks (canMoveTo) match the actual rendered world.
     // Without this, the client checks collisions against a world generated with a
     // different seed, causing the player to walk through houses, fences, trees, etc.
-    if (init.seed !== undefined && init.seed !== (survivalEngine as any)._lastSyncedSeed) {
+    if (
+      init.seed !== undefined &&
+      init.seed !== (survivalEngine as any)._lastSyncedSeed
+    ) {
       survivalEngine.worldManager = new WorldManager(init.seed);
       (survivalEngine as any)._lastSyncedSeed = init.seed;
-      console.log(`[Collision] Rebuilt client WorldManager with server seed: ${init.seed}`);
+      console.log(
+        `[Collision] Rebuilt client WorldManager with server seed: ${init.seed}`,
+      );
     }
 
     if (init.player) {
       survivalEngine.player.x = init.player.x;
       survivalEngine.player.y = init.player.y;
-      survivalEngine.worldManager.updatePlayerLocation(init.player.x, init.player.y);
+      survivalEngine.worldManager.updatePlayerLocation(
+        init.player.x,
+        init.player.y,
+      );
     }
     if (init.placedStructures) {
-      survivalEngine.placedStructures = (init.placedStructures as any[]).map((s) => ({
-        ...s,
-        type: s.type || s.structureType,
-      }));
+      survivalEngine.placedStructures = (init.placedStructures as any[]).map(
+        (s) => ({
+          ...s,
+          type: s.type || s.structureType,
+        }),
+      );
       for (const s of survivalEngine.placedStructures) {
         if (s.type === "wood_wall") {
           const tile = survivalEngine.worldManager.getTile(s.x, s.y);
@@ -1583,10 +1607,12 @@ function setupNetworkClientHandlers() {
       survivalEngine.worldTime = sync.worldTime;
     }
     if (sync.placedStructures) {
-      survivalEngine.placedStructures = (sync.placedStructures as any[]).map((s) => ({
-        ...s,
-        type: s.type || s.structureType,
-      }));
+      survivalEngine.placedStructures = (sync.placedStructures as any[]).map(
+        (s) => ({
+          ...s,
+          type: s.type || s.structureType,
+        }),
+      );
       for (const s of survivalEngine.placedStructures) {
         if (s.type === "wood_wall") {
           const tile = survivalEngine.worldManager.getTile(s.x, s.y);
@@ -1743,10 +1769,18 @@ function setupNetworkClientHandlers() {
       }
       if (ev.type === "TREE_DESTROYED") {
         GameAudio.playChop();
-        (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#a16207");
+        (survivalEngine as any).emitWoodChips(
+          ev.payload.x,
+          ev.payload.y,
+          "#a16207",
+        );
       } else {
         GameAudio.playMine();
-        (survivalEngine as any).emitWoodChips(ev.payload.x, ev.payload.y, "#94a3b8");
+        (survivalEngine as any).emitWoodChips(
+          ev.payload.x,
+          ev.payload.y,
+          "#94a3b8",
+        );
       }
     } else if (ev.type === "ANIMAL_PETTED" || ev.type === "ANIMAL_FED") {
       GameAudio.playHeartChime();
@@ -1817,7 +1851,6 @@ function setupNetworkClientHandlers() {
     }
   });
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Multiplayer UI — Host / Join / Invite (spec items 20-23)
@@ -2013,7 +2046,8 @@ function initMultiplayerUI(): void {
     document.getElementById("mp-host-btn")?.addEventListener("click", () => {
       if (!networkClient) return;
       const name = (survivalEngine?.player as any)?.name || "Explorer";
-      const hairstyle = (survivalEngine?.player as any)?.hairstyle || "style_01";
+      const hairstyle =
+        (survivalEngine?.player as any)?.hairstyle || "style_01";
       networkClient.hostWorld(name, hairstyle);
       const toast = document.getElementById("mp-toast");
       if (toast) {
@@ -2026,19 +2060,23 @@ function initMultiplayerUI(): void {
     // Join button
     document.getElementById("mp-join-btn")?.addEventListener("click", () => {
       if (!networkClient) return;
-      const input = document.getElementById("mp-join-code-input") as HTMLInputElement;
+      const input = document.getElementById(
+        "mp-join-code-input",
+      ) as HTMLInputElement;
       const code = (input?.value || "").trim().toUpperCase();
       if (!code || code.length < 6) {
         const toast = document.getElementById("mp-toast");
         if (toast) {
-          toast.textContent = "Please enter a valid invite code (e.g. SUNNY-4821)";
+          toast.textContent =
+            "Please enter a valid invite code (e.g. SUNNY-4821)";
           toast.classList.remove("hidden");
           setTimeout(() => toast.classList.add("hidden"), 3000);
         }
         return;
       }
       const name = (survivalEngine?.player as any)?.name || "Explorer";
-      const hairstyle = (survivalEngine?.player as any)?.hairstyle || "style_01";
+      const hairstyle =
+        (survivalEngine?.player as any)?.hairstyle || "style_01";
       networkClient.joinWorld(code, name, hairstyle);
       const toast = document.getElementById("mp-toast");
       if (toast) {
@@ -2049,19 +2087,26 @@ function initMultiplayerUI(): void {
     });
 
     // Copy invite code button
-    document.getElementById("mp-copy-code-btn")?.addEventListener("click", () => {
-      const codeEl = document.getElementById("mp-invite-code-display");
-      const code = codeEl?.textContent?.trim();
-      if (code && code !== "——") {
-        navigator.clipboard.writeText(code).then(() => {
-          const btn = document.getElementById("mp-copy-code-btn");
-          if (btn) {
-            btn.textContent = "Copied!";
-            setTimeout(() => { btn.textContent = "Copy"; }, 2000);
-          }
-        }).catch(() => {});
-      }
-    });
+    document
+      .getElementById("mp-copy-code-btn")
+      ?.addEventListener("click", () => {
+        const codeEl = document.getElementById("mp-invite-code-display");
+        const code = codeEl?.textContent?.trim();
+        if (code && code !== "——") {
+          navigator.clipboard
+            .writeText(code)
+            .then(() => {
+              const btn = document.getElementById("mp-copy-code-btn");
+              if (btn) {
+                btn.textContent = "Copied!";
+                setTimeout(() => {
+                  btn.textContent = "Copy";
+                }, 2000);
+              }
+            })
+            .catch(() => {});
+        }
+      });
   }
 }
 
@@ -2317,12 +2362,14 @@ function updateSurvivalHUD() {
   hudHungerVal.textContent = `${Math.ceil(p.hunger)}/${p.maxHunger}`;
   const hungerRatio = Math.max(0, Math.min(1, p.hunger / p.maxHunger));
   const hungerFrame = Math.max(0, Math.min(6, Math.floor(hungerRatio * 6)));
-  if (hudHungerImg) hudHungerImg.src = `/assets/ui/greenbar_0${hungerFrame}.png`;
+  if (hudHungerImg)
+    hudHungerImg.src = `/assets/ui/greenbar_0${hungerFrame}.png`;
 
   hudStaminaVal.textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
   const staminaRatio = Math.max(0, Math.min(1, p.stamina / p.maxStamina));
   const staminaFrame = Math.max(0, Math.min(5, Math.floor(staminaRatio * 5)));
-  if (hudStaminaImg) hudStaminaImg.src = `/assets/ui/bluebar_0${staminaFrame}.png`;
+  if (hudStaminaImg)
+    hudStaminaImg.src = `/assets/ui/bluebar_0${staminaFrame}.png`;
 
   // World Clock
   const hrPad = String(wt.hour).padStart(2, "0");
@@ -2360,7 +2407,8 @@ function updateSurvivalHUD() {
 function getItemIconHtml(itemKey: ItemId | null): string {
   if (!itemKey) return "";
   const def = ITEM_CATALOG[itemKey];
-  if (!def) return `<img src="/assets/ui/basket.png" class="slot-pixel-icon" alt="Item" />`;
+  if (!def)
+    return `<img src="/assets/ui/basket.png" class="slot-pixel-icon" alt="Item" />`;
   if (def.spritePath) {
     return `<img src="${def.spritePath}" class="slot-pixel-icon" alt="${def.name}" draggable="false" />`;
   }
@@ -2603,7 +2651,8 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
     networkClient.prediction.updateSmoothing(dt);
 
     if (dx !== 0 || dy !== 0) {
-      const canSprint = survivalEngine.player.isSprinting && survivalEngine.player.stamina > 10;
+      const canSprint =
+        survivalEngine.player.isSprinting && survivalEngine.player.stamina > 10;
       const input = networkClient.prediction.predictMovement(
         dx,
         dy,
@@ -3195,6 +3244,16 @@ function openChestModal(chest: PlacedStructure) {
 const urlParams = new URLSearchParams(window.location.search);
 const initialTab =
   urlParams.get("tab") ||
+  (window.location.hash ? window.location.hash.replace("#", "") : null);
+if (
+  initialTab &&
+  ["game", "settlement", "houses", "terrain", "assets-map"].includes(initialTab)
+) {
+  switchTab(initialTab as any);
+} else {
+  switchTab("game");
+}
+urlParams.get("tab") ||
   (window.location.hash ? window.location.hash.replace("#", "") : null);
 if (
   initialTab &&

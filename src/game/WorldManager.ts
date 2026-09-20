@@ -1,6 +1,6 @@
 /**
  * WorldManager.ts - Procedural Infinite/Chunked World & Village Generation
- * 
+ *
  * Requirements from user & gameLogicV1.txt:
  * 1. Automatic chunked world generation around player position.
  * 2. Automatic village generation when player explores towards it.
@@ -14,11 +14,7 @@ import {
   SettlementData,
   PlacedObject,
 } from "../generation/SettlementGenerator";
-import {
-  ResourceNode,
-  WorldRealmVillage,
-  ItemId,
-} from "./GameTypes";
+import { ResourceNode, WorldRealmVillage, ItemId } from "./GameTypes";
 
 export const CHUNK_SIZE = 16; // 16x16 tiles per chunk
 export const VILLAGE_WIDTH = 44; // tiles
@@ -45,7 +41,11 @@ export interface WorldChunk {
   tiles: WorldTile[][];
   resources: ResourceNode[];
   isGenerated: boolean;
-  spawnedWildlife?: { species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck'; x: number; y: number }[];
+  spawnedWildlife?: {
+    species: "cow" | "sheep" | "chicken" | "rabbit" | "deer" | "pig" | "duck";
+    x: number;
+    y: number;
+  }[];
 }
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -91,7 +91,7 @@ function createNoise2D(seed: number) {
     return lerp(
       v,
       lerp(u, grad(p[A], xf, yf), grad(p[B], xf - 1, yf)),
-      lerp(u, grad(p[A + 1], xf, yf - 1), grad(p[B + 1], xf - 1, yf - 1))
+      lerp(u, grad(p[A + 1], xf, yf - 1), grad(p[B + 1], xf - 1, yf - 1)),
     );
   };
 }
@@ -154,17 +154,45 @@ export class WorldManager {
     const v4Y = v1Y + 24;
 
     this.villagePlannedSites = [
-      { name: "Oakvale", targetX: v1X, targetY: v1Y, seed: this.seed, generated: false },
-      { name: "Riverwood", targetX: v2X, targetY: v2Y, seed: this.seed + 1111, generated: false },
-      { name: "Sunhaven", targetX: v3X, targetY: v3Y, seed: this.seed + 2222, generated: false },
-      { name: "Pinecrest", targetX: v4X, targetY: v4Y, seed: this.seed + 3333, generated: false },
+      {
+        name: "Oakvale",
+        targetX: v1X,
+        targetY: v1Y,
+        seed: this.seed,
+        generated: false,
+      },
+      {
+        name: "Riverwood",
+        targetX: v2X,
+        targetY: v2Y,
+        seed: this.seed + 1111,
+        generated: false,
+      },
+      {
+        name: "Sunhaven",
+        targetX: v3X,
+        targetY: v3Y,
+        seed: this.seed + 2222,
+        generated: false,
+      },
+      {
+        name: "Pinecrest",
+        targetX: v4X,
+        targetY: v4Y,
+        seed: this.seed + 3333,
+        generated: false,
+      },
     ];
   }
 
   /**
    * Automatically checks and triggers village generation when the player explores towards it.
    */
-  public updatePlayerLocation(playerTileX: number, playerTileY: number, loadRadiusChunks = 4) {
+  public updatePlayerLocation(
+    playerTileX: number,
+    playerTileY: number,
+    loadRadiusChunks = 4,
+  ) {
     // 1. Generate surrounding terrain chunks
     const centerChunkX = Math.floor(playerTileX / CHUNK_SIZE);
     const centerChunkY = Math.floor(playerTileY / CHUNK_SIZE);
@@ -184,7 +212,7 @@ export class WorldManager {
       // Distance from player to village center
       const dist = Math.hypot(
         playerTileX - (site.targetX + VILLAGE_WIDTH / 2),
-        playerTileY - (site.targetY + VILLAGE_HEIGHT / 2)
+        playerTileY - (site.targetY + VILLAGE_HEIGHT / 2),
       );
 
       // Trigger automatic generation when player is within approaching range (90 tiles)
@@ -206,16 +234,31 @@ export class WorldManager {
         if (Math.abs(mx) <= 1 && Math.abs(my) <= 1) continue;
 
         const siteId = `site_${mx}_${my}`;
-        if (!this.villagePlannedSites.some((s) => (s as any).siteId === siteId)) {
-          const rng = createSeededRNG(this.seed + (mx * 73856093 ^ my * 19349663));
+        if (
+          !this.villagePlannedSites.some((s) => (s as any).siteId === siteId)
+        ) {
+          const rng = createSeededRNG(
+            this.seed + ((mx * 73856093) ^ (my * 19349663)),
+          );
           const jitterX = Math.floor((rng() - 0.5) * 36);
           const jitterY = Math.floor((rng() - 0.5) * 36);
           const targetX = mx * macroStep + jitterX;
           const targetY = my * macroStep + jitterY;
-          const villageNames = ["Millfield", "Elderglen", "Highgarden", "Silverstream", "Bramblebrook", "Dawnstar", "Amberfall", "Windshire", "Mosswood", "Falconridge"];
+          const villageNames = [
+            "Millfield",
+            "Elderglen",
+            "Highgarden",
+            "Silverstream",
+            "Bramblebrook",
+            "Dawnstar",
+            "Amberfall",
+            "Windshire",
+            "Mosswood",
+            "Falconridge",
+          ];
           const name = villageNames[Math.floor(rng() * villageNames.length)];
           const newSite = {
-            name: `${name} ${mx > 0 ? '+' : ''}${mx},${my > 0 ? '+' : ''}${my}`,
+            name: `${name} ${mx > 0 ? "+" : ""}${mx},${my > 0 ? "+" : ""}${my}`,
             targetX,
             targetY,
             seed: Math.floor(rng() * 1000000),
@@ -232,7 +275,7 @@ export class WorldManager {
       if (!v.discovered) {
         const dist = Math.hypot(
           playerTileX - (v.gridX + v.width / 2),
-          playerTileY - (v.gridY + v.height / 2)
+          playerTileY - (v.gridY + v.height / 2),
         );
         if (dist <= 35) {
           v.discovered = true;
@@ -252,7 +295,11 @@ export class WorldManager {
     generated: boolean;
   }) {
     site.generated = true;
-    const settlementData = generateSettlement(site.seed, VILLAGE_WIDTH, VILLAGE_HEIGHT);
+    const settlementData = generateSettlement(
+      site.seed,
+      VILLAGE_WIDTH,
+      VILLAGE_HEIGHT,
+    );
 
     const realmVillage: WorldRealmVillage = {
       id: this.villages.length + 1,
@@ -273,7 +320,12 @@ export class WorldManager {
 
   public isInsideAnyVillage(wx: number, wy: number): boolean {
     for (const v of this.villages) {
-      if (wx >= v.gridX && wx < v.gridX + v.width && wy >= v.gridY && wy < v.gridY + v.height) {
+      if (
+        wx >= v.gridX &&
+        wx < v.gridX + v.width &&
+        wy >= v.gridY &&
+        wy < v.gridY + v.height
+      ) {
         return true;
       }
     }
@@ -312,7 +364,13 @@ export class WorldManager {
         const chunk = this.chunks.get(`${cx},${cy}`);
         if (chunk) {
           chunk.resources = chunk.resources.filter(
-            (r) => !(r.x >= startX && r.x < startX + v.width && r.y >= startY && r.y < startY + v.height)
+            (r) =>
+              !(
+                r.x >= startX &&
+                r.x < startX + v.width &&
+                r.y >= startY &&
+                r.y < startY + v.height
+              ),
           );
         }
       }
@@ -353,16 +411,22 @@ export class WorldManager {
     // Mark fences as blocked (openings / gates remain walkable)
     if (data.farmObjects) {
       for (const obj of data.farmObjects) {
-        if (typeof obj.id === 'string' && obj.id.startsWith('fence') && obj.id !== 'fence_wood_gate_open') {
+        if (
+          typeof obj.id === "string" &&
+          obj.id.startsWith("fence") &&
+          obj.id !== "fence_wood_gate_open"
+        ) {
           this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
         }
       }
 
       // Mark visually solid farm objects as blocked (chests, crates, troughs, bowls)
       const SOLID_FARM_OBJECTS = [
-        'farm_trough', 'farm_waterbowl',
-        'farm_crate_01', 'farm_crate_02',
-        'farm_chest_closed',
+        "farm_trough",
+        "farm_waterbowl",
+        "farm_crate_01",
+        "farm_crate_02",
+        "farm_chest_closed",
       ];
       for (const obj of data.farmObjects) {
         if (SOLID_FARM_OBJECTS.includes(obj.id)) {
@@ -454,7 +518,11 @@ export class WorldManager {
           const chunk = this.chunks.get(`${cx},${cy}`);
           if (chunk) {
             chunk.resources = chunk.resources.filter((res) => {
-              const overlaps = wx >= res.x && wx < res.x + res.w && wy >= res.y && wy < res.y + res.h;
+              const overlaps =
+                wx >= res.x &&
+                wx < res.x + res.w &&
+                wy >= res.y &&
+                wy < res.y + res.h;
               return !overlaps;
             });
           }
@@ -601,7 +669,9 @@ export class WorldManager {
 
     // Jungle region has richer vegetation
     const isJungle = forestVal > 0.35;
-    const terrain = isJungle ? `grass_textured_0${(grassIndex % 3) + 4}` : `grass_textured_0${grassIndex}`;
+    const terrain = isJungle
+      ? `grass_textured_0${(grassIndex % 3) + 4}`
+      : `grass_textured_0${grassIndex}`;
 
     return {
       terrain,
@@ -616,7 +686,9 @@ export class WorldManager {
    * Spawns trees, rocks, and bushes into a wilderness chunk based on procedural density.
    */
   private populateChunkResources(chunk: WorldChunk) {
-    const rng = createSeededRNG(this.seed + chunk.chunkX * 374761393 + chunk.chunkY * 668265263);
+    const rng = createSeededRNG(
+      this.seed + chunk.chunkX * 374761393 + chunk.chunkY * 668265263,
+    );
 
     for (let ty = 1; ty < CHUNK_SIZE - 1; ty += 2) {
       for (let tx = 1; tx < CHUNK_SIZE - 1; tx += 2) {
@@ -632,7 +704,8 @@ export class WorldManager {
         const roll = rng();
 
         // 1. Trees: High density in forest/jungle regions, sparse in open plains
-        const treeChance = forestNoise > 0.3 ? 0.45 : forestNoise > 0.05 ? 0.22 : 0.07;
+        const treeChance =
+          forestNoise > 0.3 ? 0.45 : forestNoise > 0.05 ? 0.22 : 0.07;
         if (roll < treeChance) {
           // Check full 2x2 footprint: must not touch water, road, blocked tiles, or village
           let canPlaceTree = true;
@@ -667,8 +740,10 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          if (chunk.tiles[ty + 1]?.[tx]) chunk.tiles[ty + 1][tx].isBlocked = true;
-          if (chunk.tiles[ty + 1]?.[tx + 1]) chunk.tiles[ty + 1][tx + 1].isBlocked = true;
+          if (chunk.tiles[ty + 1]?.[tx])
+            chunk.tiles[ty + 1][tx].isBlocked = true;
+          if (chunk.tiles[ty + 1]?.[tx + 1])
+            chunk.tiles[ty + 1][tx + 1].isBlocked = true;
           continue;
         }
 
@@ -718,33 +793,46 @@ export class WorldManager {
     if (animalChance < 0.65) {
       const count = 1 + Math.floor(rng() * 3);
       for (let i = 0; i < count; i++) {
-        const ax = chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
-        const ay = chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const ax =
+          chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const ay =
+          chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
         const lx = ax - chunk.chunkX * CHUNK_SIZE;
         const ly = ay - chunk.chunkY * CHUNK_SIZE;
         const tile = chunk.tiles[ly]?.[lx];
         if (tile && !this.isInsideAnyVillage(ax, ay)) {
-          let species: 'cow' | 'sheep' | 'chicken' | 'rabbit' | 'deer' | 'pig' | 'duck' = 'chicken';
+          let species:
+            | "cow"
+            | "sheep"
+            | "chicken"
+            | "rabbit"
+            | "deer"
+            | "pig"
+            | "duck" = "chicken";
           if (tile.isWater) {
-            species = rng() < 0.5 ? 'cow' : 'pig';
+            species = rng() < 0.5 ? "cow" : "pig";
           } else if (!tile.isBlocked) {
             // Check adjacent tiles for water — land animals shouldn't spawn right next to water
             const adjUp = chunk.tiles[ly - 1]?.[lx];
             const adjDown = chunk.tiles[ly + 1]?.[lx];
             const adjLeft = chunk.tiles[ly]?.[lx - 1];
             const adjRight = chunk.tiles[ly]?.[lx + 1];
-            const nearWater = (adjUp?.isWater) || (adjDown?.isWater) || (adjLeft?.isWater) || (adjRight?.isWater);
+            const nearWater =
+              adjUp?.isWater ||
+              adjDown?.isWater ||
+              adjLeft?.isWater ||
+              adjRight?.isWater;
             if (nearWater) continue; // Skip this spawn — too close to water for a land animal
 
             const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
             if (forestNoise > 0.3) {
-              species = rng() < 0.5 ? 'deer' : 'rabbit';
+              species = rng() < 0.5 ? "deer" : "rabbit";
             } else {
               const r = rng();
-              if (r < 0.25) species = 'cow';
-              else if (r < 0.5) species = 'sheep';
-              else if (r < 0.75) species = 'pig';
-              else species = 'chicken';
+              if (r < 0.25) species = "cow";
+              else if (r < 0.5) species = "sheep";
+              else if (r < 0.75) species = "pig";
+              else species = "chicken";
             }
           } else {
             continue;
@@ -758,10 +846,19 @@ export class WorldManager {
   /**
    * Checks if a chunk is within active simulation and render range (<= maxChunkDist chunks away).
    */
-  public isChunkActive(chunkX: number, chunkY: number, playerTileX: number, playerTileY: number, maxChunkDist: number = 4): boolean {
+  public isChunkActive(
+    chunkX: number,
+    chunkY: number,
+    playerTileX: number,
+    playerTileY: number,
+    maxChunkDist: number = 4,
+  ): boolean {
     const pcx = Math.floor(playerTileX / CHUNK_SIZE);
     const pcy = Math.floor(playerTileY / CHUNK_SIZE);
-    return Math.abs(chunkX - pcx) <= maxChunkDist && Math.abs(chunkY - pcy) <= maxChunkDist;
+    return (
+      Math.abs(chunkX - pcx) <= maxChunkDist &&
+      Math.abs(chunkY - pcy) <= maxChunkDist
+    );
   }
 
   /**
@@ -792,7 +889,11 @@ export class WorldManager {
   /**
    * Find harvestable resource node at or near coordinate (wx, wy).
    */
-  public getResourceAt(wx: number, wy: number, radius = 1.3): ResourceNode | null {
+  public getResourceAt(
+    wx: number,
+    wy: number,
+    radius = 1.3,
+  ): ResourceNode | null {
     const cx = Math.floor(wx / CHUNK_SIZE);
     const cy = Math.floor(wy / CHUNK_SIZE);
 
@@ -836,7 +937,10 @@ export class WorldManager {
       res.isDepleted = true;
       for (let dy = 0; dy < res.h; dy++) {
         for (let dx = 0; dx < res.w; dx++) {
-          const tile = this.getTile(Math.floor(res.x + dx), Math.floor(res.y + dy));
+          const tile = this.getTile(
+            Math.floor(res.x + dx),
+            Math.floor(res.y + dy),
+          );
           tile.isBlocked = false;
         }
       }
@@ -860,12 +964,18 @@ export class WorldManager {
         if (!chunk) continue;
 
         for (const res of chunk.resources) {
-          if ((res.type === 'tree' || res.type.startsWith('tree_')) && !res.isDepleted) {
+          if (
+            (res.type === "tree" || res.type.startsWith("tree_")) &&
+            !res.isDepleted
+          ) {
             const w = res.w || 2;
             const h = res.h || 2;
             const cx = res.x + w / 2;
             const cy = res.y + h - 0.45;
-            if (Math.abs(footX - cx) < w * 0.45 && Math.abs(footY - cy) < 0.45) {
+            if (
+              Math.abs(footX - cx) < w * 0.45 &&
+              Math.abs(footY - cy) < 0.45
+            ) {
               return true;
             }
           }
@@ -879,7 +989,10 @@ export class WorldManager {
   /**
    * Gets nearest village to given world coordinates, with distance and heading angle.
    */
-  public getNearestVillage(wx: number, wy: number): {
+  public getNearestVillage(
+    wx: number,
+    wy: number,
+  ): {
     village: WorldRealmVillage;
     dist: number;
     angle: number;

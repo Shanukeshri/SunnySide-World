@@ -2,7 +2,9 @@ import { MenuBackgroundRenderer } from "./MenuBackgroundRenderer";
 
 export class MainMenuUI {
   private bgRenderer: MenuBackgroundRenderer | null = null;
-  private onStartGameCallback: ((mode: "single" | "multi", inviteCode?: string) => void) | null = null;
+  private onStartGameCallback:
+    | ((mode: "single" | "multi", inviteCode?: string) => void)
+    | null = null;
 
   constructor() {
     this.initDOM();
@@ -15,16 +17,24 @@ export class MainMenuUI {
     const btnSettings = document.getElementById("btn-menu-settings");
 
     const modalMultiplayer = document.getElementById("modal-multiplayer");
-    const btnCloseMultiplayer = document.getElementById("btn-close-multiplayer");
+    const btnCloseMultiplayer = document.getElementById(
+      "btn-close-multiplayer",
+    );
     const btnHostGame = document.getElementById("btn-host-game");
     const btnJoinGame = document.getElementById("btn-join-game");
-    const inviteCodeInput = document.getElementById("invite-code-input") as HTMLInputElement;
+    const inviteCodeInput = document.getElementById(
+      "invite-code-input",
+    ) as HTMLInputElement;
 
     const modalFriends = document.getElementById("modal-friends");
     const btnCloseFriends = document.getElementById("btn-close-friends");
     const btnAddFriend = document.getElementById("btn-add-friend");
-    const addFriendInput = document.getElementById("add-friend-input") as HTMLInputElement;
-    const friendsListContainer = document.getElementById("friends-list-container");
+    const addFriendInput = document.getElementById(
+      "add-friend-input",
+    ) as HTMLInputElement;
+    const friendsListContainer = document.getElementById(
+      "friends-list-container",
+    );
 
     // Single Player
     btnSinglePlayer?.addEventListener("click", () => {
@@ -39,12 +49,12 @@ export class MainMenuUI {
     btnCloseMultiplayer?.addEventListener("click", () => {
       modalMultiplayer?.classList.add("hidden");
     });
-    
+
     btnHostGame?.addEventListener("click", () => {
       this.hideMenu();
       if (this.onStartGameCallback) this.onStartGameCallback("multi");
     });
-    
+
     btnJoinGame?.addEventListener("click", () => {
       const code = inviteCodeInput.value.trim();
       if (code) {
@@ -82,7 +92,7 @@ export class MainMenuUI {
   public showMenu() {
     const menuEl = document.getElementById("main-menu");
     menuEl?.classList.remove("hidden");
-    
+
     // Start Background
     if (!this.bgRenderer) {
       this.bgRenderer = new MenuBackgroundRenderer("main-menu-bg-container");
@@ -97,14 +107,16 @@ export class MainMenuUI {
   public hideMenu() {
     const menuEl = document.getElementById("main-menu");
     menuEl?.classList.add("hidden");
-    
+
     if (this.bgRenderer) {
       this.bgRenderer.destroy();
       this.bgRenderer = null;
     }
   }
 
-  public setOnStartGame(callback: (mode: "single" | "multi", inviteCode?: string) => void) {
+  public setOnStartGame(
+    callback: (mode: "single" | "multi", inviteCode?: string) => void,
+  ) {
     this.onStartGameCallback = callback;
   }
 
@@ -141,14 +153,14 @@ export class MainMenuUI {
     friends.forEach((f: any) => {
       const row = document.createElement("div");
       row.className = "friend-row";
-      
+
       const info = document.createElement("div");
       info.className = "friend-info";
       info.innerHTML = `
         <span class="friend-name">${f.name}</span>
         <span class="friend-status">
-          <span class="${f.online ? 'status-dot-online' : 'status-dot-offline'}"></span>
-          ${f.online ? 'Online' : 'Offline'}
+          <span class="${f.online ? "status-dot-online" : "status-dot-offline"}"></span>
+          ${f.online ? "Online" : "Offline"}
         </span>
       `;
 
@@ -205,13 +217,14 @@ export class MainMenuUI {
     btnAccept?.addEventListener("click", () => {
       removeToast();
       this.hideMenu();
-      if (this.onStartGameCallback) this.onStartGameCallback("multi", inviteCode);
+      if (this.onStartGameCallback)
+        this.onStartGameCallback("multi", inviteCode);
     });
 
     btnDecline?.addEventListener("click", removeToast);
 
     container.appendChild(toast);
-    
+
     // Auto-remove after 15 seconds
     setTimeout(() => {
       if (toast.parentElement) removeToast();

@@ -1,11 +1,17 @@
-import { SettlementData } from '../generation/SettlementGenerator';
-import { EnvironmentDetector } from './EnvironmentDetector';
-import { Animal } from './Animal';
-import { NPC } from './NPC';
-import { Player } from './Player';
-import { SPECIES_CONFIGS } from './speciesConfig';
-import { HeartParticle, SpeciesType, EnvironmentType } from './types';
-import { generateRandom, randomInt, randomRange, removeEntitySeed, setGlobalRngSeed } from './rng';
+import { SettlementData } from "../generation/SettlementGenerator";
+import { EnvironmentDetector } from "./EnvironmentDetector";
+import { Animal } from "./Animal";
+import { NPC } from "./NPC";
+import { Player } from "./Player";
+import { SPECIES_CONFIGS } from "./speciesConfig";
+import { HeartParticle, SpeciesType, EnvironmentType } from "./types";
+import {
+  generateRandom,
+  randomInt,
+  randomRange,
+  removeEntitySeed,
+  setGlobalRngSeed,
+} from "./rng";
 
 export class LifeformManager {
   private nextEntityId: number = 1;
@@ -22,7 +28,7 @@ export class LifeformManager {
 
   // Section 7: Spawn/Despawn Management
   public simulationRadius: number = 32; // Active simulation radius around player
-  public despawnRadius: number = 45;    // Animals further than this are despawned
+  public despawnRadius: number = 45; // Animals further than this are despawned
   private popCheckTimer: number = 0;
   private popCheckInterval: number = 2.0; // Run despawn/spawn check occasionally (0.5 Hz)
 
@@ -53,17 +59,27 @@ export class LifeformManager {
     this.detector.updateSettlementData(settlementData);
 
     // 1. Spawn Player in Village Center or near first house (centered on walkable tile)
-    const baseSpawnX = settlementData.houses[0]?.door?.x ?? Math.floor(settlementData.width / 2);
-    const baseSpawnY = settlementData.houses[0]?.door?.y ? settlementData.houses[0].door.y + 1 : Math.floor(settlementData.height / 2);
+    const baseSpawnX =
+      settlementData.houses[0]?.door?.x ?? Math.floor(settlementData.width / 2);
+    const baseSpawnY = settlementData.houses[0]?.door?.y
+      ? settlementData.houses[0].door.y + 1
+      : Math.floor(settlementData.height / 2);
     const spawnX = baseSpawnX + 0.5;
     const spawnY = baseSpawnY + 0.5;
 
     const validPlayerSpot = this.detector.isAreaWalkable(spawnX, spawnY)
       ? { x: spawnX, y: spawnY }
       : this.findWalkableOffset(spawnX, spawnY, 4.0) ||
-        this.detector.findSpawnLocation(['VILLAGE', 'GRASSLAND'], 30, () => generateRandom(0)) || { x: 10, y: 10 };
+        this.detector.findSpawnLocation(["VILLAGE", "GRASSLAND"], 30, () =>
+          generateRandom(0),
+        ) || { x: 10, y: 10 };
 
-    this.player = new Player(this.nextEntityId++, SPECIES_CONFIGS.player, validPlayerSpot.x, validPlayerSpot.y);
+    this.player = new Player(
+      this.nextEntityId++,
+      SPECIES_CONFIGS.player,
+      validPlayerSpot.x,
+      validPlayerSpot.y,
+    );
 
     // 2. Spawn Villager NPCs near houses (Section 29 & 30)
     const houses = settlementData.houses;
@@ -71,7 +87,11 @@ export class LifeformManager {
     for (let i = 0; i < numVillagers; i++) {
       const house = houses[i % houses.length];
       const hx = house?.door?.x ?? house?.x ?? 12;
-      const hy = house?.door?.y ? house.door.y + 1 : (house?.y ? house.y + 2 : 12);
+      const hy = house?.door?.y
+        ? house.door.y + 1
+        : house?.y
+          ? house.y + 2
+          : 12;
 
       const vSpot = this.findWalkableOffset(hx, hy, 2.5);
       if (vSpot) {
@@ -81,21 +101,21 @@ export class LifeformManager {
           vSpot.x,
           vSpot.y,
           hx,
-          hy
+          hy,
         );
         this.npcs.push(npc);
       }
     }
 
     // 3. Section 5 & 6: Spawn Initial Wildlife Herds/Groups around centers
-    this.spawnAnimalHerd('cow', 3, ['GRASSLAND', 'VILLAGE']);
-    this.spawnAnimalHerd('sheep', 4, ['GRASSLAND']);
-    this.spawnAnimalHerd('pig', 3, ['VILLAGE', 'GRASSLAND']);
-    this.spawnAnimalHerd('chicken', 4, ['VILLAGE', 'GRASSLAND']);
-    this.spawnAnimalHerd('cow', 2, ['WATER', 'GRASSLAND']);
-    this.spawnAnimalHerd('pig', 2, ['WATER', 'GRASSLAND']);
-    this.spawnAnimalHerd('rabbit', 3, ['GRASSLAND', 'JUNGLE']);
-    this.spawnAnimalHerd('deer', 2, ['JUNGLE', 'GRASSLAND']);
+    this.spawnAnimalHerd("cow", 3, ["GRASSLAND", "VILLAGE"]);
+    this.spawnAnimalHerd("sheep", 4, ["GRASSLAND"]);
+    this.spawnAnimalHerd("pig", 3, ["VILLAGE", "GRASSLAND"]);
+    this.spawnAnimalHerd("chicken", 4, ["VILLAGE", "GRASSLAND"]);
+    this.spawnAnimalHerd("cow", 2, ["WATER", "GRASSLAND"]);
+    this.spawnAnimalHerd("pig", 2, ["WATER", "GRASSLAND"]);
+    this.spawnAnimalHerd("rabbit", 3, ["GRASSLAND", "JUNGLE"]);
+    this.spawnAnimalHerd("deer", 2, ["JUNGLE", "GRASSLAND"]);
   }
 
   /**
@@ -109,18 +129,22 @@ export class LifeformManager {
     species: SpeciesType,
     targetCount: number,
     preferredEnv: EnvironmentType[],
-    customCenter?: { x: number; y: number }
+    customCenter?: { x: number; y: number },
   ): void {
     const config = SPECIES_CONFIGS[species];
     if (!config) return;
 
     // Center point for the herd
-    const center = customCenter ?? this.detector.findSpawnLocation(preferredEnv, 40, () => generateRandom(0));
+    const center =
+      customCenter ??
+      this.detector.findSpawnLocation(preferredEnv, 40, () =>
+        generateRandom(0),
+      );
     if (!center) return;
 
     const count = Math.min(
       targetCount,
-      randomInt(0, config.groupSizeMin, config.groupSizeMax)
+      randomInt(0, config.groupSizeMin, config.groupSizeMax),
     );
 
     for (let i = 0; i < count; i++) {
@@ -131,7 +155,13 @@ export class LifeformManager {
       const allowWater = isAmphibious || isAquatic;
       const waterOnly = isAquatic && !isAmphibious;
 
-      const pos = this.findWalkableOffset(center.x, center.y, 3.0, allowWater, waterOnly);
+      const pos = this.findWalkableOffset(
+        center.x,
+        center.y,
+        3.0,
+        allowWater,
+        waterOnly,
+      );
       if (pos) {
         const animal = new Animal(this.nextEntityId++, config, pos.x, pos.y);
         animal.movement.wanderOriginX = center.x;
@@ -149,7 +179,7 @@ export class LifeformManager {
     cy: number,
     radius: number,
     allowWater: boolean = false,
-    waterOnly: boolean = false
+    waterOnly: boolean = false,
   ): { x: number; y: number } | null {
     for (let attempt = 0; attempt < 16; attempt++) {
       const angle = generateRandom(0) * Math.PI * 2;
@@ -160,7 +190,9 @@ export class LifeformManager {
         return { x, y };
       }
     }
-    return this.detector.isWalkable(cx, cy, allowWater, waterOnly) ? { x: cx, y: cy } : null;
+    return this.detector.isWalkable(cx, cy, allowWater, waterOnly)
+      ? { x: cx, y: cy }
+      : null;
   }
 
   /**
@@ -272,8 +304,17 @@ export class LifeformManager {
    * and spawns a suitable animal group based on local environment.
    */
   private spawnWildlifeNearPlayer(px: number, py: number): void {
-    const candidateSpecies: SpeciesType[] = ['cow', 'sheep', 'rabbit', 'chicken', 'deer', 'pig', 'duck'];
-    const selectedSpecies = candidateSpecies[Math.floor(generateRandom(0) * candidateSpecies.length)];
+    const candidateSpecies: SpeciesType[] = [
+      "cow",
+      "sheep",
+      "rabbit",
+      "chicken",
+      "deer",
+      "pig",
+      "duck",
+    ];
+    const selectedSpecies =
+      candidateSpecies[Math.floor(generateRandom(0) * candidateSpecies.length)];
     const config = SPECIES_CONFIGS[selectedSpecies];
     if (!config) return;
 
@@ -284,13 +325,23 @@ export class LifeformManager {
       const cx = px + Math.cos(angle) * dist;
       const cy = py + Math.sin(angle) * dist;
 
-      if (!this.detector.isWalkable(cx, cy, Boolean(config.isAquatic), Boolean(config.isAquatic))) {
+      if (
+        !this.detector.isWalkable(
+          cx,
+          cy,
+          Boolean(config.isAquatic),
+          Boolean(config.isAquatic),
+        )
+      ) {
         continue;
       }
 
       const env = this.detector.getEnvironmentAt(cx, cy);
       if (config.preferredEnvironment.includes(env.type) || attempt > 15) {
-        this.spawnAnimalHerd(selectedSpecies, 3, config.preferredEnvironment, { x: cx, y: cy });
+        this.spawnAnimalHerd(selectedSpecies, 3, config.preferredEnvironment, {
+          x: cx,
+          y: cy,
+        });
         break;
       }
     }
@@ -307,14 +358,25 @@ export class LifeformManager {
   /**
    * Emits small, deep ruby red floating heart particles in a light, sparse stream.
    */
-  public emitHeartParticles(tileX: number, tileY: number, count: number = 2): void {
-    const PURE_DEEP_REDS = ['#dc2626', '#b91c1c', '#e11d48', '#be123c', '#991b1b'];
+  public emitHeartParticles(
+    tileX: number,
+    tileY: number,
+    count: number = 2,
+  ): void {
+    const PURE_DEEP_REDS = [
+      "#dc2626",
+      "#b91c1c",
+      "#e11d48",
+      "#be123c",
+      "#991b1b",
+    ];
     const actualCount = Math.max(1, Math.min(count, 2));
 
     for (let i = 0; i < actualCount; i++) {
       const offsetX = (generateRandom(0) - 0.5) * 0.22;
       const offsetY = i * 0.2 + (generateRandom(0) - 0.5) * 0.08;
-      const color = PURE_DEEP_REDS[Math.floor(generateRandom(0) * PURE_DEEP_REDS.length)];
+      const color =
+        PURE_DEEP_REDS[Math.floor(generateRandom(0) * PURE_DEEP_REDS.length)];
 
       this.particles.push({
         id: this.nextParticleId++,
@@ -384,17 +446,33 @@ export class LifeformManager {
   /**
    * Finds entity at screen/tile coordinates (e.g. for mouse click/hover).
    */
-  public findEntityAt(tileX: number, tileY: number, radius: number = 1.0): Animal | NPC | Player | null {
-    if (this.player && Math.hypot(this.player.position.x - tileX, this.player.position.y - tileY) < radius) {
+  public findEntityAt(
+    tileX: number,
+    tileY: number,
+    radius: number = 1.0,
+  ): Animal | NPC | Player | null {
+    if (
+      this.player &&
+      Math.hypot(
+        this.player.position.x - tileX,
+        this.player.position.y - tileY,
+      ) < radius
+    ) {
       return this.player;
     }
     for (const a of this.animals) {
-      if (a.isActive && Math.hypot(a.position.x - tileX, a.position.y - tileY) < radius) {
+      if (
+        a.isActive &&
+        Math.hypot(a.position.x - tileX, a.position.y - tileY) < radius
+      ) {
         return a;
       }
     }
     for (const n of this.npcs) {
-      if (n.isActive && Math.hypot(n.position.x - tileX, n.position.y - tileY) < radius) {
+      if (
+        n.isActive &&
+        Math.hypot(n.position.x - tileX, n.position.y - tileY) < radius
+      ) {
         return n;
       }
     }
