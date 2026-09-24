@@ -543,9 +543,9 @@ export async function prepareSettlementScene(
     // Dynamic Lifeforms (Animals, Villagers, Player)
     let targetedAnimal: Animal | null = null;
     if (lifeforms && lifeformRenderer) {
-      if (lifeforms.player) {
-        targetedAnimal = lifeforms.player.findNearbyInteractable(lifeforms.animals as Animal[], 2.0);
-      }
+      // if (lifeforms.player) {
+      //   targetedAnimal = lifeforms.player.findNearbyInteractable(lifeforms.animals as Animal[], 2.0);
+      // }
 
       // Animals
       for (const animal of lifeforms.animals) {
@@ -569,16 +569,16 @@ export async function prepareSettlementScene(
         });
       }
 
-      // Player
-      if (lifeforms.player && lifeforms.player.isActive) {
-        const player = lifeforms.player;
-        entities.push({
-          ySort: player.position.y,
-          draw: () => {
-            lifeformRenderer.renderEntity(ctx, player, cellSize);
-          },
-        });
-      }
+      // Player removed from generator view
+      // if (lifeforms?.player && lifeforms.player.isActive) {
+      //   const player = lifeforms.player;
+      //   entities.push({
+      //     ySort: player.position.y,
+      //     draw: () => {
+      //       lifeformRenderer.renderEntity(ctx, player, cellSize);
+      //     },
+      //   });
+      // }
     }
 
     // Sort and draw entities back-to-front

@@ -466,7 +466,7 @@ collisionFilterButtons.forEach((btn) => {
 window.addEventListener("DOMContentLoaded", () => {
   // Hide all tabs for the actual game experience
   const topTabBar = document.querySelector(".top-tab-bar") as HTMLElement;
-  if (topTabBar) topTabBar.style.display = "none";
+  // topTabBar.style.display = "none"; // Tab bar is kept visible as per request
 
   // Init Menu UI
   const mainMenu = new MainMenuUI();
@@ -1048,6 +1048,12 @@ export function stopSettlementLoop() {
   }
 }
 
+let worldGenEngine: SurvivalEngine | null = null;
+let worldGenRenderer: SurvivalRenderer | null = null;
+let isWorldGenDragging = false;
+let worldGenLastX = 0;
+let worldGenLastY = 0;
+
 function settlementLoop(now: number) {
   if (!isSettlementTabActive) {
     animFrameId = null;
@@ -1057,43 +1063,17 @@ function settlementLoop(now: number) {
   const dt = Math.min(0.1, (now - lastTime) / 1000);
   lastTime = now;
 
-  // 1. High-frequency simulation update (60 FPS)
-  if (lifeformManager) {
-    lifeformManager.update(dt);
-  }
-
-  // 2. High-frequency visual render (60 FPS)
-  if (currentSettlementScene && settlementCanvas && lifeformManager) {
-    currentSettlementScene.renderFrame(
-      settlementCanvas,
-      {
-        animals: lifeformManager.getAnimals(),
-        npcs: lifeformManager.getNPCs(),
-        player: lifeformManager.player,
-        particles: lifeformManager.getParticles(),
-      },
-      lifeformRenderer,
-      {
-        cellSize: Math.round(16 * currentZoomLevel),
-        showGrid: optShowGrid,
-        showClearance: optShowClearance,
-        showFootprints: optShowFootprints,
-      },
-    );
-
-    // Update live counts
-    const wildBadge = document.getElementById("stat-wildlife-count");
-    const npcBadge = document.getElementById("stat-villagers-count");
-    if (wildBadge) {
-      wildBadge.textContent = String(
-        lifeformManager.getAnimals().filter((a) => a.isActive).length,
-      );
+  if (worldGenEngine && worldGenRenderer && settlementCanvas && viewSettlement) {
+    const rect = viewSettlement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      if (settlementCanvas.width !== rect.width || settlementCanvas.height !== rect.height) {
+        settlementCanvas.width = rect.width;
+        settlementCanvas.height = rect.height;
+      }
     }
-    if (npcBadge) {
-      npcBadge.textContent = String(
-        lifeformManager.getNPCs().filter((n) => n.isActive).length,
-      );
-    }
+    
+    worldGenEngine.update(dt);
+    worldGenRenderer.render(settlementCanvas, worldGenEngine, dt);
   }
 
   animFrameId = requestAnimationFrame(settlementLoop);
@@ -1108,6 +1088,61 @@ function ensureSettlementLoaded() {
     if (paramSeed && !isNaN(parseInt(paramSeed, 10))) {
       currentSeed = parseInt(paramSeed, 10);
     }
+
+    if (settlementCanvas) {
+      const rect = viewSettlement.getBoundingClientRect();
+      settlementCanvas.width = rect.width;
+      settlementCanvas.height = rect.height;
+
+      // Mouse drag logic
+      settlementCanvas.addEventListener("mousedown", (e) => {
+        isWorldGenDragging = true;
+        worldGenLastX = e.clientX;
+        worldGenLastY = e.clientY;
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!isWorldGenDragging || !worldGenEngine || !worldGenRenderer) return;
+        const dx = e.clientX - worldGenLastX;
+        const dy = e.clientY - worldGenLastY;
+        const tilesX = dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesY = dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        worldGenEngine.player.x -= tilesX;
+        worldGenEngine.player.y -= tilesY;
+        worldGenRenderer.cameraX -= tilesX;
+        worldGenRenderer.cameraY -= tilesY;
+        worldGenLastX = e.clientX;
+        worldGenLastY = e.clientY;
+      });
+      window.addEventListener("mouseup", () => {
+        isWorldGenDragging = false;
+      });
+
+      // Touch drag logic
+      settlementCanvas.addEventListener("touchstart", (e) => {
+        if (e.touches.length > 0) {
+          isWorldGenDragging = true;
+          worldGenLastX = e.touches[0].clientX;
+          worldGenLastY = e.touches[0].clientY;
+        }
+      });
+      window.addEventListener("touchmove", (e) => {
+        if (!isWorldGenDragging || !worldGenEngine || !worldGenRenderer || e.touches.length === 0) return;
+        const dx = e.touches[0].clientX - worldGenLastX;
+        const dy = e.touches[0].clientY - worldGenLastY;
+        const tilesX = dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesY = dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        worldGenEngine.player.x -= tilesX;
+        worldGenEngine.player.y -= tilesY;
+        worldGenRenderer.cameraX -= tilesX;
+        worldGenRenderer.cameraY -= tilesY;
+        worldGenLastX = e.touches[0].clientX;
+        worldGenLastY = e.touches[0].clientY;
+      });
+      window.addEventListener("touchend", () => {
+        isWorldGenDragging = false;
+      });
+    }
+
     generateAndRenderSettlement(currentSeed);
   }
 }
@@ -1151,23 +1186,22 @@ function updateSettlementBadges(data: SettlementData) {
 }
 
 async function renderCurrentSettlement() {
-  if (!currentSettlementData || !settlementCanvas) return;
-  const cellSize = Math.round(16 * currentZoomLevel);
-  currentSettlementScene = await prepareSettlementScene(currentSettlementData, {
-    cellSize,
-    showGrid: optShowGrid,
-    showClearance: optShowClearance,
-    showFootprints: optShowFootprints,
-  });
+  if (!worldGenRenderer) return;
+  worldGenRenderer.zoom = currentZoomLevel * 2.2;
 }
 
 async function generateAndRenderSettlement(seed?: number) {
   currentSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
-  currentSettlementData = generateSettlement(currentSeed, 48, 36);
-  updateSettlementBadges(currentSettlementData);
+  
+  if (settlementCanvas) {
+    const ctx = settlementCanvas.getContext("2d")!;
+    worldGenEngine = new SurvivalEngine(currentSeed, true);
+    worldGenRenderer = new SurvivalRenderer();
+    worldGenRenderer.isWorldGenMode = true;
+  }
 
-  // Initialize lifeforms with the new world
-  lifeformManager = new LifeformManager(currentSettlementData);
+  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+  if (seedInput) seedInput.value = String(currentSeed);
 
   await renderCurrentSettlement();
   startSettlementLoop();
@@ -1274,66 +1308,7 @@ function initSettlementUI() {
     });
   }
 
-  // ── KEYBOARD CONTROLS (WASD/Arrows for Movement, [E] Pet, [F] Feed) ──
-  const activeKeys = new Set<string>();
-
-  window.addEventListener("keydown", (e) => {
-    if (!isSettlementTabActive) return;
-    if (e.target instanceof HTMLInputElement) return;
-
-    const key = e.key.toLowerCase();
-    activeKeys.add(key);
-
-    if (key === " " || e.code === "Space") {
-      lifeformManager?.player?.jump();
-    } else if (key === "e") {
-      lifeformManager?.petClosestAnimal();
-    } else if (key === "f") {
-      lifeformManager?.feedClosestAnimal();
-    }
-
-    if (
-      [
-        "arrowup",
-        "arrowdown",
-        "arrowleft",
-        "arrowright",
-        " ",
-        "w",
-        "a",
-        "s",
-        "d",
-      ].includes(key) ||
-      e.code === "Space"
-    ) {
-      e.preventDefault();
-    }
-
-    updatePlayerMovementInput();
-  });
-
-  window.addEventListener("keyup", (e) => {
-    if (!isSettlementTabActive) return;
-    if (e.target instanceof HTMLInputElement) return;
-
-    const key = e.key.toLowerCase();
-    activeKeys.delete(key);
-    updatePlayerMovementInput();
-  });
-
-  function updatePlayerMovementInput() {
-    if (!lifeformManager || !lifeformManager.player) return;
-
-    let dx = 0;
-    let dy = 0;
-    if (activeKeys.has("w") || activeKeys.has("arrowup")) dy -= 1;
-    if (activeKeys.has("s") || activeKeys.has("arrowdown")) dy += 1;
-    if (activeKeys.has("a") || activeKeys.has("arrowleft")) dx -= 1;
-    if (activeKeys.has("d") || activeKeys.has("arrowright")) dx += 1;
-
-    lifeformManager.player.moveInputX = dx;
-    lifeformManager.player.moveInputY = dy;
-  }
+    // Player movement removed from Generator tab
 
   // ── MOUSE PAN, CLICK TO MOVE & PET ──────────────────────────
   if (settlementViewport) {
@@ -1357,37 +1332,7 @@ function initSettlementUI() {
       if (!isPanning) return;
       isPanning = false;
 
-      // Detect click if mouse didn't drag
-      const dragDist = Math.hypot(e.clientX - startPanX, e.clientY - startPanY);
-      if (dragDist < 5 && settlementCanvas && lifeformManager) {
-        const rect = settlementCanvas.getBoundingClientRect();
-        const cellSize = Math.round(16 * currentZoomLevel);
-        const clickX = (e.clientX - rect.left) / cellSize;
-        const clickY = (e.clientY - rect.top) / cellSize;
-
-        const clicked = lifeformManager.findEntityAt(clickX, clickY, 1.4);
-        if (clicked && clicked.type === "ANIMAL") {
-          const animal = clicked as Animal;
-          if (
-            lifeformManager.player &&
-            Math.hypot(
-              lifeformManager.player.position.x - animal.position.x,
-              lifeformManager.player.position.y - animal.position.y,
-            ) <= 2.2
-          ) {
-            if (animal.pet()) {
-              lifeformManager.player.triggerHop();
-            }
-          } else if (lifeformManager.player) {
-            lifeformManager.player.setTarget(
-              animal.position.x,
-              animal.position.y,
-            );
-          }
-        } else if (lifeformManager.player) {
-          lifeformManager.player.setTarget(clickX, clickY);
-        }
-      }
+      // Detect click if mouse didn't drag (removed player target logic)
     });
 
     settlementViewport.addEventListener(

@@ -214,6 +214,7 @@ export class SurvivalRenderer {
   public lifeformRenderer: LifeformRenderer;
   public zoom = 2.2;
   public readonly baseTileSize = 16;
+  public isWorldGenMode = false;
 
   // Smooth camera tracking
   public cameraX = 22;
@@ -1119,10 +1120,11 @@ export class SurvivalRenderer {
     }
 
     // 6.7 Player Character & Held Item
-    depthList.push({
-      yOrder: engine.player.y + 0.5,
-      draw: () => {
-        const p = engine.player;
+    if (!this.isWorldGenMode) {
+      depthList.push({
+        yOrder: engine.player.y + 0.5,
+        draw: () => {
+          const p = engine.player;
         const screen = worldToScreen(p.x, p.y);
         const hopY = p.hopOffset * cellSize;
         const isFacingLeft = p.facing === "LEFT";
@@ -1256,8 +1258,9 @@ export class SurvivalRenderer {
           1.0,
           action,
         );
-      },
-    });
+        },
+      });
+    }
 
     // 6.8 Other Connected Players (Multiplayer)
     if (engine.remotePlayers && engine.remotePlayers.length > 0) {
@@ -1395,9 +1398,10 @@ export class SurvivalRenderer {
         // Cutout around Player
         const activeItem = engine.getActiveItemSlot()?.item;
         const isHoldingTorch = activeItem === "torch";
+      if (!this.isWorldGenMode) {
         const playerScreen = worldToScreen(engine.player.x, engine.player.y);
         const playerRadius = (isHoldingTorch ? 170 : 85) * (this.zoom / 2);
-
+        
         const playerGlow = lctx.createRadialGradient(
           playerScreen.sx + cellSize / 2,
           playerScreen.sy + cellSize / 2,
@@ -1419,6 +1423,7 @@ export class SurvivalRenderer {
           Math.PI * 2,
         );
         lctx.fill();
+      }
 
         // Cutout around Campfires
         for (const struct of engine.placedStructures) {

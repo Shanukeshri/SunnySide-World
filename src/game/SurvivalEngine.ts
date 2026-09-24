@@ -32,6 +32,7 @@ import {
   WorldTime,
 } from "./GameTypes";
 import { GameAudio } from "./GameAudio";
+import { LifeformSpawner } from "./LifeformSpawner";
 
 // Item Catalog Definition
 export const ITEM_CATALOG: Record<ItemId, ItemDef> = {
@@ -915,8 +916,13 @@ export class SurvivalEngine {
   private enemySpawnTimer = 0;
   private wildlifeSpawnTimer = 0;
 
-  constructor(seed = 42891) {
+  public lifeformSpawner: LifeformSpawner;
+  public isWorldGenMode = false;
+
+  constructor(seed = 42891, isWorldGenMode = false) {
+    this.isWorldGenMode = isWorldGenMode;
     this.worldManager = new WorldManager(seed);
+    this.lifeformSpawner = new LifeformSpawner(this.worldManager, seed);
     this.worldManager.updatePlayerLocation(22, 18);
     const startVillage = this.worldManager.villages[0]?.data;
     this.detector = new EnvironmentDetector(startVillage);
@@ -1038,110 +1044,28 @@ export class SurvivalEngine {
 
       const config = SPECIES_CONFIGS[species];
       const animal = new Animal(this.nextEntityId++, config, spawnX, spawnY);
-      this.animals.push(animal);
+      // this.animals.push(animal);
     });
 
-    // Spawn swimming cows and pigs in village pond
-    const starterVillage = this.worldManager.villages[0];
-    if (
-      starterVillage &&
-      starterVillage.data.waterBodies &&
-      starterVillage.data.waterBodies.length > 0
-    ) {
-      const pond = starterVillage.data.waterBodies[0];
-      const duckCount = Math.min(
-        4,
-        Math.max(2, Math.floor(pond.cells.length / 5)),
-      );
-      for (let i = 0; i < duckCount; i++) {
-        const duckConfig = SPECIES_CONFIGS[Math.random() < 0.5 ? "cow" : "pig"];
-        const cellIndex = Math.floor(
-          ((i + 0.5) / duckCount) * pond.cells.length,
-        );
-        const cell = pond.cells[cellIndex];
-        const duck = new Animal(
-          this.nextEntityId++,
-          duckConfig,
-          starterVillage.gridX + cell.x + 0.5,
-          starterVillage.gridY + cell.y + 0.5,
-        );
-        this.animals.push(duck);
-      }
-    }
-
-    // Spawn 8 specialized village NPCs using each composite animation
-    const compositeRoles: (
-      | "blacksmith"
-      | "builder"
-      | "farmer"
-      | "fisher"
-      | "guide"
-      | "merchant"
-      | "child"
-      | "villager"
-    )[] = [
-      "blacksmith",
-      "builder",
-      "farmer",
-      "fisher",
-      "guide",
-      "merchant",
-      "child",
-      "villager",
-    ];
-
-    compositeRoles.forEach((role, i) => {
-      const config = SPECIES_CONFIGS["villager"];
-      const angle = (i / compositeRoles.length) * Math.PI * 2;
-      const radius = 4.5 + (i % 2) * 2;
-      const sx = this.player.x + Math.cos(angle) * radius;
-      const sy = this.player.y + Math.sin(angle) * radius;
-      const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy, role);
-      this.npcs.push(npc);
-    });
-
-    // Spawn an initial goblin and skeleton nearby for immediate demonstration
-    this.enemies.push({
-      id: this.nextEntityId++,
-      type: "goblin",
-      name: "Forest Goblin",
-      x: this.player.x + 15,
-      y: this.player.y + 10,
-      vx: 0,
-      vy: 0,
-      direction: "LEFT",
-      health: 40,
-      maxHealth: 40,
-      damage: 14,
-      speed: 2.2,
-      state: "PATROL",
-      attackCooldown: 0,
-      patrolTimer: 3,
-      hurtTimer: 0,
-      deathTimer: 0.6,
-      isAlive: true,
-    });
-
-    this.enemies.push({
-      id: this.nextEntityId++,
-      type: "skeleton",
-      name: "Dungeon Skeleton",
-      x: this.player.x - 15,
-      y: this.player.y + 10,
-      vx: 0,
-      vy: 0,
-      direction: "RIGHT",
-      health: 45,
-      maxHealth: 45,
-      damage: 16,
-      speed: 2.0,
-      state: "PATROL",
-      attackCooldown: 0,
-      patrolTimer: 3,
-      hurtTimer: 0,
-      deathTimer: 0.6,
-      isAlive: true,
-    });
+    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+    
+    const newAnimals: any[] = [];
+    const newNpcs: any[] = [];
+    const newEnemies: any[] = [];
+    
+    this.lifeformSpawner.spawnInitialLifeforms(
+      this.worldManager.villages[0],
+      this.player.x,
+      this.player.y,
+      newAnimals,
+      newNpcs,
+      newEnemies
+    );
+    
+    // In gameLogicV1, new animals and npcs are pushed to arrays, although here they were commented out previously.
+    // We'll push enemies.
+    this.enemies.push(...newEnemies);
+    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }
 
   /**
@@ -1153,6 +1077,11 @@ export class SurvivalEngine {
     // 1. Advance World Clock (8 minutes = 480 seconds per full 24h cycle)
     this.updateWorldTime(dt);
 
+    if (this.isWorldGenMode) {
+      this.worldManager.updatePlayerLocation(this.player.x, this.player.y);
+      return;
+    }
+
     // 2. Player Movement & Physics
     this.updatePlayerMovement(dt);
 
@@ -1163,43 +1092,13 @@ export class SurvivalEngine {
     this.worldManager.updatePlayerLocation(this.player.x, this.player.y);
 
     // Collect wild animals spawned as new chunks load
-    const pcx = Math.floor(this.player.x / 16);
-    const pcy = Math.floor(this.player.y / 16);
-    for (let dy = -4; dy <= 4; dy++) {
-      for (let dx = -4; dx <= 4; dx++) {
-        const chunk = this.worldManager.chunks.get(`${pcx + dx},${pcy + dy}`);
-        if (
-          chunk &&
-          chunk.spawnedWildlife &&
-          chunk.spawnedWildlife.length > 0
-        ) {
-          for (const wild of chunk.spawnedWildlife) {
-            const config = SPECIES_CONFIGS[wild.species];
-            if (config) {
-              // Validate position: skip non-amphibious animals on water
-              const isAmphibious =
-                wild.species === "cow" ||
-                wild.species === "pig" ||
-                wild.species === "duck";
-              const tile = this.worldManager.getTile(
-                Math.floor(wild.x),
-                Math.floor(wild.y),
-              );
-              if (!isAmphibious && (tile.isWater || tile.isBlocked)) continue;
+    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+    const newAnimals: Animal[] = [];
+    this.lifeformSpawner.processChunksAroundPlayer(this.player.x, this.player.y, newAnimals);
+    
+    // this.animals.push(...newAnimals);
+    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
 
-              const animal = new Animal(
-                this.nextEntityId++,
-                config,
-                wild.x,
-                wild.y,
-              );
-              this.animals.push(animal);
-            }
-          }
-          chunk.spawnedWildlife = [];
-        }
-      }
-    }
 
     // 5. Dropped Items Magnet & Pickup
     this.updateDroppedItems(dt);
@@ -1214,7 +1113,22 @@ export class SurvivalEngine {
     this.updateParticles(dt);
 
     // 9. Periodic Spawning (Wildlife & Night Enemies)
-    this.handlePeriodicSpawns(dt);
+    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+    const periodicAnimals: Animal[] = [];
+    const periodicEnemies: any[] = [];
+    this.lifeformSpawner.handlePeriodicSpawns(
+      dt,
+      this.worldTime.timeOfDay,
+      this.player.x,
+      this.player.y,
+      this.animals.length,
+      this.enemies.length,
+      periodicAnimals,
+      periodicEnemies
+    );
+    // this.animals.push(...periodicAnimals);
+    this.enemies.push(...periodicEnemies);
+    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }
 
   /**
@@ -1617,111 +1531,7 @@ export class SurvivalEngine {
     }
   }
 
-  /**
-   * Spawns night enemies and wildlife herds periodically.
-   */
-  private handlePeriodicSpawns(dt: number) {
-    // Night enemy spawn (only outside villages, maximum 6 active enemies)
-    if (this.worldTime.timeOfDay === "Night" && this.enemies.length < 6) {
-      this.enemySpawnTimer += dt;
-      if (this.enemySpawnTimer >= 8.0) {
-        this.enemySpawnTimer = 0;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 14 + Math.random() * 8;
-        const spawnX = this.player.x + Math.cos(angle) * dist;
-        const spawnY = this.player.y + Math.sin(angle) * dist;
 
-        const tile = this.worldManager.getTile(
-          Math.floor(spawnX),
-          Math.floor(spawnY),
-        );
-        if (
-          !tile.isWater &&
-          !tile.isBlocked &&
-          tile.inVillageId === undefined
-        ) {
-          this.spawnEnemy(spawnX, spawnY);
-        }
-      }
-    }
-
-    // Wildlife replenishment
-    this.wildlifeSpawnTimer += dt;
-    if (this.wildlifeSpawnTimer >= 15.0 && this.animals.length < 16) {
-      this.wildlifeSpawnTimer = 0;
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 12 + Math.random() * 10;
-      const spawnX = this.player.x + Math.cos(angle) * dist;
-      const spawnY = this.player.y + Math.sin(angle) * dist;
-
-      const tile = this.worldManager.getTile(
-        Math.floor(spawnX),
-        Math.floor(spawnY),
-      );
-      if (!tile.isWater && !tile.isBlocked) {
-        const species: ("cow" | "sheep" | "chicken" | "rabbit" | "deer")[] = [
-          "cow",
-          "sheep",
-          "chicken",
-          "rabbit",
-          "deer",
-        ];
-        const chosen = species[Math.floor(Math.random() * species.length)];
-        const config = SPECIES_CONFIGS[chosen];
-        this.animals.push(
-          new Animal(this.nextEntityId++, config, spawnX, spawnY),
-        );
-      }
-    }
-  }
-
-  private spawnEnemy(x: number, y: number) {
-    const roll = Math.random();
-    let type: "skeleton" | "goblin" | "slime" = "slime";
-    let name = "Wild Slime";
-    let health = 25;
-    let damage = 8;
-    let speed = 1.8;
-    let action: string | undefined = undefined;
-
-    if (roll < 0.45) {
-      type = "skeleton";
-      name = "Dungeon Skeleton";
-      health = 45;
-      damage = 16;
-      speed = 2.1;
-    } else if (roll < 0.9) {
-      type = "goblin";
-      name = "Forest Goblin";
-      health = 40;
-      damage = 14;
-      speed = 2.3;
-      if (Math.random() < 0.25) action = "AXE";
-      else if (Math.random() < 0.25) action = "MINING";
-    }
-
-    this.enemies.push({
-      id: this.nextEntityId++,
-      type,
-      name,
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      direction: "DOWN",
-      health,
-      maxHealth: health,
-      damage,
-      speed,
-      state: "PATROL",
-      action,
-      attackCooldown: 0,
-      patrolTimer: 3,
-      hurtTimer: 0,
-      deathTimer: 0.6,
-      isAlive: true,
-    });
-  }
 
   /**
    * Updates floating text, heart particles, and wood chip VFX.

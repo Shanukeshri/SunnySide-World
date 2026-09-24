@@ -95,26 +95,26 @@ export class GameState {
           if (!isAquatic && (tile.isWater || tile.isBlocked)) continue; // Skip: this tile became water/blocked after village stamp
           if (isAquatic && !tile.isWater) continue; // Ducks must be on water
 
-          this.animals.push({
-            id: this.getNextId(),
-            kind: "animal",
-            species: wild.species,
-            x: wild.x,
-            y: wild.y,
-            direction: "DOWN",
-            behaviorState: "IDLE",
-            health: 30,
-            maxHealth: 30,
-            hunger: 0,
-            speed: 1.5,
-            targetX: null,
-            targetY: null,
-            eatingBobOffset: 0,
-            isPetted: false,
-            pettedTimer: 0,
-            pettingCooldown: 0,
-            fleeTimer: 0,
-          });
+          // this.animals.push({
+          //   id: this.getNextId(),
+          //   kind: "animal",
+          //   species: wild.species,
+          //   x: wild.x,
+          //   y: wild.y,
+          //   direction: "DOWN",
+          //   behaviorState: "IDLE",
+          //   health: 30,
+          //   maxHealth: 30,
+          //   hunger: 0,
+          //   speed: 1.5,
+          //   targetX: null,
+          //   targetY: null,
+          //   eatingBobOffset: 0,
+          //   isPetted: false,
+          //   pettedTimer: 0,
+          //   pettingCooldown: 0,
+          //   fleeTimer: 0,
+          // });
         }
         chunk.spawnedWildlife = [];
       }
@@ -129,26 +129,26 @@ export class GameState {
         for (let i = 0; i < duckCount; i++) {
           const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
           const cell = pond.cells[cellIndex];
-          this.animals.push({
-            id: this.getNextId(),
-            kind: "animal",
-            species: "duck",
-            x: starterVillage.gridX + cell.x + 0.5,
-            y: starterVillage.gridY + cell.y + 0.5,
-            direction: "DOWN",
-            behaviorState: "IDLE",
-            health: 20,
-            maxHealth: 20,
-            hunger: 0,
-            speed: 0.8,
-            targetX: null,
-            targetY: null,
-            eatingBobOffset: 0,
-            isPetted: false,
-            pettedTimer: 0,
-            pettingCooldown: 0,
-            fleeTimer: 0,
-          });
+          // this.animals.push({
+          //   id: this.getNextId(),
+          //   kind: "animal",
+          //   species: "duck",
+          //   x: starterVillage.gridX + cell.x + 0.5,
+          //   y: starterVillage.gridY + cell.y + 0.5,
+          //   direction: "DOWN",
+          //   behaviorState: "IDLE",
+          //   health: 20,
+          //   maxHealth: 20,
+          //   hunger: 0,
+          //   speed: 0.8,
+          //   targetX: null,
+          //   targetY: null,
+          //   eatingBobOffset: 0,
+          //   isPetted: false,
+          //   pettedTimer: 0,
+          //   pettingCooldown: 0,
+          //   fleeTimer: 0,
+          // });
         }
       }
     }
@@ -170,22 +170,22 @@ export class GameState {
       const radius = 4.5 + (i % 2) * 2.5;
       const sx = 22 + Math.cos(angle) * radius;
       const sy = 18 + Math.sin(angle) * radius;
-      this.npcs.push({
-        id: this.getNextId(),
-        kind: "npc",
-        npcType: "villager",
-        name: item.name,
-        role: item.role,
-        x: sx,
-        y: sy,
-        direction: "DOWN",
-        behaviorState: "IDLE",
-        dialogueState: "GREETING",
-        isFrozen: false,
-        targetX: null,
-        targetY: null,
-        hairstyle: item.hairstyle,
-      });
+      // this.npcs.push({
+      //   id: this.getNextId(),
+      //   kind: "npc",
+      //   npcType: "villager",
+      //   name: item.name,
+      //   role: item.role,
+      //   x: sx,
+      //   y: sy,
+      //   direction: "DOWN",
+      //   behaviorState: "IDLE",
+      //   dialogueState: "GREETING",
+      //   isFrozen: false,
+      //   targetX: null,
+      //   targetY: null,
+      //   hairstyle: item.hairstyle,
+      // });
     });
   }
 

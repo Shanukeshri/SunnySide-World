@@ -41,11 +41,6 @@ export interface WorldChunk {
   tiles: WorldTile[][];
   resources: ResourceNode[];
   isGenerated: boolean;
-  spawnedWildlife?: {
-    species: "cow" | "sheep" | "chicken" | "rabbit" | "deer" | "pig" | "duck";
-    x: number;
-    y: number;
-  }[];
 }
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -786,63 +781,7 @@ export class WorldManager {
         }
       }
     }
-
-    // Spawn wild animals naturally as the chunk loads (Minecraft-style)
-    chunk.spawnedWildlife = [];
-    const animalChance = rng();
-    if (animalChance < 0.65) {
-      const count = 1 + Math.floor(rng() * 3);
-      for (let i = 0; i < count; i++) {
-        const ax =
-          chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
-        const ay =
-          chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
-        const lx = ax - chunk.chunkX * CHUNK_SIZE;
-        const ly = ay - chunk.chunkY * CHUNK_SIZE;
-        const tile = chunk.tiles[ly]?.[lx];
-        if (tile && !this.isInsideAnyVillage(ax, ay)) {
-          let species:
-            | "cow"
-            | "sheep"
-            | "chicken"
-            | "rabbit"
-            | "deer"
-            | "pig"
-            | "duck" = "chicken";
-          if (tile.isWater) {
-            species = rng() < 0.5 ? "cow" : "pig";
-          } else if (!tile.isBlocked) {
-            // Check adjacent tiles for water — land animals shouldn't spawn right next to water
-            const adjUp = chunk.tiles[ly - 1]?.[lx];
-            const adjDown = chunk.tiles[ly + 1]?.[lx];
-            const adjLeft = chunk.tiles[ly]?.[lx - 1];
-            const adjRight = chunk.tiles[ly]?.[lx + 1];
-            const nearWater =
-              adjUp?.isWater ||
-              adjDown?.isWater ||
-              adjLeft?.isWater ||
-              adjRight?.isWater;
-            if (nearWater) continue; // Skip this spawn — too close to water for a land animal
-
-            const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
-            if (forestNoise > 0.3) {
-              species = rng() < 0.5 ? "deer" : "rabbit";
-            } else {
-              const r = rng();
-              if (r < 0.25) species = "cow";
-              else if (r < 0.5) species = "sheep";
-              else if (r < 0.75) species = "pig";
-              else species = "chicken";
-            }
-          } else {
-            continue;
-          }
-          chunk.spawnedWildlife.push({ species, x: ax + 0.5, y: ay + 0.5 });
-        }
-      }
-    }
   }
-
   /**
    * Checks if a chunk is within active simulation and render range (<= maxChunkDist chunks away).
    */

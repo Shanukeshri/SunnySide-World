@@ -148,7 +148,7 @@ export class SpawnSystem {
           pettingCooldown: 0,
           fleeTimer: 0,
         };
-        this.gameState.animals.push(animal);
+        // this.gameState.animals.push(animal);
         this.gameState.eventBus.emit("ENTITY_SPAWNED", {
           entityId: animal.id,
           kind: "animal",
@@ -190,7 +190,7 @@ export class SpawnSystem {
           pettingCooldown: 0,
           fleeTimer: 0,
         };
-        this.gameState.animals.push(animal);
+        // this.gameState.animals.push(animal);
         this.gameState.eventBus.emit("ENTITY_SPAWNED", {
           entityId: animal.id,
           kind: "animal",

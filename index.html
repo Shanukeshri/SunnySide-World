@@ -224,7 +224,7 @@
             aria-controls="settlement-view"
           >
             <span class="tab-icon">🏘️</span>
-            <span>Village Generator</span>
+            <span>World Generation</span>
           </button>
           <button
             id="tab-game"
@@ -234,7 +234,7 @@
             aria-controls="game-view"
           >
             <span class="tab-icon">⚔️</span>
-            <span>Survival Game</span>
+            <span>Game</span>
           </button>
           <button
             id="tab-houses"
@@ -242,6 +242,7 @@
             role="tab"
             aria-selected="false"
             aria-controls="houses-view"
+            style="display: none;"
           >
             <span class="tab-icon">🏠</span>
             <span>Houses</span>
@@ -252,6 +253,7 @@
             role="tab"
             aria-selected="false"
             aria-controls="terrain-view"
+            style="display: none;"
           >
             <span class="tab-icon">🌍</span>
             <span>Terrain & Biome</span>
@@ -262,6 +264,7 @@
             role="tab"
             aria-selected="false"
             aria-controls="assets-map-view"
+            style="display: none;"
           >
             <span class="tab-icon">🗺️</span>
             <span>Assets Map</span>
@@ -269,7 +272,7 @@
         </nav>
 
         <!-- Right Controls (only shown on Atlas Map tab) -->
-        <div class="header-right" id="atlas-controls">
+        <div class="header-right" id="atlas-controls" style="display: none;">
           <div
             class="atlas-filter-group"
             id="atlas-collision-filters"
@@ -605,7 +608,7 @@
                 </button>
               </div>
               <!-- Debug Toggles -->
-              <div class="settlement-toggles">
+              <div class="settlement-toggles" style="display: none;">
                 <button
                   id="toggle-grid-btn"
                   class="toggle-btn"
@@ -632,7 +635,7 @@
           </header>
 
           <!-- Stats & Validation Badges -->
-          <div class="settlement-stats-bar">
+          <div class="settlement-stats-bar" style="display: none;">
             <div class="settlement-stats-left">
               <span class="settlement-badge" id="stat-seed-badge"
                 >Seed: <strong>0</strong></span
@@ -688,14 +691,13 @@
             </div>
             <div class="settlement-viewport-hint">
               <span
-                >🎮 WASD to Move &bull; 🦘 [Space] Jump &bull; 🐾 [E] Pet &bull;
-                🌾 [F] Feed &bull; 🖱️ Drag to Pan &bull; 🖲️ Scroll to Zoom</span
+                >🖱️ Drag to Pan &bull; 🖲️ Scroll to Zoom</span
               >
             </div>
           </div>
 
           <!-- Settlement Legend -->
-          <footer class="settlement-legend-bar">
+          <footer class="settlement-legend-bar" style="display: none;">
             <div class="legend-items">
               <span class="leg-item"
                 ><span class="leg-color leg-grass"></span>Grass
