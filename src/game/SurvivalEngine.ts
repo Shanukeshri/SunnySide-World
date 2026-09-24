@@ -919,12 +919,12 @@ export class SurvivalEngine {
   public lifeformSpawner: LifeformSpawner;
   public isWorldGenMode = false;
 
-  constructor(seed = 42891, isWorldGenMode = false) {
+  constructor(seed = 42891, isWorldGenMode = false, maxPhase = 10) {
     this.isWorldGenMode = isWorldGenMode;
 
     // ── PHASE 1 & 2: World Generation & Farm Generation (via WorldManager & FarmGenerator) ──
     console.log("[LIFECYCLE PHASE 1: World Generation] Generating terrain chunks, biomes, road networks, water bodies, and village layouts...");
-    this.worldManager = new WorldManager(seed);
+    this.worldManager = new WorldManager(seed, maxPhase);
     this.lifeformSpawner = new LifeformSpawner(this.worldManager, seed);
     this.worldManager.updatePlayerLocation(22, 18);
 
@@ -962,16 +962,22 @@ export class SurvivalEngine {
     };
 
     // ── PHASE 3: Passive Wildlife & Village Lifeform Spawning ──
-    console.log("[LIFECYCLE PHASE 3: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
-    this.spawnInitialLifeforms();
+    if (maxPhase >= 8) {
+      console.log("[LIFECYCLE PHASE 3: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
+      this.spawnInitialLifeforms();
+    }
 
     // ── PHASE 4: Enemy Spawning ──
-    console.log("[LIFECYCLE PHASE 4: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
-    this.spawnInitialEnemies();
+    if (maxPhase >= 9) {
+      console.log("[LIFECYCLE PHASE 4: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
+      this.spawnInitialEnemies();
+    }
 
     // ── PHASE 5: Player Initialization & Playable Game Ready ──
-    console.log("[LIFECYCLE PHASE 5: World Playable] Player inventory and survival equipment initialized. Ready to play!");
-    this.initInventory();
+    if (maxPhase >= 10) {
+      console.log("[LIFECYCLE PHASE 5: World Playable] Player inventory and survival equipment initialized. Ready to play!");
+      this.initInventory();
+    }
   }
 
   private initInventory() {

@@ -116,8 +116,11 @@ export class WorldManager {
   public depletedResourceIds: Set<number> = new Set();
   private stampedVillages = new Set<number>();
 
-  constructor(seed: number = 42891) {
+  public maxPhase: number;
+  
+  constructor(seed: number = 42891, maxPhase: number = 10) {
     this.seed = seed;
+    this.maxPhase = maxPhase;
     this.noiseTerrain = createNoise2D(seed);
     this.noiseForest = createNoise2D(seed + 101);
     this.noiseWater = createNoise2D(seed + 202);
@@ -300,13 +303,18 @@ export class WorldManager {
       site.seed,
       VILLAGE_WIDTH,
       VILLAGE_HEIGHT,
+      this.maxPhase
     );
 
-    console.log(`[Sub-Phase: Farmland Layout] Spawning tilled dirt farmland plots, perimeter fences, and props for ${site.name}...`);
-    generateFarmlands(settlementData, site.seed);
+    if (this.maxPhase >= 4) {
+      console.log(`[Sub-Phase: Farmland Layout] Spawning tilled dirt farmland plots, perimeter fences, and props for ${site.name}...`);
+      generateFarmlands(settlementData, site.seed);
+    }
 
-    console.log(`[Sub-Phase: Crop Cultivation] Cultivating multi-crop 4x4 patches after all farmland plots exist for ${site.name}...`);
-    generateCropsForFarmlands(settlementData, site.seed);
+    if (this.maxPhase >= 5) {
+      console.log(`[Sub-Phase: Crop Cultivation] Cultivating multi-crop 4x4 patches after all farmland plots exist for ${site.name}...`);
+      generateCropsForFarmlands(settlementData, site.seed);
+    }
 
     const realmVillage: WorldRealmVillage = {
       id: this.villages.length + 1,

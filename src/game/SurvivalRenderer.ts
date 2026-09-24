@@ -258,6 +258,17 @@ export class SurvivalRenderer {
     return null;
   }
 
+  private getCropImage(cropId: string): HTMLImageElement | null {
+    const path = getCropPath(cropId);
+    let img = this.spriteImages.get(path);
+    if (!img) {
+      img = this.loadImage(path);
+      this.spriteImages.set(path, img);
+    }
+    if (img.complete && img.naturalWidth > 0) return img;
+    return null;
+  }
+
   private itemSprites: Map<string, HTMLImageElement> = new Map();
 
   public getItemSprite(itemId: string): HTMLImageElement | null {
@@ -411,7 +422,12 @@ export class SurvivalRenderer {
             this.soilImg.complete &&
             this.soilImg.naturalWidth > 0
           ) {
-            ctx.drawImage(this.soilImg, screen.sx, screen.sy, tileW, tileH);
+            // tilled_soil.png is a 16×16 tile — draw full source into one tile cell
+            ctx.drawImage(
+              this.soilImg,
+              0, 0, this.soilImg.naturalWidth, this.soilImg.naturalHeight,
+              screen.sx, screen.sy, tileW, tileH
+            );
           } else if (this.tilesetImg && this.tilesetImg.complete) {
             const dirtCrop = TILE_CROPS["dirt_tile_01"];
             ctx.drawImage(
@@ -702,23 +718,39 @@ export class SurvivalRenderer {
           );
           if (cropRes && cropRes.isDepleted) continue;
 
-          depthList.push({
-            yOrder: wy + 0.95,
-            draw: () => {
-              const screen = worldToScreen(wx, wy);
-              if (this.wheatImg && this.wheatImg.complete) {
-                const cropW = cellSize * 0.9;
-                const cropH = cellSize * 1.1;
-                ctx.drawImage(
-                  this.wheatImg,
-                  screen.sx + (cellSize - cropW) / 2,
-                  screen.sy + cellSize - cropH,
-                  cropW,
-                  cropH,
-                );
-              }
-            },
-          });
+          // Render Crop if not depleted and crop is planted
+          if (cell.cropId) {
+            depthList.push({
+              yOrder: wy + 0.95,
+              draw: () => {
+                const screen = worldToScreen(wx, wy);
+                const cropImg = this.getCropImage(cell.cropId);
+                
+                if (cropImg) {
+                  const cropW = cellSize * 0.9;
+                  const cropH = cellSize * 1.1;
+                  ctx.drawImage(
+                    cropImg,
+                    screen.sx + (cellSize - cropW) / 2,
+                    screen.sy + cellSize - cropH,
+                    cropW,
+                    cropH,
+                  );
+                } else if (this.wheatImg && this.wheatImg.complete) {
+                  // Fallback
+                  const cropW = cellSize * 0.9;
+                  const cropH = cellSize * 1.1;
+                  ctx.drawImage(
+                    this.wheatImg,
+                    screen.sx + (cellSize - cropW) / 2,
+                    screen.sy + cellSize - cropH,
+                    cropW,
+                    cropH,
+                  );
+                }
+              },
+            });
+          }
         }
       }
     }

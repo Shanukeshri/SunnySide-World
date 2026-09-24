@@ -247,7 +247,9 @@ export async function prepareSettlementScene(
   // Preload crops
   for (const farm of data.farms) {
     for (const cell of farm.cells) {
-      spritePromises.push(loadImage(getCropPath(cell.cropId)));
+      if (cell.cropId) {
+        spritePromises.push(loadImage(getCropPath(cell.cropId)));
+      }
     }
   }
   await Promise.all(spritePromises);
@@ -337,14 +339,38 @@ export async function prepareSettlementScene(
     }
 
     // ── LAYER 4: Farmland Tilled Soil Ground ───────────────────────
+    // tilled_soil.png is a 16×16 repeating tile — draw one copy per farm cell
     for (const farm of data.farms) {
-      for (const c of farm.cells) {
+      const cells = farm.cells.length > 0
+        ? farm.cells
+        : (() => {
+            // Fallback: scan grid for isFarm cells in this farm's bounding box
+            const fallback: { x: number; y: number }[] = [];
+            for (let dy = 0; dy < farm.h; dy++) {
+              for (let dx = 0; dx < farm.w; dx++) {
+                const gx = farm.x + dx;
+                const gy = farm.y + dy;
+                if (gy >= 0 && gy < data.height && gx >= 0 && gx < data.width) {
+                  if (data.grid[gy][gx].isFarm) fallback.push({ x: gx, y: gy });
+                }
+              }
+            }
+            return fallback;
+          })();
+
+      for (const c of cells) {
         const dx = c.x * cellSize;
         const dy = c.y * cellSize;
 
         if (soilImg.width > 0) {
-          bgCtx.drawImage(soilImg, dx, dy, cellSize, cellSize);
+          // Tile the 16×16 sprite exactly once per cell (no stretch)
+          bgCtx.drawImage(
+            soilImg,
+            0, 0, soilImg.width, soilImg.height,  // source: full 16×16 texture
+            dx, dy, cellSize, cellSize              // dest: one cell
+          );
         } else {
+          // Fallback to tileset dirt if image hasn't loaded
           const dirtCrop = TILESET_CROPS['dirt_tile_01'];
           bgCtx.drawImage(tilesetImg, dirtCrop.x, dirtCrop.y, dirtCrop.w, dirtCrop.h, dx, dy, cellSize, cellSize);
         }
@@ -412,6 +438,8 @@ export async function prepareSettlementScene(
         entities.push({
           ySort: c.y + 0.999, // Rooted in tilled soil cell (occludes entities walking behind or through furrow)
           draw: () => {
+            if (!c.cropId) return; // Do not draw if no crop is planted
+
             const cropImg = imageCache.get(getCropPath(c.cropId));
             if (cropImg && cropImg.width > 0) {
               const scale = cellSize / 16;

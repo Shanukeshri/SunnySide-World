@@ -231,34 +231,47 @@ export class SettlementGenerator {
     this.grid = [];
   }
 
-  public generate(): SettlementData {
+  public generate(maxPhase: number = 10): SettlementData {
     // ── SUB-PHASE 1: Base World Geography (Flat grass ground, roads, water bodies) ──
-    this.initFlatGrass();
-    this.generateRoadNetwork();
-    this.generateWaterBodies();
+    if (maxPhase >= 1) {
+      this.initFlatGrass();
+      this.generateRoadNetwork();
+      this.generateWaterBodies();
+    } else {
+      this.initEmptyGrass();
+    }
 
     // ── SUB-PHASE 2: Settlement Generation (Distant houses placed NORTH of road) ──
-    this.generateHouses();
+    if (maxPhase >= 2) {
+      this.generateHouses();
+    }
 
     // ── SUB-PHASE 3: Village Infrastructure (Paved paths, road clearance, civic wells) ──
-    const infra = generateVillageInfrastructure(
-      this.grid,
-      this.houses,
-      this.roadCells,
-      this.width,
-      this.height,
-      this.rng
-    );
-    this.wells = infra.wells;
-    this.roadCells = infra.roadCells;
+    if (maxPhase >= 3) {
+      const infra = generateVillageInfrastructure(
+        this.grid,
+        this.houses,
+        this.roadCells,
+        this.width,
+        this.height,
+        this.rng
+      );
+      this.wells = infra.wells;
+      this.roadCells = infra.roadCells;
+    }
 
     // ── SUB-PHASE 6: Nature & Environmental Detailing (Trees, bushes, scatter) ──
-    this.generateTrees();
-    this.generateBushes();
-    this.generateTerrainDetails();
+    if (maxPhase >= 6) {
+      this.generateTrees();
+      this.generateBushes();
+      this.generateTerrainDetails();
+    }
 
     // ── SUB-PHASE 7: Settlement Validation ──
-    const validation = this.validateSettlement();
+    let validation: ValidationReport = { valid: true, checks: {} as any, violations: [] as string[] };
+    if (maxPhase >= 7) {
+      validation = this.validateSettlement();
+    }
 
     return {
       seed: this.seed,
@@ -280,6 +293,17 @@ export class SettlementGenerator {
   // ─────────────────────────────────────────────────────────────────
   // STEP 1: Flat grass with texture variations from same grass group
   // ─────────────────────────────────────────────────────────────────
+  private initEmptyGrass() {
+    this.grid = [];
+    for (let y = 0; y < this.height; y++) {
+      const row: SettlementCell[] = [];
+      for (let x = 0; x < this.width; x++) {
+        row.push({ terrain: 'grass_textured_01', isRoad: false, isRoadReserved: false, isWater: false, isFarm: false, blocked: false });
+      }
+      this.grid.push(row);
+    }
+  }
+
   private initFlatGrass() {
     this.grid = [];
     for (let y = 0; y < this.height; y++) {
@@ -1367,13 +1391,15 @@ export class SettlementGenerator {
   }
 }
 
-export function generateSettlementWorld(seed: number, width = 48, height = 36): SettlementData {
+export function generateSettlementWorld(seed: number, width = 48, height = 36, maxPhase = 10): SettlementData {
   const gen = new SettlementGenerator(seed, width, height);
-  return gen.generate();
+  return gen.generate(maxPhase);
 }
 
-export function generateSettlement(seed: number, width = 48, height = 36): SettlementData {
-  const data = generateSettlementWorld(seed, width, height);
-  generateFarmsForSettlement(data, seed);
+export function generateSettlement(seed: number, width = 48, height = 36, maxPhase = 10): SettlementData {
+  const data = generateSettlementWorld(seed, width, height, maxPhase);
+  if (maxPhase >= 4) {
+    generateFarmsForSettlement(data, seed);
+  }
   return data;
 }

@@ -8,6 +8,7 @@ import {
   AssetId,
   SettlementCell,
   FarmPlot,
+  FarmCell,
   PlacedObject,
   SettlementData,
   createRNG,
@@ -160,13 +161,23 @@ export class FarmlandGenerator {
           }
         }
 
-        // Push farm plot with empty crop cells (crops are placed in Phase 5)
+        // Build cell list for rendering (used by SettlementRenderer Layer 4)
+        const tilledCells: FarmCell[] = [];
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
+            if (isCorner && this.rng() > 0.5) continue;
+            tilledCells.push({ x: ax + dx, y: ay + dy, cropId: '' as any, stage: 0 });
+          }
+        }
+
+        // Push farm plot with populated cell list (crops are placed in Phase 5)
         this.farms.push({
           x: ax,
           y: ay,
           w: fw,
           h: fh,
-          cells: [],
+          cells: tilledCells,
           cropBaseId: '',
         });
 
@@ -324,7 +335,17 @@ export class FarmlandGenerator {
           }
         }
 
-        this.farms.push({ x: ax, y: ay, w: fw, h: fh, cells: [], cropBaseId: '' });
+        // Build cell list for rendering
+        const tilledCells2: FarmCell[] = [];
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
+            if (isCorner && this.rng() > 0.5) continue;
+            tilledCells2.push({ x: ax + dx, y: ay + dy, cropId: '' as any, stage: 0 });
+          }
+        }
+
+        this.farms.push({ x: ax, y: ay, w: fw, h: fh, cells: tilledCells2, cropBaseId: '' });
 
         const itemSlots: number[] = [];
         for (let x = ax; x < ax + fw; x++) {

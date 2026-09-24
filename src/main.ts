@@ -1190,19 +1190,62 @@ async function renderCurrentSettlement() {
   worldGenRenderer.zoom = currentZoomLevel * 2.2;
 }
 
+// Current phase for step-by-step generation (0 = not started, 1-10 = phases)
+let currentGenPhase = 0;
+const TOTAL_GEN_PHASES = 10;
+
+const PHASE_LABELS: Record<number, string> = {
+  0:  "Phase 0 — Not Started",
+  1:  "Phase 1 — Base Terrain (Grass, Roads, Water)",
+  2:  "Phase 2 — House Placement",
+  3:  "Phase 3 — Village Infrastructure (Paths, Wells)",
+  4:  "Phase 4 — Farmland Layout (Tilled Soil, Fences)",
+  5:  "Phase 5 — Crop Cultivation (Multi-crop Patches)",
+  6:  "Phase 6 — Nature & Scatter (Trees, Bushes)",
+  7:  "Phase 7 — Validation",
+  8:  "Phase 8 — Wildlife & Villager Spawning",
+  9:  "Phase 9 — Enemy Spawning",
+  10: "Phase 10 — World Complete & Playable!",
+};
+
+function updatePhaseIndicator() {
+  const indicator = document.getElementById("phase-indicator-label");
+  const nextBtn = document.getElementById("btn-next-phase") as HTMLButtonElement | null;
+  if (indicator) {
+    indicator.textContent = PHASE_LABELS[currentGenPhase] ?? `Phase ${currentGenPhase}`;
+    indicator.style.color = currentGenPhase === TOTAL_GEN_PHASES ? "#34d399" : "#fde68a";
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentGenPhase >= TOTAL_GEN_PHASES;
+    nextBtn.style.opacity = currentGenPhase >= TOTAL_GEN_PHASES ? "0.4" : "1";
+    nextBtn.querySelector("span:last-child")!.textContent =
+      currentGenPhase >= TOTAL_GEN_PHASES ? "Complete!" : `Next Phase (${currentGenPhase + 1}/${TOTAL_GEN_PHASES})`;
+  }
+}
+
 async function generateAndRenderSettlement(seed?: number) {
   currentSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
-  
-  if (settlementCanvas) {
-    const ctx = settlementCanvas.getContext("2d")!;
-    worldGenEngine = new SurvivalEngine(currentSeed, true);
-    worldGenRenderer = new SurvivalRenderer();
-    worldGenRenderer.isWorldGenMode = true;
-  }
+  currentGenPhase = 0;
 
   const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
   if (seedInput) seedInput.value = String(currentSeed);
 
+  updatePhaseIndicator();
+  await renderCurrentSettlement();
+  startSettlementLoop();
+}
+
+async function advanceToNextPhase() {
+  if (currentGenPhase >= TOTAL_GEN_PHASES) return;
+  currentGenPhase++;
+
+  if (settlementCanvas) {
+    worldGenEngine = new SurvivalEngine(currentSeed, true, currentGenPhase);
+    worldGenRenderer = new SurvivalRenderer();
+    worldGenRenderer.isWorldGenMode = true;
+  }
+
+  updatePhaseIndicator();
   await renderCurrentSettlement();
   startSettlementLoop();
 }
@@ -1229,9 +1272,17 @@ function initSettlementUI() {
   const toggleClearance = document.getElementById("toggle-clearance-btn");
   const toggleFootprints = document.getElementById("toggle-footprints-btn");
 
+  const btnNextPhase = document.getElementById("btn-next-phase");
+
   if (btnGenerate) {
     btnGenerate.addEventListener("click", () => {
       generateAndRenderSettlement();
+    });
+  }
+
+  if (btnNextPhase) {
+    btnNextPhase.addEventListener("click", () => {
+      advanceToNextPhase();
     });
   }
 

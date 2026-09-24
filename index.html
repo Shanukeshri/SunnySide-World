@@ -570,7 +570,11 @@
               <div class="settlement-action-group">
                 <button id="btn-generate-settlement" class="btn-primary-action">
                   <span class="btn-icon">🎲</span>
-                  <span>Generate Village</span>
+                  <span>Reset / Phase 0</span>
+                </button>
+                <button id="btn-next-phase" class="btn-primary-action" style="background-color: #f59e0b; border-color: #d97706;">
+                  <span class="btn-icon">▶</span>
+                  <span>Next Phase (1/10)</span>
                 </button>
                 <div class="seed-input-group">
                   <span class="seed-label">Seed:</span>
@@ -594,6 +598,11 @@
                     🔀
                   </button>
                 </div>
+              </div>
+              <!-- Phase Indicator -->
+              <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:11px; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.05em;">Current Phase:</span>
+                <span id="phase-indicator-label" style="font-size:13px; font-weight:600; color:#fde68a; font-family:'JetBrains Mono',monospace;">Phase 0 — Not Started</span>
               </div>
             </div>
 
