@@ -114,7 +114,7 @@ export class LifeformSpawner {
           let species: "cow" | "sheep" | "chicken" | "rabbit" | "deer" | "pig" | "duck" = "chicken";
           
           if (tile.isWater) {
-            species = rng() < 0.5 ? "cow" : "pig";
+            species = "duck";
           } else if (!tile.isBlocked) {
             const adjUp = chunk.tiles[ly - 1]?.[lx];
             const adjDown = chunk.tiles[ly + 1]?.[lx];
@@ -166,40 +166,61 @@ export class LifeformSpawner {
     playerX: number,
     playerY: number,
     outAnimals: any[],
-    outNpcs: any[],
-    outEnemies: any[]
+    outNpcs: any[]
   ) {
-    if (starterVillage && starterVillage.data.waterBodies && starterVillage.data.waterBodies.length > 0) {
-      const pond = starterVillage.data.waterBodies[0];
-      const duckCount = Math.min(4, Math.max(2, Math.floor(pond.cells.length / 5)));
-      for (let i = 0; i < duckCount; i++) {
-        const duckConfig = SPECIES_CONFIGS[Math.random() < 0.5 ? "cow" : "pig"];
-        const cellIndex = Math.floor(((i + 0.5) / duckCount) * pond.cells.length);
-        const cell = pond.cells[cellIndex];
-        const duck = new Animal(
-          this.nextEntityId++,
-          duckConfig,
-          starterVillage.gridX + cell.x + 0.5,
-          starterVillage.gridY + cell.y + 0.5
-        );
-        outAnimals.push(duck);
+    if (starterVillage && starterVillage.data) {
+      // Ducks only spawn in water
+      if (starterVillage.data.waterBodies) {
+        for (const pond of starterVillage.data.waterBodies) {
+          const duckCount = Math.max(1, Math.floor(pond.cells.length / 5));
+          for (let i = 0; i < duckCount; i++) {
+            const cellIndex = Math.floor(Math.random() * pond.cells.length);
+            const cell = pond.cells[cellIndex];
+            const duckConfig = SPECIES_CONFIGS["duck"];
+            const duck = new Animal(
+              this.nextEntityId++,
+              duckConfig,
+              starterVillage.gridX + cell.x + 0.5,
+              starterVillage.gridY + cell.y + 0.5
+            );
+            outAnimals.push(duck);
+          }
+        }
       }
+
+      // See how many houses there are
+      const numHouses = starterVillage.data.houses ? starterVillage.data.houses.length : 0;
+      // Number of people around 2x number of houses
+      const numPeople = numHouses * 2;
+      const roles: string[] = [];
+
+      // For each farm atleast one farmer
+      const numFarms = starterVillage.data.farms ? starterVillage.data.farms.length : 0;
+      for (let i = 0; i < numFarms; i++) roles.push("farmer");
+
+      // For each water body atleast one fisher
+      const numWater = starterVillage.data.waterBodies ? starterVillage.data.waterBodies.length : 0;
+      for (let i = 0; i < numWater; i++) roles.push("fisher");
+
+      // Rest roles randomly assigned
+      const possibleRoles = ["blacksmith", "builder", "guide", "merchant", "villager", "child"];
+      while (roles.length < Math.max(numPeople, roles.length)) {
+        roles.push(possibleRoles[Math.floor(Math.random() * possibleRoles.length)]);
+      }
+
+      roles.forEach((role, i) => {
+        const config = SPECIES_CONFIGS["villager"];
+        const angle = (i / roles.length) * Math.PI * 2;
+        const radius = 4.5 + (i % 2) * 2;
+        const sx = playerX + Math.cos(angle) * radius;
+        const sy = playerY + Math.sin(angle) * radius;
+        const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy, role);
+        outNpcs.push(npc);
+      });
     }
+  }
 
-    const compositeRoles: ("blacksmith"|"builder"|"farmer"|"fisher"|"guide"|"merchant"|"child"|"villager")[] = [
-      "blacksmith", "builder", "farmer", "fisher", "guide", "merchant", "child", "villager"
-    ];
-
-    compositeRoles.forEach((role, i) => {
-      const config = SPECIES_CONFIGS["villager"];
-      const angle = (i / compositeRoles.length) * Math.PI * 2;
-      const radius = 4.5 + (i % 2) * 2;
-      const sx = playerX + Math.cos(angle) * radius;
-      const sy = playerY + Math.sin(angle) * radius;
-      const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy, role);
-      outNpcs.push(npc);
-    });
-
+  public spawnInitialEnemies(playerX: number, playerY: number, outEnemies: any[]) {
     outEnemies.push({
       id: this.nextEntityId++,
       type: "goblin",

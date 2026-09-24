@@ -921,9 +921,13 @@ export class SurvivalEngine {
 
   constructor(seed = 42891, isWorldGenMode = false) {
     this.isWorldGenMode = isWorldGenMode;
+
+    // ── PHASE 1 & 2: World Generation & Farm Generation (via WorldManager & FarmGenerator) ──
+    console.log("[LIFECYCLE PHASE 1: World Generation] Generating terrain chunks, biomes, road networks, water bodies, and village layouts...");
     this.worldManager = new WorldManager(seed);
     this.lifeformSpawner = new LifeformSpawner(this.worldManager, seed);
     this.worldManager.updatePlayerLocation(22, 18);
+
     const startVillage = this.worldManager.villages[0]?.data;
     this.detector = new EnvironmentDetector(startVillage);
 
@@ -957,8 +961,17 @@ export class SurvivalEngine {
       fishingTimer: 0,
     };
 
-    this.initInventory();
+    // ── PHASE 3: Passive Wildlife & Village Lifeform Spawning ──
+    console.log("[LIFECYCLE PHASE 3: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
     this.spawnInitialLifeforms();
+
+    // ── PHASE 4: Enemy Spawning ──
+    console.log("[LIFECYCLE PHASE 4: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
+    this.spawnInitialEnemies();
+
+    // ── PHASE 5: Player Initialization & Playable Game Ready ──
+    console.log("[LIFECYCLE PHASE 5: World Playable] Player inventory and survival equipment initialized. Ready to play!");
+    this.initInventory();
   }
 
   private initInventory() {
@@ -1018,52 +1031,40 @@ export class SurvivalEngine {
   }
 
   /**
-   * Spawns initial wildlife & NPCs in the starting village area.
+   * Phase 3: Spawns initial passive wildlife & NPCs in the starting village area.
    */
   private spawnInitialLifeforms() {
-    // Spawn village wildlife
-    const speciesList: ("cow" | "sheep" | "chicken" | "rabbit")[] = [
-      "cow",
-      "cow",
-      "sheep",
-      "sheep",
-      "chicken",
-      "chicken",
-      "rabbit",
-      "rabbit",
-    ];
-
-    speciesList.forEach((species, i) => {
-      const offsetX = (i % 4) * 4 - 6 + (Math.random() * 2 - 1);
-      const offsetY = Math.floor(i / 4) * 4 - 4 + (Math.random() * 2 - 1);
-      const spawnX = this.player.x + offsetX;
-      const spawnY = this.player.y + offsetY;
-
-      // Skip if position lands on water or blocked tile
-      if (!this.detector.isWalkable(spawnX, spawnY, false, false)) return;
-
-      const config = SPECIES_CONFIGS[species];
-      const animal = new Animal(this.nextEntityId++, config, spawnX, spawnY);
-      // this.animals.push(animal);
-    });
-
     this.lifeformSpawner.setNextEntityId(this.nextEntityId);
     
     const newAnimals: any[] = [];
     const newNpcs: any[] = [];
-    const newEnemies: any[] = [];
     
     this.lifeformSpawner.spawnInitialLifeforms(
       this.worldManager.villages[0],
       this.player.x,
       this.player.y,
       newAnimals,
-      newNpcs,
+      newNpcs
+    );
+
+    this.animals.push(...newAnimals);
+    this.npcs.push(...newNpcs);
+    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
+  }
+
+  /**
+   * Phase 4: Spawns hostile entities in the wilderness strictly after world generation and passive lifeforms.
+   */
+  private spawnInitialEnemies() {
+    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+
+    const newEnemies: any[] = [];
+    this.lifeformSpawner.spawnInitialEnemies(
+      this.player.x,
+      this.player.y,
       newEnemies
     );
-    
-    // In gameLogicV1, new animals and npcs are pushed to arrays, although here they were commented out previously.
-    // We'll push enemies.
+
     this.enemies.push(...newEnemies);
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }

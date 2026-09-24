@@ -11,9 +11,11 @@
 
 import {
   generateSettlement,
+  generateSettlementWorld,
   SettlementData,
   PlacedObject,
 } from "../generation/SettlementGenerator";
+import { generateFarmsForSettlement } from "../generation/FarmGenerator";
 import { ResourceNode, WorldRealmVillage, ItemId } from "./GameTypes";
 
 export const CHUNK_SIZE = 16; // 16x16 tiles per chunk
@@ -41,6 +43,7 @@ export interface WorldChunk {
   tiles: WorldTile[][];
   resources: ResourceNode[];
   isGenerated: boolean;
+  spawnedWildlife?: any[];
 }
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -290,11 +293,15 @@ export class WorldManager {
     generated: boolean;
   }) {
     site.generated = true;
-    const settlementData = generateSettlement(
+    console.log(`[Phase 1: World Generation] Generating physical layout for village: ${site.name}`);
+    const settlementData = generateSettlementWorld(
       site.seed,
       VILLAGE_WIDTH,
       VILLAGE_HEIGHT,
     );
+
+    console.log(`[Phase 2: Farm Generation] Generating agricultural fields & crops for village: ${site.name}`);
+    generateFarmsForSettlement(settlementData, site.seed);
 
     const realmVillage: WorldRealmVillage = {
       id: this.villages.length + 1,
