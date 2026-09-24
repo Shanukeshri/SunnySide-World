@@ -131,17 +131,35 @@ export const HOUSE_CATALOG: HouseTemplate[] = [
 export const HOUSE_TEMPLATES = HOUSE_CATALOG;
 
 import {
-  CROP_BASE_KEYS,
+  VillageInfraGenerator,
+  generateVillageInfrastructure,
+} from './VillageInfraGenerator';
+import {
+  FarmlandGenerator,
+  generateFarmlands,
   FARM_OBJECT_IDS,
+} from './FarmlandGenerator';
+import {
+  CropGenerator,
+  generateCropsForFarmlands,
+  CROP_BASE_KEYS,
+} from './CropGenerator';
+import {
   FarmGenerator,
   generateFarmsForSettlement,
 } from './FarmGenerator';
 
 export {
-  CROP_BASE_KEYS,
-  FARM_OBJECT_IDS,
+  VillageInfraGenerator,
+  generateVillageInfrastructure,
+  FarmlandGenerator,
+  generateFarmlands,
+  CropGenerator,
+  generateCropsForFarmlands,
   FarmGenerator,
   generateFarmsForSettlement,
+  CROP_BASE_KEYS,
+  FARM_OBJECT_IDS,
 };
 
 
@@ -214,35 +232,32 @@ export class SettlementGenerator {
   }
 
   public generate(): SettlementData {
-    // ── STEP 1: Flat grass base ground ────────────────────────────
+    // ── SUB-PHASE 1: Base World Geography (Flat grass ground, roads, water bodies) ──
     this.initFlatGrass();
-
-    // ── STEP 2: Road/path network FIRST ───────────────────────────
     this.generateRoadNetwork();
-
-    // ── STEP 3: Water bodies (random join of 2 to 4 big squares) ──
     this.generateWaterBodies();
 
-    // ── STEP 4: Distant houses placed NORTH of road + path join ───
+    // ── SUB-PHASE 2: Settlement Generation (Distant houses placed NORTH of road) ──
     this.generateHouses();
-    this.joinHousesToRoads();
 
-    // ── STEP 5: Reserve road clearance (including house paths) ────
-    this.reserveRoadClearance();
+    // ── SUB-PHASE 3: Village Infrastructure (Paved paths, road clearance, civic wells) ──
+    const infra = generateVillageInfrastructure(
+      this.grid,
+      this.houses,
+      this.roadCells,
+      this.width,
+      this.height,
+      this.rng
+    );
+    this.wells = infra.wells;
+    this.roadCells = infra.roadCells;
 
-    // ── STEP 6: Wells beside roads / near houses ───────────────────
-    this.generateWells();
-
-    // ── STEP 7: Trees with occasional clustering logic ────────────
+    // ── SUB-PHASE 6: Nature & Environmental Detailing (Trees, bushes, scatter) ──
     this.generateTrees();
-
-    // ── STEP 8: Bushes with MANDATORY clustering every time ───────
     this.generateBushes();
-
-    // ── STEP 9: Natural terrain details & scatter ────────────────
     this.generateTerrainDetails();
 
-    // ── STEP 10: Validate result against all constraints ──────────
+    // ── SUB-PHASE 7: Settlement Validation ──
     const validation = this.validateSettlement();
 
     return {

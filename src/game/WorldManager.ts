@@ -15,6 +15,8 @@ import {
   SettlementData,
   PlacedObject,
 } from "../generation/SettlementGenerator";
+import { generateFarmlands } from "../generation/FarmlandGenerator";
+import { generateCropsForFarmlands } from "../generation/CropGenerator";
 import { generateFarmsForSettlement } from "../generation/FarmGenerator";
 import { ResourceNode, WorldRealmVillage, ItemId } from "./GameTypes";
 
@@ -293,15 +295,18 @@ export class WorldManager {
     generated: boolean;
   }) {
     site.generated = true;
-    console.log(`[Phase 1: World Generation] Generating physical layout for village: ${site.name}`);
+    console.log(`[Phase: Settlement Generation] Generating base terrain, roads, water, and house architecture for ${site.name}...`);
     const settlementData = generateSettlementWorld(
       site.seed,
       VILLAGE_WIDTH,
       VILLAGE_HEIGHT,
     );
 
-    console.log(`[Phase 2: Farm Generation] Generating agricultural fields & crops for village: ${site.name}`);
-    generateFarmsForSettlement(settlementData, site.seed);
+    console.log(`[Sub-Phase: Farmland Layout] Spawning tilled dirt farmland plots, perimeter fences, and props for ${site.name}...`);
+    generateFarmlands(settlementData, site.seed);
+
+    console.log(`[Sub-Phase: Crop Cultivation] Cultivating multi-crop 4x4 patches after all farmland plots exist for ${site.name}...`);
+    generateCropsForFarmlands(settlementData, site.seed);
 
     const realmVillage: WorldRealmVillage = {
       id: this.villages.length + 1,
