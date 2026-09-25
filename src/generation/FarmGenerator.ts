@@ -20,7 +20,7 @@ import {
 import {
   CropGenerator,
   generateCropsForFarmlands,
-  CROP_BASE_KEYS,
+  CROP_TYPES,
 } from './CropGenerator';
 
 export {
@@ -29,7 +29,7 @@ export {
   FARM_OBJECT_IDS,
   CropGenerator,
   generateCropsForFarmlands,
-  CROP_BASE_KEYS,
+  CROP_TYPES,
 };
 
 export class FarmGenerator {

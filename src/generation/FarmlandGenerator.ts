@@ -167,7 +167,7 @@ export class FarmlandGenerator {
           for (let dx = 0; dx < fw; dx++) {
             const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
             if (isCorner && this.rng() > 0.5) continue;
-            tilledCells.push({ x: ax + dx, y: ay + dy, cropId: '' as any, stage: 0 });
+            tilledCells.push({ x: ax + dx, y: ay + dy });
           }
         }
 
@@ -341,7 +341,7 @@ export class FarmlandGenerator {
           for (let dx = 0; dx < fw; dx++) {
             const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
             if (isCorner && this.rng() > 0.5) continue;
-            tilledCells2.push({ x: ax + dx, y: ay + dy, cropId: '' as any, stage: 0 });
+            tilledCells2.push({ x: ax + dx, y: ay + dy });
           }
         }
 

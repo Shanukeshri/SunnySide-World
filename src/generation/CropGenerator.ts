@@ -1,152 +1,99 @@
 // ═══════════════════════════════════════════════════════════════════
 // CROP GENERATOR MODULE (Phase 5: Crop Selection & Cultivation)
-// Runs strictly AFTER all farmland plots across the village are spawned!
-// Selects crops across all 11 crop types and plants them in 4x4 patches.
+// Runs strictly AFTER all farmland plots are spawned (Phase 4).
+// Each farm gets 1-2 crop regions, each with a random crop type.
+// Crops are OVERLAID on top of tilled soil — they do NOT replace it.
 // ═══════════════════════════════════════════════════════════════════
 
 import {
   FarmPlot,
   FarmCell,
-  SettlementCell,
   SettlementData,
   createRNG,
 } from './SettlementGenerator';
 
-export const CROP_BASE_KEYS = [
-  'crop_wheat',
-  'crop_carrot',
-  'crop_potato',
-  'crop_pumpkin',
-  'crop_cabbage',
-  'crop_cauliflower',
-  'crop_kale',
-  'crop_parsnip',
-  'crop_radish',
-  'crop_beetroot',
-  'crop_sunflower',
+// All available crop types from the asset pack
+export const CROP_TYPES = [
+  'wheat',
+  'carrot',
+  'potato',
+  'pumpkin',
+  'cabbage',
+  'cauliflower',
+  'kale',
+  'parsnip',
+  'radish',
+  'beetroot',
+  'sunflower',
 ];
 
 export class CropGenerator {
   private rng: () => number;
-  private grid: SettlementCell[][];
   private farms: FarmPlot[];
 
-  constructor(
-    farms: FarmPlot[],
-    grid: SettlementCell[][],
-    seed?: number
-  ) {
+  constructor(farms: FarmPlot[], seed?: number) {
     this.farms = farms;
-    this.grid = grid;
     this.rng = createRNG(seed !== undefined ? seed + 8888 : 42891);
   }
 
   /**
-   * Cultivates all established farmlands.
-   * Runs ONLY AFTER all farmland plots have been completely placed and finalized.
+   * Plants crops on all established farmlands.
+   * Each farm gets 1-2 regions, each with a different random crop type.
+   * Crops are overlaid on top of tilled soil (soil stays underneath).
    */
-  public generate(): FarmPlot[] {
-    if (!this.farms || this.farms.length === 0) {
-      return this.farms;
-    }
+  public generate(): void {
+    if (!this.farms || this.farms.length === 0) return;
 
-    // Shuffle the full crop catalog to guarantee all 11 crop types are represented
-    const shuffledCrops = [...CROP_BASE_KEYS].sort(() => this.rng() - 0.5);
-    let globalCropIndex = 0;
+    for (const farm of this.farms) {
+      if (farm.cells.length === 0) continue;
 
-    const regionW = 4;
-    const regionH = 4;
+      // Decide 1 or 2 regions for this farm
+      const numRegions = 1 + Math.floor(this.rng() * 2); // 1 or 2
 
-    for (let f = 0; f < this.farms.length; f++) {
-      const farm = this.farms[f];
-      const farmCropBase = shuffledCrops[f % shuffledCrops.length];
-      farm.cropBaseId = farmCropBase;
+      // Pick random crop types for each region (no duplicates within same farm)
+      const shuffled = [...CROP_TYPES].sort(() => this.rng() - 0.5);
+      const regionCrops = shuffled.slice(0, numRegions);
 
-      const regions: { [key: string]: string } = {};
-      const farmCells: FarmCell[] = [];
+      // Split the farm into regions by dividing along the longer axis
+      const splitVertically = farm.w >= farm.h;
 
-      for (let dy = 0; dy < farm.h; dy++) {
-        for (let dx = 0; dx < farm.w; dx++) {
-          const gx = farm.x + dx;
-          const gy = farm.y + dy;
-
-          // Only plant if the cell was zoned as tilled dirt
-          if (!this.grid[gy] || !this.grid[gy][gx] || !this.grid[gy][gx].isFarm) {
-            continue;
+      for (const cell of farm.cells) {
+        // Determine which region this cell belongs to
+        let regionIndex: number;
+        if (numRegions === 1) {
+          regionIndex = 0;
+        } else {
+          // Split into 2 halves
+          if (splitVertically) {
+            const midX = farm.x + Math.floor(farm.w / 2);
+            regionIndex = cell.x < midX ? 0 : 1;
+          } else {
+            const midY = farm.y + Math.floor(farm.h / 2);
+            regionIndex = cell.y < midY ? 0 : 1;
           }
-
-          const rx = Math.floor(dx / regionW);
-          const ry = Math.floor(dy / regionH);
-          const regionKey = `${rx},${ry}`;
-
-          if (!regions[regionKey]) {
-            regions[regionKey] = shuffledCrops[globalCropIndex % shuffledCrops.length];
-            globalCropIndex++;
-          }
-          const regionCropBase = regions[regionKey];
-
-          // Growth stages 0 to 3 ONLY (stage 4 is collectible item icon)
-          const stage = Math.floor(this.rng() * 4);
-          farmCells.push({
-            x: gx,
-            y: gy,
-            cropId: `${regionCropBase}_stage_${stage}`,
-            stage,
-          });
         }
+
+        const cropType = regionCrops[regionIndex];
+        // Growth stages 0-3 (stage 4-5 are harvest/item icons)
+        const stage = Math.floor(this.rng() * 4);
+
+        cell.cropId = `crop_${cropType}_stage_${stage}`;
+        cell.stage = stage;
       }
 
-      farm.cells = farmCells;
+      farm.cropBaseId = regionCrops[0];
     }
-
-    return this.farms;
-  }
-
-  /**
-   * Updates settlement validation checks with crop rules.
-   */
-  public updateValidation(settlement: SettlementData) {
-    if (!settlement.validation) return;
-
-    let noStage4Crops = true;
-    let noObjectsOnRoad = true;
-    const violations: string[] = [];
-
-    for (const farm of settlement.farms) {
-      for (const c of farm.cells) {
-        if (this.grid[c.y]?.[c.x]?.isRoad) {
-          noObjectsOnRoad = false;
-          violations.push(`Farm crop at (${c.x},${c.y}) overlaps road!`);
-        }
-        if (c.stage >= 4) {
-          noStage4Crops = false;
-          violations.push(`Farm crop at (${c.x},${c.y}) has stage ${c.stage} (stage 4 is collectible icon, not planted)!`);
-        }
-      }
-    }
-
-    settlement.validation.checks.largeIrregularFarms = settlement.farms.length > 0;
-    settlement.validation.checks.fencesAroundFarms = settlement.farms.length > 0;
-    settlement.validation.checks.noStage4Crops = noStage4Crops;
-    if (!noObjectsOnRoad) {
-      settlement.validation.checks.noObjectsOnRoad = false;
-    }
-    settlement.validation.violations.push(...violations);
-    settlement.validation.valid =
-      settlement.validation.violations.length === 0 &&
-      Object.values(settlement.validation.checks).every(Boolean);
   }
 }
 
 /**
- * Top-level convenience runner for Phase 5: Crop Selection & Cultivation
+ * Top-level convenience runner for Phase 5: Crop Cultivation
+ * Runs ONLY AFTER Phase 4 (Farmland Layout) is complete.
  */
 export function generateCropsForFarmlands(
   settlement: SettlementData,
   seed?: number
-): FarmPlot[] {
-  const cropGen = new CropGenerator(settlement.farms, settlement.grid, seed ?? settlement.seed);
-  const result = cropGen.generate();
-  cropGen.updateValidation(settlement);
-  return result;
+): void {
+  const cropGen = new CropGenerator(settlement.farms, seed ?? settlement.seed);
+  cropGen.generate();
 }

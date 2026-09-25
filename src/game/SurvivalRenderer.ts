@@ -192,14 +192,15 @@ const SPRITE_DEFS: Record<string, { path: string; w: number; h: number }> = {
   },
 };
 
-function getCropPath(cropId: string): string {
+function getCropPath(cropId: string): string | null {
+  if (!cropId) return null;
   const parts = cropId.replace("crop_", "").split("_stage_");
   if (parts.length === 2) {
     const name = parts[0];
     const stage = parts[1].padStart(2, "0");
     return `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/${name}_${stage}.png`;
   }
-  return `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_02.png`;
+  return null;
 }
 
 export class SurvivalRenderer {
@@ -260,6 +261,7 @@ export class SurvivalRenderer {
 
   private getCropImage(cropId: string): HTMLImageElement | null {
     const path = getCropPath(cropId);
+    if (!path) return null;
     let img = this.spriteImages.get(path);
     if (!img) {
       img = this.loadImage(path);
@@ -724,24 +726,13 @@ export class SurvivalRenderer {
               yOrder: wy + 0.95,
               draw: () => {
                 const screen = worldToScreen(wx, wy);
-                const cropImg = this.getCropImage(cell.cropId);
+                const cropImg = this.getCropImage(cell.cropId!);
                 
                 if (cropImg) {
                   const cropW = cellSize * 0.9;
                   const cropH = cellSize * 1.1;
                   ctx.drawImage(
                     cropImg,
-                    screen.sx + (cellSize - cropW) / 2,
-                    screen.sy + cellSize - cropH,
-                    cropW,
-                    cropH,
-                  );
-                } else if (this.wheatImg && this.wheatImg.complete) {
-                  // Fallback
-                  const cropW = cellSize * 0.9;
-                  const cropH = cellSize * 1.1;
-                  ctx.drawImage(
-                    this.wheatImg,
                     screen.sx + (cellSize - cropW) / 2,
                     screen.sy + cellSize - cropH,
                     cropW,
@@ -883,16 +874,34 @@ export class SurvivalRenderer {
                   );
                 }
               } else if (res.type === "crop") {
-                if (this.wheatImg && this.wheatImg.complete) {
-                  const cropW = cellSize;
-                  const cropH = cellSize * 1.2;
-                  ctx.drawImage(
-                    this.wheatImg,
-                    screen.sx,
-                    screen.sy - cropH * 0.2,
-                    cropW,
-                    cropH,
-                  );
+                // Only render if we can resolve the actual crop image
+                // (crop resource nodes are only created for cells with cropId)
+                let farmCropId = '';
+                for (const v of engine.worldManager.villages) {
+                  for (const farm of v.data.farms) {
+                    for (const c of farm.cells) {
+                      if (v.gridX + c.x === res.x && v.gridY + c.y === res.y && c.cropId) {
+                        farmCropId = c.cropId;
+                        break;
+                      }
+                    }
+                    if (farmCropId) break;
+                  }
+                  if (farmCropId) break;
+                }
+                if (farmCropId) {
+                  const cropImg = this.getCropImage(farmCropId);
+                  if (cropImg) {
+                    const cropW = cellSize;
+                    const cropH = cellSize * 1.2;
+                    ctx.drawImage(
+                      cropImg,
+                      screen.sx,
+                      screen.sy - cropH * 0.2,
+                      cropW,
+                      cropH,
+                    );
+                  }
                 }
               }
 

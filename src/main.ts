@@ -1200,7 +1200,7 @@ const PHASE_LABELS: Record<number, string> = {
   2:  "Phase 2 — House Placement",
   3:  "Phase 3 — Village Infrastructure (Paths, Wells)",
   4:  "Phase 4 — Farmland Layout (Tilled Soil, Fences)",
-  5:  "Phase 5 — Crop Cultivation (Multi-crop Patches)",
+  5:  "Phase 5 — Crop Cultivation (Plants on Farmland)",
   6:  "Phase 6 — Nature & Scatter (Trees, Bushes)",
   7:  "Phase 7 — Validation",
   8:  "Phase 8 — Wildlife & Villager Spawning",

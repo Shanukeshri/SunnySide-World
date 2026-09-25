@@ -24,8 +24,8 @@ export interface PlacedObject {
 export interface FarmCell {
   x: number;
   y: number;
-  cropId: AssetId;
-  stage: number; // 0 to 4
+  cropId?: AssetId;  // Assigned only during Crop Cultivation phase
+  stage?: number;    // 0 to 4, assigned only during Crop Cultivation phase
 }
 
 export interface FarmPlot {
@@ -142,7 +142,7 @@ import {
 import {
   CropGenerator,
   generateCropsForFarmlands,
-  CROP_BASE_KEYS,
+  CROP_TYPES,
 } from './CropGenerator';
 import {
   FarmGenerator,
@@ -158,7 +158,7 @@ export {
   generateCropsForFarmlands,
   FarmGenerator,
   generateFarmsForSettlement,
-  CROP_BASE_KEYS,
+  CROP_TYPES,
   FARM_OBJECT_IDS,
 };
 
@@ -1288,7 +1288,7 @@ export class SettlementGenerator {
     let noStage4Crops = true;
     for (const farm of this.farms) {
       for (const c of farm.cells) {
-        if (c.stage >= 4) {
+        if (c.stage !== undefined && c.stage >= 4) {
           noStage4Crops = false;
           violations.push(`Farm crop at (${c.x},${c.y}) has stage ${c.stage} (stage 4 is collectible icon, not planted)!`);
         }
@@ -1398,8 +1398,5 @@ export function generateSettlementWorld(seed: number, width = 48, height = 36, m
 
 export function generateSettlement(seed: number, width = 48, height = 36, maxPhase = 10): SettlementData {
   const data = generateSettlementWorld(seed, width, height, maxPhase);
-  if (maxPhase >= 4) {
-    generateFarmsForSettlement(data, seed);
-  }
   return data;
 }

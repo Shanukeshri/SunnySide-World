@@ -961,21 +961,21 @@ export class SurvivalEngine {
       fishingTimer: 0,
     };
 
-    // ── PHASE 3: Passive Wildlife & Village Lifeform Spawning ──
+    // ── PHASE 8: Passive Wildlife & Village Lifeform Spawning ──
     if (maxPhase >= 8) {
-      console.log("[LIFECYCLE PHASE 3: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
+      console.log("[LIFECYCLE PHASE 8: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
       this.spawnInitialLifeforms();
     }
 
-    // ── PHASE 4: Enemy Spawning ──
+    // ── PHASE 9: Enemy Spawning ──
     if (maxPhase >= 9) {
-      console.log("[LIFECYCLE PHASE 4: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
+      console.log("[LIFECYCLE PHASE 9: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
       this.spawnInitialEnemies();
     }
 
-    // ── PHASE 5: Player Initialization & Playable Game Ready ──
+    // ── PHASE 10: Player Initialization & Playable Game Ready ──
     if (maxPhase >= 10) {
-      console.log("[LIFECYCLE PHASE 5: World Playable] Player inventory and survival equipment initialized. Ready to play!");
+      console.log("[LIFECYCLE PHASE 10: World Playable] Player inventory and survival equipment initialized. Ready to play!");
       this.initInventory();
     }
   }

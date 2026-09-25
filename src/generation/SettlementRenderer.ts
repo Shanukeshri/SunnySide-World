@@ -211,14 +211,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function getCropPath(cropId: string): string {
+function getCropPath(cropId: string): string | null {
+  if (!cropId) return null;
   const parts = cropId.replace('crop_', '').split('_stage_');
   if (parts.length === 2) {
     const name = parts[0];
     const stage = parts[1].padStart(2, '0');
     return `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/${name}_${stage}.png`;
   }
-  return `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wheat_00.png`;
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -248,7 +249,8 @@ export async function prepareSettlementScene(
   for (const farm of data.farms) {
     for (const cell of farm.cells) {
       if (cell.cropId) {
-        spritePromises.push(loadImage(getCropPath(cell.cropId)));
+        const path = getCropPath(cell.cropId);
+        if (path) spritePromises.push(loadImage(path));
       }
     }
   }
@@ -440,7 +442,10 @@ export async function prepareSettlementScene(
           draw: () => {
             if (!c.cropId) return; // Do not draw if no crop is planted
 
-            const cropImg = imageCache.get(getCropPath(c.cropId));
+            const path = getCropPath(c.cropId);
+            if (!path) return;
+
+            const cropImg = imageCache.get(path);
             if (cropImg && cropImg.width > 0) {
               const scale = cellSize / 16;
               const cw = Math.round(cropImg.width * scale);

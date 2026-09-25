@@ -17,7 +17,6 @@ import {
 } from "../generation/SettlementGenerator";
 import { generateFarmlands } from "../generation/FarmlandGenerator";
 import { generateCropsForFarmlands } from "../generation/CropGenerator";
-import { generateFarmsForSettlement } from "../generation/FarmGenerator";
 import { ResourceNode, WorldRealmVillage, ItemId } from "./GameTypes";
 
 export const CHUNK_SIZE = 16; // 16x16 tiles per chunk
@@ -312,7 +311,7 @@ export class WorldManager {
     }
 
     if (this.maxPhase >= 5) {
-      console.log(`[Sub-Phase: Crop Cultivation] Cultivating multi-crop 4x4 patches after all farmland plots exist for ${site.name}...`);
+      console.log(`[Sub-Phase: Crop Cultivation] Planting crops on farmland for ${site.name}...`);
       generateCropsForFarmlands(settlementData, site.seed);
     }
 
@@ -500,6 +499,9 @@ export class WorldManager {
 
     data.farms.forEach((farm) => {
       farm.cells.forEach((cell) => {
+        // Only register crop resource nodes for cells that actually have a crop planted
+        if (!cell.cropId) return;
+
         const wx = startX + cell.x;
         const wy = startY + cell.y;
         this.addResourceToWorld({
