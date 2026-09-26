@@ -259,7 +259,11 @@ export class NPC extends LivingEntity {
   }
 
   onTargetReached() {
-    this.behaviorState = 'IDLE';
+    if (this.role && this.role !== 'villager' && this.role !== 'child') {
+      this.behaviorState = Math.random() > 0.3 ? 'WORKING' : 'IDLE';
+    } else {
+      this.behaviorState = 'IDLE';
+    }
   }
 
   onMovementBlocked() {

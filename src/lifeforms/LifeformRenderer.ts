@@ -260,9 +260,9 @@ export class LifeformRenderer {
     const drawH = config.spriteAsset.drawHeight * zoomScale;
     const originYOffset = (config.spriteAsset.originYOffset || 0) * zoomScale;
 
-    const isMoving = entity.movement?.isMoving || entity.behaviorState === 'WALKING';
+    const isWorking = entity.behaviorState === 'WORKING';
 
-    if (entity.compositeSheet && !isMoving) {
+    if (entity.compositeSheet && isWorking) {
       const compImg = this.getImage(entity.compositeSheet);
       const totalF = entity.compositeFrames || 8;
       const currentFrame = entity.anim?.currentFrame ?? Math.floor(Date.now() / 110);
