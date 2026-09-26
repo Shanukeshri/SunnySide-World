@@ -28,6 +28,7 @@ export interface NPCRoleConfig {
   totalFrames?: number;
   speed?: number;
   dialogue: string;
+  hairstyle?: string;
 }
 
 export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
@@ -40,6 +41,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.08,
     dialogue:
       "Greetings traveler! I forge tools and sturdy hardware. Keep an iron pickaxe handy for mineral veins!",
+    hairstyle: "spikeyhair",
   },
   builder: {
     role: "builder",
@@ -50,6 +52,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.08,
     dialogue:
       "Timber is the foundation of every shelter. Chop oak trees with your axe to gather wood!",
+    hairstyle: "mophair",
   },
   farmer: {
     role: "farmer",
@@ -60,6 +63,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.1,
     dialogue:
       "The crops look vibrant today! Till fertile soil with a shovel and keep them hydrated with a watering can.",
+    hairstyle: "curlyhair",
   },
   fisher: {
     role: "fisher",
@@ -70,6 +74,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.08,
     dialogue:
       "The river is plentiful! Cast your rod into clear water and reel in fish for hearty meals.",
+    hairstyle: "bowlhair",
   },
   guide: {
     role: "guide",
@@ -80,6 +85,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.08,
     dialogue:
       "Stay watchful when dusk arrives. Skeletons and forest goblins prowl the wilderness beyond our gates.",
+    hairstyle: "longhair",
   },
   merchant: {
     role: "merchant",
@@ -90,6 +96,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     speed: 0.12,
     dialogue:
       "Welcome to Sunnyside Outpost! I trade valuable provisions, seeds, and craft essentials.",
+    hairstyle: "longhair",
   },
   child: {
     role: "child",
@@ -99,6 +106,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
     totalFrames: 9,
     speed: 0.08,
     dialogue: "Look at the ducks swimming in the pond! Aren't they quick?",
+    hairstyle: "bowlhair",
   },
   villager: {
     role: "villager",
@@ -150,6 +158,10 @@ export class NPC extends LivingEntity {
       this.compositeSheet = cfg.compositeSheet;
       this.compositeFrames = cfg.totalFrames;
       this.compositeSpeed = cfg.speed;
+      
+      if (cfg.hairstyle) {
+        this.hairstyle = cfg.hairstyle;
+      }
       
       if (role === 'villager') {
         const randomNames = ["Alden", "Bryn", "Cael", "Dara", "Elara", "Finn", "Gael", "Hollis", "Ida", "Jace", "Kira", "Leo", "Mila", "Nora", "Orin", "Pia", "Quin", "Rowan", "Sia", "Theo"];
