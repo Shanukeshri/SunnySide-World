@@ -24,9 +24,9 @@ export type NPCRole =
 export interface NPCRoleConfig {
   role: NPCRole;
   title: string;
-  compositeSheet: string;
-  totalFrames: number;
-  speed: number;
+  compositeSheet?: string;
+  totalFrames?: number;
+  speed?: number;
   dialogue: string;
 }
 
@@ -102,11 +102,7 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
   },
   villager: {
     role: "villager",
-    title: "Town Villager",
-    compositeSheet:
-      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Composites/villager_shorthair_walk_strip8.png",
-    totalFrames: 8,
-    speed: 0.1,
+    title: "Villager", // Will be prefixed by a dynamic name
     dialogue:
       "It's a serene day in the settlement. Make sure your campfire is lit before nighttime.",
   },
@@ -136,11 +132,10 @@ export class NPC extends LivingEntity {
     this.homeX = homeX;
     this.homeY = homeY;
     
+    this.hairstyle = (roleOrHairstyle as string) || HAIRSTYLE_VARIANTS[Math.floor(Math.random() * HAIRSTYLE_VARIANTS.length)];
+    
     if (roleOrHairstyle && roleOrHairstyle in NPC_ROLE_CONFIGS) {
       this.setRole(roleOrHairstyle as NPCRole);
-    } else {
-      // Just some hairstyle if no role provided
-      this.hairstyle = (roleOrHairstyle as string) || HAIRSTYLE_VARIANTS[Math.floor(Math.random() * HAIRSTYLE_VARIANTS.length)];
     }
     
     this.behaviorState = 'IDLE'; // They only idle for now!
@@ -154,7 +149,14 @@ export class NPC extends LivingEntity {
       this.compositeSheet = cfg.compositeSheet;
       this.compositeFrames = cfg.totalFrames;
       this.compositeSpeed = cfg.speed;
-      this.customTitle = cfg.title;
+      
+      if (role === 'villager') {
+        const randomNames = ["Alden", "Bryn", "Cael", "Dara", "Elara", "Finn", "Gael", "Hollis", "Ida", "Jace", "Kira", "Leo", "Mila", "Nora", "Orin", "Pia", "Quin", "Rowan", "Sia", "Theo"];
+        const name = randomNames[Math.floor(Math.random() * randomNames.length)];
+        this.customTitle = `${name} the ${cfg.title}`;
+      } else {
+        this.customTitle = cfg.title;
+      }
       this.customDialogue = cfg.dialogue;
     }
   }

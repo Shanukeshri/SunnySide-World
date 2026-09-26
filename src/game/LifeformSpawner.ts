@@ -203,13 +203,17 @@ export class LifeformSpawner {
           // use the door coordinate or fallback to center of footprint
           const hX = house.door ? house.door.x : house.x + (house.footprintW || 4) / 2;
           const hY = house.door ? house.door.y : house.y + (house.footprintH || 4);
-          homeX = starterVillage.gridX + hX;
-          homeY = starterVillage.gridY + hY + 1; // +1 to put them in front of the house
+          
+          // Add offset to prevent overlapping if multiple people share the same house
+          const personIndex = Math.floor(i / numHouses);
+          const offsetX = (personIndex - 0.5) * 1.2; // space them out horizontally
+          
+          homeX = starterVillage.gridX + hX + offsetX;
+          homeY = starterVillage.gridY + hY + 1.2; // +1.2 to put them just in front of the house
         }
         
         // Initial spawn is at their home
         const npc = new NPC(this.nextEntityId++, config, homeX, homeY, homeX, homeY, role);
-        console.log(`[LifeformSpawner] Spawned NPC (${role}) at ${homeX}, ${homeY}`);
         outNpcs.push(npc);
       });
     }
