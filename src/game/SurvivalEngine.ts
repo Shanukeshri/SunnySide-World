@@ -961,21 +961,27 @@ export class SurvivalEngine {
       fishingTimer: 0,
     };
 
-    // ── PHASE 8: Passive Wildlife & Village Lifeform Spawning ──
+    // ── PHASE 8: Village Villager Spawning ──
     if (maxPhase >= 8) {
-      console.log("[LIFECYCLE PHASE 8: Lifeform Spawning] Spawning wildlife (ducks in water, livestock on land) and villagers (assigned roles)...");
-      this.spawnInitialLifeforms();
+      console.log("[LIFECYCLE PHASE 8: Lifeform Spawning] Spawning villagers with assigned roles...");
+      this.spawnInitialVillagers();
     }
 
-    // ── PHASE 9: Enemy Spawning ──
+    // ── PHASE 9: Passive Wildlife Spawning ──
     if (maxPhase >= 9) {
-      console.log("[LIFECYCLE PHASE 9: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
+      console.log("[LIFECYCLE PHASE 9: Wildlife Spawning] Spawning wildlife (ducks in water, livestock on land)...");
+      this.spawnInitialWildlife();
+    }
+
+    // ── PHASE 10: Enemy Spawning ──
+    if (maxPhase >= 10) {
+      console.log("[LIFECYCLE PHASE 10: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
       this.spawnInitialEnemies();
     }
 
-    // ── PHASE 10: Player Initialization & Playable Game Ready ──
-    if (maxPhase >= 10) {
-      console.log("[LIFECYCLE PHASE 10: World Playable] Player inventory and survival equipment initialized. Ready to play!");
+    // ── PHASE 11: Player Initialization & Playable Game Ready ──
+    if (maxPhase >= 11) {
+      console.log("[LIFECYCLE PHASE 11: World Playable] Player inventory and survival equipment initialized. Ready to play!");
       this.initInventory();
     }
   }
@@ -1039,22 +1045,33 @@ export class SurvivalEngine {
   /**
    * Phase 3: Spawns initial passive wildlife & NPCs in the starting village area.
    */
-  private spawnInitialLifeforms() {
+  private spawnInitialVillagers() {
     this.lifeformSpawner.setNextEntityId(this.nextEntityId);
     
-    const newAnimals: any[] = [];
     const newNpcs: any[] = [];
     
-    this.lifeformSpawner.spawnInitialLifeforms(
+    this.lifeformSpawner.spawnInitialVillagers(
       this.worldManager.villages[0],
       this.player.x,
       this.player.y,
-      newAnimals,
       newNpcs
     );
 
-    this.animals.push(...newAnimals);
     this.npcs.push(...newNpcs);
+    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
+  }
+
+  private spawnInitialWildlife() {
+    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+    
+    const newAnimals: any[] = [];
+    
+    this.lifeformSpawner.spawnInitialWildlife(
+      this.worldManager.villages[0],
+      newAnimals
+    );
+
+    this.animals.push(...newAnimals);
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }
 

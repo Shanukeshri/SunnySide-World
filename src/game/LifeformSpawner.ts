@@ -159,35 +159,15 @@ export class LifeformSpawner {
   }
 
   /**
-   * Spawns initial NPCs, villagers, ducks, and enemies for a new settlement/world spawn.
+   * Spawns initial NPCs (villagers) for a new settlement.
    */
-  public spawnInitialLifeforms(
+  public spawnInitialVillagers(
     starterVillage: any,
     playerX: number,
     playerY: number,
-    outAnimals: any[],
     outNpcs: any[]
   ) {
     if (starterVillage && starterVillage.data) {
-      // Ducks only spawn in water
-      if (starterVillage.data.waterBodies) {
-        for (const pond of starterVillage.data.waterBodies) {
-          const duckCount = Math.max(1, Math.floor(pond.cells.length / 5));
-          for (let i = 0; i < duckCount; i++) {
-            const cellIndex = Math.floor(Math.random() * pond.cells.length);
-            const cell = pond.cells[cellIndex];
-            const duckConfig = SPECIES_CONFIGS["duck"];
-            const duck = new Animal(
-              this.nextEntityId++,
-              duckConfig,
-              starterVillage.gridX + cell.x + 0.5,
-              starterVillage.gridY + cell.y + 0.5
-            );
-            outAnimals.push(duck);
-          }
-        }
-      }
-
       // See how many houses there are
       const numHouses = starterVillage.data.houses ? starterVillage.data.houses.length : 0;
       // Number of people around 2x number of houses
@@ -212,11 +192,55 @@ export class LifeformSpawner {
         const config = SPECIES_CONFIGS["villager"];
         const angle = (i / roles.length) * Math.PI * 2;
         const radius = 4.5 + (i % 2) * 2;
+        // Near village center / player
         const sx = playerX + Math.cos(angle) * radius;
         const sy = playerY + Math.sin(angle) * radius;
-        const npc = new NPC(this.nextEntityId++, config, sx, sy, sx, sy, role);
+        
+        let homeX = sx;
+        let homeY = sy;
+        if (numHouses > 0) {
+          const house = starterVillage.data.houses[i % numHouses];
+          // use the door coordinate or fallback to center of footprint
+          const hX = house.door ? house.door.x : house.x + (house.footprintW || 4) / 2;
+          const hY = house.door ? house.door.y : house.y + (house.footprintH || 4);
+          homeX = starterVillage.gridX + hX;
+          homeY = starterVillage.gridY + hY + 1; // +1 to put them in front of the house
+        }
+        
+        // Initial spawn is at their home
+        const npc = new NPC(this.nextEntityId++, config, homeX, homeY, homeX, homeY, role);
+        console.log(`[LifeformSpawner] Spawned NPC (${role}) at ${homeX}, ${homeY}`);
         outNpcs.push(npc);
       });
+    }
+  }
+
+  /**
+   * Spawns initial wildlife (ducks in water) for a new settlement/world spawn.
+   */
+  public spawnInitialWildlife(
+    starterVillage: any,
+    outAnimals: any[]
+  ) {
+    if (starterVillage && starterVillage.data) {
+      // Ducks only spawn in water
+      if (starterVillage.data.waterBodies) {
+        for (const pond of starterVillage.data.waterBodies) {
+          const duckCount = Math.max(1, Math.floor(pond.cells.length / 5));
+          for (let i = 0; i < duckCount; i++) {
+            const cellIndex = Math.floor(Math.random() * pond.cells.length);
+            const cell = pond.cells[cellIndex];
+            const duckConfig = SPECIES_CONFIGS["duck"];
+            const duck = new Animal(
+              this.nextEntityId++,
+              duckConfig,
+              starterVillage.gridX + cell.x + 0.5,
+              starterVillage.gridY + cell.y + 0.5
+            );
+            outAnimals.push(duck);
+          }
+        }
+      }
     }
   }
 
