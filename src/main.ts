@@ -1192,7 +1192,7 @@ async function renderCurrentSettlement() {
 
 // Current phase for step-by-step generation (0 = not started, 1-11 = phases)
 let currentGenPhase = 0;
-const TOTAL_GEN_PHASES = 11;
+const TOTAL_GEN_PHASES = 10;
 
 const PHASE_LABELS: Record<number, string> = {
   0:  "Phase 0 — Not Started",
@@ -1205,8 +1205,7 @@ const PHASE_LABELS: Record<number, string> = {
   7:  "Phase 7 — Validation",
   8:  "Phase 8 — Villager Spawning (Roles)",
   9:  "Phase 9 — Wildlife Spawning",
-  10: "Phase 10 — Enemy Spawning",
-  11: "Phase 11 — World Complete & Playable!",
+  10: "Phase 10 — World Complete & Playable!",
 };
 
 function updatePhaseIndicator() {

@@ -53,7 +53,7 @@ export class LifeformSpawner {
   private nextEntityId: number = 10000;
   private seed: number;
   private processedChunks: Set<string> = new Set();
-  private enemySpawnTimer: number = 0;
+
   private wildlifeSpawnTimer: number = 0;
 
   constructor(worldManager: WorldManager, seed: number) {
@@ -338,75 +338,18 @@ export class LifeformSpawner {
     }
   }
 
-  public spawnInitialEnemies(playerX: number, playerY: number, outEnemies: any[]) {
-    outEnemies.push({
-      id: this.nextEntityId++,
-      type: "goblin",
-      name: "Forest Goblin",
-      x: playerX + 15,
-      y: playerY + 10,
-      vx: 0, vy: 0,
-      direction: "LEFT",
-      health: 40, maxHealth: 40,
-      damage: 14, speed: 2.2,
-      state: "PATROL",
-      attackCooldown: 0, patrolTimer: 3, hurtTimer: 0, deathTimer: 0.6,
-      isAlive: true,
-    });
 
-    outEnemies.push({
-      id: this.nextEntityId++,
-      type: "skeleton",
-      name: "Dungeon Skeleton",
-      x: playerX - 15,
-      y: playerY + 10,
-      vx: 0, vy: 0,
-      direction: "RIGHT",
-      health: 45, maxHealth: 45,
-      damage: 16, speed: 2.0,
-      state: "PATROL",
-      attackCooldown: 0, patrolTimer: 3, hurtTimer: 0, deathTimer: 0.6,
-      isAlive: true,
-    });
-  }
 
   public handlePeriodicSpawns(
     dt: number,
-    timeOfDay: string,
     playerX: number,
     playerY: number,
     currentAnimalsCount: number,
-    currentEnemiesCount: number,
-    outAnimals: any[],
-    outEnemies: any[]
+    outAnimals: any[]
   ) {
     // Note: The timer state is kept in the spawner now.
     // However we'll need to add these timers as fields to LifeformSpawner.
-    this.enemySpawnTimer += dt;
     this.wildlifeSpawnTimer += dt;
-    
-    // Night enemy spawn (only outside villages, maximum 6 active enemies)
-    if (timeOfDay === "Night" && currentEnemiesCount < 6) {
-      if (this.enemySpawnTimer >= 8.0) {
-        this.enemySpawnTimer = 0;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 14 + Math.random() * 8;
-        const spawnX = playerX + Math.cos(angle) * dist;
-        const spawnY = playerY + Math.sin(angle) * dist;
-
-        const tile = this.worldManager.getTile(
-          Math.floor(spawnX),
-          Math.floor(spawnY),
-        );
-        if (
-          !tile.isWater &&
-          !tile.isBlocked &&
-          tile.inVillageId === undefined
-        ) {
-          this.spawnEnemy(spawnX, spawnY, outEnemies);
-        }
-      }
-    }
 
     // Wildlife replenishment
     if (this.wildlifeSpawnTimer >= 15.0 && currentAnimalsCount < 16) {
@@ -437,51 +380,5 @@ export class LifeformSpawner {
     }
   }
 
-  private spawnEnemy(x: number, y: number, outEnemies: any[]) {
-    const roll = Math.random();
-    let type: "skeleton" | "goblin" | "slime" = "slime";
-    let name = "Wild Slime";
-    let health = 25;
-    let damage = 8;
-    let speed = 1.8;
-    let action: string | undefined = undefined;
 
-    if (roll < 0.45) {
-      type = "skeleton";
-      name = "Dungeon Skeleton";
-      health = 45;
-      damage = 16;
-      speed = 2.1;
-    } else if (roll < 0.9) {
-      type = "goblin";
-      name = "Forest Goblin";
-      health = 40;
-      damage = 14;
-      speed = 2.3;
-      if (Math.random() < 0.25) action = "AXE";
-      else if (Math.random() < 0.25) action = "MINING";
-    }
-
-    outEnemies.push({
-      id: this.nextEntityId++,
-      type,
-      name,
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      direction: roll > 0.5 ? "LEFT" : "RIGHT",
-      health,
-      maxHealth: health,
-      damage,
-      speed,
-      state: "PATROL",
-      attackCooldown: 0,
-      patrolTimer: 3,
-      hurtTimer: 0,
-      deathTimer: 0.6,
-      isAlive: true,
-      currentAction: action,
-    });
-  }
 }

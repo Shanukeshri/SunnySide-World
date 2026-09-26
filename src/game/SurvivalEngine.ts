@@ -973,15 +973,10 @@ export class SurvivalEngine {
       this.spawnInitialWildlife();
     }
 
-    // ── PHASE 10: Enemy Spawning ──
-    if (maxPhase >= 10) {
-      console.log("[LIFECYCLE PHASE 10: Enemy Spawning] Spawning monsters and hostile lifeforms in the wilderness...");
-      this.spawnInitialEnemies();
-    }
 
-    // ── PHASE 11: Player Initialization & Playable Game Ready ──
-    if (maxPhase >= 11) {
-      console.log("[LIFECYCLE PHASE 11: World Playable] Player inventory and survival equipment initialized. Ready to play!");
+    // ── PHASE 10: Player Initialization & Playable Game Ready ──
+    if (maxPhase >= 10) {
+      console.log("[LIFECYCLE PHASE 10: World Playable] Player inventory and survival equipment initialized. Ready to play!");
       this.initInventory();
     }
   }
@@ -1084,22 +1079,6 @@ export class SurvivalEngine {
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }
 
-  /**
-   * Phase 4: Spawns hostile entities in the wilderness strictly after world generation and passive lifeforms.
-   */
-  private spawnInitialEnemies() {
-    this.lifeformSpawner.setNextEntityId(this.nextEntityId);
-
-    const newEnemies: any[] = [];
-    this.lifeformSpawner.spawnInitialEnemies(
-      this.player.x,
-      this.player.y,
-      newEnemies
-    );
-
-    this.enemies.push(...newEnemies);
-    this.nextEntityId = this.lifeformSpawner.getNextEntityId();
-  }
 
   /**
    * Main game tick update loop (dt in seconds, ~0.016 for 60 FPS).
@@ -1145,22 +1124,17 @@ export class SurvivalEngine {
     // 8. Update Particles & VFX
     this.updateParticles(dt);
 
-    // 9. Periodic Spawning (Wildlife & Night Enemies)
+    // 9. Periodic Spawning (Wildlife)
     this.lifeformSpawner.setNextEntityId(this.nextEntityId);
     const periodicAnimals: Animal[] = [];
-    const periodicEnemies: any[] = [];
     this.lifeformSpawner.handlePeriodicSpawns(
       dt,
-      this.worldTime.timeOfDay,
       this.player.x,
       this.player.y,
       this.animals.length,
-      this.enemies.length,
-      periodicAnimals,
-      periodicEnemies
+      periodicAnimals
     );
     // this.animals.push(...periodicAnimals);
-    this.enemies.push(...periodicEnemies);
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
   }
 
