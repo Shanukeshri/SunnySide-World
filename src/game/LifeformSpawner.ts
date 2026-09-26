@@ -101,7 +101,7 @@ export class LifeformSpawner {
     const spawnedAnimals: Animal[] = [];
 
     const animalChance = rng();
-    if (animalChance < 0.65) {
+    if (animalChance < 0.3) {
       const count = 1 + Math.floor(rng() * 3);
       for (let i = 0; i < count; i++) {
         const ax = chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
@@ -277,8 +277,8 @@ export class LifeformSpawner {
         const height = grid.length;
         const width = grid[0].length;
         
-        // Spread uniformly by dividing the village into a 6x6 block grid (tighter grid = more clusters)
-        const blockSize = 6;
+        // Spread uniformly by dividing the village into a 12x12 block grid (larger grid = 1/4th the clusters)
+        const blockSize = 12;
         
         for (let by = 0; by < height; by += blockSize) {
           for (let bx = 0; bx < width; bx += blockSize) {

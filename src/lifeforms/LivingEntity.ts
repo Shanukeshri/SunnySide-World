@@ -294,7 +294,7 @@ export abstract class LivingEntity implements ILivingEntity {
   /**
    * Abstract hooks for subclasses
    */
-  public abstract updateAI(dt: number, detector: EnvironmentDetector): void;
+  public abstract updateAI(dt: number, detector: EnvironmentDetector, worldTime?: any, worldManager?: any): void;
   protected abstract onTargetReached(): void;
   protected abstract onMovementBlocked(): void;
 

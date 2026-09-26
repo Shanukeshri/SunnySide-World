@@ -115,6 +115,7 @@ export class NPC extends LivingEntity {
   public compositeSpeed?: number;
   public customTitle?: string;
   public customDialogue?: string;
+  private stateTimer: number = 0;
   
   public homeX: number;
   public homeY: number;
@@ -161,13 +162,95 @@ export class NPC extends LivingEntity {
     }
   }
 
-  updateAI(dt: number, det: EnvironmentDetector) {
-    // No logic yet, just idle!
+  updateAI(dt: number, det: EnvironmentDetector, worldTime?: any, worldManager?: any) {
+    this.stateTimer -= dt;
+    if (this.stateTimer <= 0) {
+      this.stateTimer = 2.0 + Math.random() * 3.0; // Check every 2-5s
+      
+      let targetX = this.homeX;
+      let targetY = this.homeY;
+      
+      if (worldTime && (worldTime.timeOfDay === "Morning" || worldTime.timeOfDay === "Day" || worldTime.timeOfDay === "Sunset")) {
+         if (this.role === "farmer" && worldManager) {
+           const farmCell = this.findNearestFarm(worldManager);
+           if (farmCell) {
+             targetX = farmCell.x; targetY = farmCell.y;
+           }
+         } else if (this.role === "fisher" && worldManager) {
+           const waterCell = this.findNearestPond(worldManager);
+           if (waterCell) {
+             targetX = waterCell.x; targetY = waterCell.y;
+           }
+         } else if (this.role === "blacksmith") {
+           targetX = this.homeX + (Math.random() - 0.5) * 6;
+           targetY = this.homeY + (Math.random() - 0.5) * 6;
+         } else if (this.role === "guide") {
+           targetX = this.homeX + (Math.random() - 0.5) * 20;
+           targetY = this.homeY + (Math.random() - 0.5) * 20;
+         } else {
+           targetX = this.homeX + (Math.random() - 0.5) * 8;
+           targetY = this.homeY + (Math.random() - 0.5) * 8;
+         }
+      } else {
+         targetX = this.homeX + (Math.random() - 0.5) * 2;
+         targetY = this.homeY + (Math.random() - 0.5) * 2;
+      }
+      
+      if (det.isAreaWalkable(targetX, targetY, 0.2, 0.2, false, false)) {
+        this.setTarget(targetX, targetY);
+        this.behaviorState = 'WALKING';
+      } else {
+        this.clearTarget();
+        this.behaviorState = 'IDLE';
+      }
+    }
+  }
+
+  private findNearestFarm(worldManager: any): {x: number, y: number} | null {
+     let bestDist = Infinity;
+     let best = null;
+     for (const village of worldManager.villages) {
+       if (!village.data.farms) continue;
+       for (const farm of village.data.farms) {
+         for (const cell of farm.cells) {
+           const wx = village.gridX + cell.x;
+           const wy = village.gridY + cell.y;
+           const d = Math.hypot(wx - this.position.x, wy - this.position.y);
+           if (d < bestDist && d < 40) {
+             bestDist = d;
+             best = {x: wx, y: wy};
+           }
+         }
+       }
+     }
+     return best;
+  }
+
+  private findNearestPond(worldManager: any): {x: number, y: number} | null {
+     let bestDist = Infinity;
+     let best = null;
+     for (const village of worldManager.villages) {
+       if (!village.data.waterBodies) continue;
+       for (const pond of village.data.waterBodies) {
+         for (const cell of pond.cells) {
+           const wx = village.gridX + cell.x;
+           const wy = village.gridY + cell.y;
+           const d = Math.hypot(wx - this.position.x, wy - this.position.y);
+           if (d < bestDist && d < 40) {
+             bestDist = d;
+             best = {x: wx, y: wy};
+           }
+         }
+       }
+     }
+     return best;
   }
 
   onTargetReached() {
+    this.behaviorState = 'IDLE';
   }
 
   onMovementBlocked() {
+    this.behaviorState = 'IDLE';
   }
 }

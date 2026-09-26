@@ -1091,6 +1091,7 @@ export class SurvivalEngine {
 
     if (this.isWorldGenMode) {
       this.worldManager.updatePlayerLocation(this.player.x, this.player.y);
+      this.updateLifeforms(dt);
       return;
     }
 
@@ -1454,7 +1455,7 @@ export class SurvivalEngine {
         continue; // Culled when outside active 4-chunk radius
       }
 
-      animal.updateAI(dt, this.detector);
+      animal.updateAI(dt, this.detector, this.worldTime, this.worldManager);
       animal.updateMovement(dt, this.detector);
     }
 
@@ -1471,7 +1472,7 @@ export class SurvivalEngine {
       }
 
       (npc as any).isFrozen = false;
-      npc.updateAI(dt, this.detector);
+      npc.updateAI(dt, this.detector, this.worldTime, this.worldManager);
       npc.updateMovement(dt, this.detector);
     }
   }

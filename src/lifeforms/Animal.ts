@@ -9,7 +9,7 @@ export class Animal extends LivingEntity {
     super(id, config, initialX, initialY);
   }
 
-  updateAI(dt: number, det: EnvironmentDetector) {
+  updateAI(dt: number, det: EnvironmentDetector, worldTime?: any, worldManager?: any) {
     if (this.behaviorState === 'DEAD' || this.interaction.isPetted) return;
 
     this.stateTimer -= dt;
@@ -19,7 +19,18 @@ export class Animal extends LivingEntity {
       if (this.behaviorState === 'IDLE' || this.behaviorState === 'EATING') {
         this.behaviorState = 'WANDER';
         this.stateTimer = this.config.wanderDurationMin + Math.random() * (this.config.wanderDurationMax - this.config.wanderDurationMin);
-        
+        // slowly drift the wander origin based on a deterministic herd angle
+        if (worldTime) {
+          const herdId = Math.floor(this.id / 5); // group by 5s
+          // deterministic angle that changes slowly over time (e.g., every 30 seconds)
+          const timePhase = Math.floor(worldTime.totalSeconds / 30);
+          const pseudoRandom = Math.sin(herdId * 12.9898 + timePhase * 78.233) * 43758.5453;
+          const sharedAngle = (pseudoRandom - Math.floor(pseudoRandom)) * Math.PI * 2;
+          
+          this.movement.wanderOriginX += Math.cos(sharedAngle) * 1.5;
+          this.movement.wanderOriginY += Math.sin(sharedAngle) * 1.5;
+        }
+
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.random() * this.movement.wanderRadius;
         const tx = this.movement.wanderOriginX + Math.cos(angle) * dist;
