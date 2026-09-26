@@ -260,7 +260,7 @@ export abstract class LivingEntity implements ILivingEntity {
       }
 
       // Section 12: Movement collision - isAreaWalkable(nextPosition)
-      if (detector.isAreaWalkable(nx, ny, 0.20, 0.14, Boolean(this.config.isAquatic), Boolean(this.config.isAquatic))) {
+      if (detector.isAreaWalkable(nx, ny, 0.20, 0.14, Boolean(this.config.isAmphibious || this.config.isAquatic), Boolean(this.config.isAquatic && !this.config.isAmphibious))) {
         this.position.x = nx;
         this.position.y = ny;
       } else {

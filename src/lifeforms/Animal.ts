@@ -27,8 +27,13 @@ export class Animal extends LivingEntity {
           const pseudoRandom = Math.sin(herdId * 12.9898 + timePhase * 78.233) * 43758.5453;
           const sharedAngle = (pseudoRandom - Math.floor(pseudoRandom)) * Math.PI * 2;
           
-          this.movement.wanderOriginX += Math.cos(sharedAngle) * 1.5;
-          this.movement.wanderOriginY += Math.sin(sharedAngle) * 1.5;
+          const nextOriginX = this.movement.wanderOriginX + Math.cos(sharedAngle) * 1.5;
+          const nextOriginY = this.movement.wanderOriginY + Math.sin(sharedAngle) * 1.5;
+          
+          if (det.isAreaWalkable(nextOriginX, nextOriginY, 0.20, 0.14, Boolean(this.config.isAmphibious || this.config.isAquatic), Boolean(this.config.isAquatic && !this.config.isAmphibious))) {
+            this.movement.wanderOriginX = nextOriginX;
+            this.movement.wanderOriginY = nextOriginY;
+          }
         }
 
         const angle = Math.random() * Math.PI * 2;

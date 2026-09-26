@@ -140,7 +140,7 @@ export class LifeformSpawner {
           
           const config = SPECIES_CONFIGS[species];
           if (config) {
-             const isAmphibious = species === "cow" || species === "pig" || species === "duck";
+             const isAmphibious = species === "duck";
              const worldTile = this.worldManager.getTile(Math.floor(ax), Math.floor(ay));
              if (!isAmphibious && (worldTile.isWater || worldTile.isBlocked)) continue;
              
