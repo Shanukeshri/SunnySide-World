@@ -220,28 +220,118 @@ export class LifeformSpawner {
   }
 
   /**
-   * Spawns initial wildlife (ducks in water) for a new settlement/world spawn.
+   * Spawns initial ducks in water bodies for a new settlement.
+   */
+  public spawnInitialDucks(
+    starterVillage: any,
+    outAnimals: any[]
+  ) {
+    if (starterVillage && starterVillage.data && starterVillage.data.waterBodies) {
+      for (const pond of starterVillage.data.waterBodies) {
+        const duckCount = Math.max(1, Math.floor(pond.cells.length / 8));
+        for (let i = 0; i < duckCount; i++) {
+          const cellIndex = Math.floor(Math.random() * pond.cells.length);
+          const cell = pond.cells[cellIndex];
+          
+          // Loop for 25% chance to spawn another duck
+          let keepSpawning = true;
+          let currentX = cell.x;
+          let currentY = cell.y;
+          
+          while (keepSpawning) {
+            const duckConfig = SPECIES_CONFIGS["duck"];
+            const duck = new Animal(
+              this.nextEntityId++,
+              duckConfig,
+              starterVillage.gridX + currentX + 0.5,
+              starterVillage.gridY + currentY + 0.5
+            );
+            outAnimals.push(duck);
+            
+            if (Math.random() < 0.25) {
+              // slightly offset the new one
+              currentX += (Math.random() - 0.5) * 1.5;
+              currentY += (Math.random() - 0.5) * 1.5;
+            } else {
+              keepSpawning = false;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Spawns initial terrestrial wildlife (cows, sheep, pigs, etc.) for a new settlement.
    */
   public spawnInitialWildlife(
     starterVillage: any,
     outAnimals: any[]
   ) {
     if (starterVillage && starterVillage.data) {
-      // Ducks only spawn in water
-      if (starterVillage.data.waterBodies) {
-        for (const pond of starterVillage.data.waterBodies) {
-          const duckCount = Math.max(1, Math.floor(pond.cells.length / 5));
-          for (let i = 0; i < duckCount; i++) {
-            const cellIndex = Math.floor(Math.random() * pond.cells.length);
-            const cell = pond.cells[cellIndex];
-            const duckConfig = SPECIES_CONFIGS["duck"];
-            const duck = new Animal(
-              this.nextEntityId++,
-              duckConfig,
-              starterVillage.gridX + cell.x + 0.5,
-              starterVillage.gridY + cell.y + 0.5
-            );
-            outAnimals.push(duck);
+      
+      // Terrestrial Animals (cow, sheep, pig, chicken, rabbit, deer)
+      const terrestrialSpecies = ["cow", "sheep", "pig", "chicken", "rabbit", "deer"];
+      const grid = starterVillage.data.grid;
+      if (grid && grid.length > 0) {
+        const height = grid.length;
+        const width = grid[0].length;
+        
+        // Spread uniformly by dividing the village into a 6x6 block grid (tighter grid = more clusters)
+        const blockSize = 6;
+        
+        for (let by = 0; by < height; by += blockSize) {
+          for (let bx = 0; bx < width; bx += blockSize) {
+            
+            // 90% chance to spawn a cluster in this block
+            if (Math.random() > 0.90) continue;
+            
+            const speciesKey = terrestrialSpecies[Math.floor(Math.random() * terrestrialSpecies.length)];
+            const config = SPECIES_CONFIGS[speciesKey as any];
+            if (!config) continue;
+            
+            // Try to find a valid spot within this block
+            let rx = bx + Math.floor(Math.random() * blockSize);
+            let ry = by + Math.floor(Math.random() * blockSize);
+            rx = Math.min(rx, width - 1);
+            ry = Math.min(ry, height - 1);
+            
+            let cell = grid[ry] && grid[ry][rx] ? grid[ry][rx] : null;
+            let attempts = 0;
+            while ((!cell || cell.isWater || cell.blocked) && attempts < 10) {
+              rx = bx + Math.floor(Math.random() * blockSize);
+              ry = by + Math.floor(Math.random() * blockSize);
+              rx = Math.min(rx, width - 1);
+              ry = Math.min(ry, height - 1);
+              cell = grid[ry] && grid[ry][rx] ? grid[ry][rx] : null;
+              attempts++;
+            }
+            
+            if (!cell || cell.isWater || cell.blocked) continue;
+            
+            let currentX = rx;
+            let currentY = ry;
+            
+            // Each cluster has exactly 3 to 5 members
+            const clusterSize = 3 + Math.floor(Math.random() * 3);
+            
+            for (let j = 0; j < clusterSize; j++) {
+              const animal = new Animal(
+                this.nextEntityId++,
+                config,
+                starterVillage.gridX + currentX + 0.5,
+                starterVillage.gridY + currentY + 0.5
+              );
+              outAnimals.push(animal);
+              
+              // offset the next member slightly
+              currentX += (Math.random() - 0.5) * 2;
+              currentY += (Math.random() - 0.5) * 2;
+              
+              // bounds check for safety
+              currentX = Math.max(0, Math.min(width - 1, currentX));
+              currentY = Math.max(0, Math.min(height - 1, currentY));
+            }
           }
         }
       }

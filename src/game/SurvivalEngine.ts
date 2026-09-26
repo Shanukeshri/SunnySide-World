@@ -1066,6 +1066,15 @@ export class SurvivalEngine {
     
     const newAnimals: any[] = [];
     
+    // Sub-Phase: Aquatic life (Ducks)
+    console.log("[Sub-Phase: Aquatic Life] Spawning ducks in water bodies...");
+    this.lifeformSpawner.spawnInitialDucks(
+      this.worldManager.villages[0],
+      newAnimals
+    );
+    
+    // Sub-Phase: Terrestrial Wildlife
+    console.log("[Sub-Phase: Terrestrial Wildlife] Spawning terrestrial animals across village bounds...");
     this.lifeformSpawner.spawnInitialWildlife(
       this.worldManager.villages[0],
       newAnimals
