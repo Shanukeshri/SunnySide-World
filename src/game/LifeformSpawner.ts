@@ -21,8 +21,12 @@ function createNoise2D(seed: number) {
   for (let i = 0; i < 256; i++) perm[i] = Math.floor(rng() * 256);
   const p = [...perm, ...perm];
 
-  function fade(t: number) { return t * t * t * (t * (t * 6 - 15) + 10); }
-  function lerp(t: number, a: number, b: number) { return a + t * (b - a); }
+  function fade(t: number) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+  function lerp(t: number, a: number, b: number) {
+    return a + t * (b - a);
+  }
   function grad(hash: number, x: number, y: number) {
     const h = hash & 3;
     const u = h < 2 ? x : y;
@@ -42,7 +46,7 @@ function createNoise2D(seed: number) {
     return lerp(
       v,
       lerp(u, grad(p[A], xf, yf), grad(p[B], xf - 1, yf)),
-      lerp(u, grad(p[A + 1], xf, yf - 1), grad(p[B + 1], xf - 1, yf - 1))
+      lerp(u, grad(p[A + 1], xf, yf - 1), grad(p[B + 1], xf - 1, yf - 1)),
     );
   };
 }
@@ -61,7 +65,7 @@ export class LifeformSpawner {
     this.seed = seed;
     this.noiseForest = createNoise2D(seed + 101);
   }
-  
+
   public setNextEntityId(id: number) {
     this.nextEntityId = id;
   }
@@ -73,7 +77,11 @@ export class LifeformSpawner {
   /**
    * Spawns wildlife for chunks around the player that haven't been processed yet.
    */
-  public processChunksAroundPlayer(playerX: number, playerY: number, outAnimals: Animal[]) {
+  public processChunksAroundPlayer(
+    playerX: number,
+    playerY: number,
+    outAnimals: Animal[],
+  ) {
     const pcx = Math.floor(playerX / 16);
     const pcy = Math.floor(playerY / 16);
     for (let dy = -4; dy <= 4; dy++) {
@@ -81,7 +89,7 @@ export class LifeformSpawner {
         const cx = pcx + dx;
         const cy = pcy + dy;
         const key = `${cx},${cy}`;
-        
+
         const chunk = this.worldManager.chunks.get(key);
         if (chunk && chunk.isGenerated && !this.processedChunks.has(key)) {
           this.processedChunks.add(key);
@@ -97,22 +105,33 @@ export class LifeformSpawner {
    */
   private spawnWildlifeForChunk(chunk: WorldChunk, seed: number): Animal[] {
     const CHUNK_SIZE = 16;
-    const rng = createSeededRNG(seed + chunk.chunkX * 374761393 + chunk.chunkY * 668265263 + 12345);
+    const rng = createSeededRNG(
+      seed + chunk.chunkX * 374761393 + chunk.chunkY * 668265263 + 12345,
+    );
     const spawnedAnimals: Animal[] = [];
 
     const animalChance = rng();
     if (animalChance < 0.3) {
       const count = 1 + Math.floor(rng() * 3);
       for (let i = 0; i < count; i++) {
-        const ax = chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
-        const ay = chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const ax =
+          chunk.chunkX * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
+        const ay =
+          chunk.chunkY * CHUNK_SIZE + 2 + Math.floor(rng() * (CHUNK_SIZE - 4));
         const lx = ax - chunk.chunkX * CHUNK_SIZE;
         const ly = ay - chunk.chunkY * CHUNK_SIZE;
         const tile = chunk.tiles[ly]?.[lx];
-        
+
         if (tile && !this.worldManager.isInsideAnyVillage(ax, ay)) {
-          let species: "cow" | "sheep" | "chicken" | "rabbit" | "deer" | "pig" | "duck" = "chicken";
-          
+          let species:
+            | "cow"
+            | "sheep"
+            | "chicken"
+            | "rabbit"
+            | "deer"
+            | "pig"
+            | "duck" = "chicken";
+
           if (tile.isWater) {
             species = "duck";
           } else if (!tile.isBlocked) {
@@ -120,8 +139,12 @@ export class LifeformSpawner {
             const adjDown = chunk.tiles[ly + 1]?.[lx];
             const adjLeft = chunk.tiles[ly]?.[lx - 1];
             const adjRight = chunk.tiles[ly]?.[lx + 1];
-            const nearWater = adjUp?.isWater || adjDown?.isWater || adjLeft?.isWater || adjRight?.isWater;
-            
+            const nearWater =
+              adjUp?.isWater ||
+              adjDown?.isWater ||
+              adjLeft?.isWater ||
+              adjRight?.isWater;
+
             if (nearWater) continue;
 
             const forestNoise = this.noiseForest(ax * 0.04, ay * 0.04);
@@ -137,20 +160,24 @@ export class LifeformSpawner {
           } else {
             continue;
           }
-          
+
           const config = SPECIES_CONFIGS[species];
           if (config) {
-             const isAmphibious = species === "duck";
-             const worldTile = this.worldManager.getTile(Math.floor(ax), Math.floor(ay));
-             if (!isAmphibious && (worldTile.isWater || worldTile.isBlocked)) continue;
-             
-             const animal = new Animal(
-               this.nextEntityId++,
-               config,
-               ax + 0.5,
-               ay + 0.5
-             );
-             spawnedAnimals.push(animal);
+            const isAmphibious = species === "duck";
+            const worldTile = this.worldManager.getTile(
+              Math.floor(ax),
+              Math.floor(ay),
+            );
+            if (!isAmphibious && (worldTile.isWater || worldTile.isBlocked))
+              continue;
+
+            const animal = new Animal(
+              this.nextEntityId++,
+              config,
+              ax + 0.5,
+              ay + 0.5,
+            );
+            spawnedAnimals.push(animal);
           }
         }
       }
@@ -165,27 +192,42 @@ export class LifeformSpawner {
     starterVillage: any,
     playerX: number,
     playerY: number,
-    outNpcs: any[]
+    outNpcs: any[],
   ) {
     if (starterVillage && starterVillage.data) {
       // See how many houses there are
-      const numHouses = starterVillage.data.houses ? starterVillage.data.houses.length : 0;
+      const numHouses = starterVillage.data.houses
+        ? starterVillage.data.houses.length
+        : 0;
       // Number of people around 2x number of houses
       const numPeople = numHouses * 2;
       const roles: string[] = [];
 
       // For each farm atleast one farmer
-      const numFarms = starterVillage.data.farms ? starterVillage.data.farms.length : 0;
+      const numFarms = starterVillage.data.farms
+        ? starterVillage.data.farms.length
+        : 0;
       for (let i = 0; i < numFarms; i++) roles.push("farmer");
 
       // For each water body atleast one fisher
-      const numWater = starterVillage.data.waterBodies ? starterVillage.data.waterBodies.length : 0;
+      const numWater = starterVillage.data.waterBodies
+        ? starterVillage.data.waterBodies.length
+        : 0;
       for (let i = 0; i < numWater; i++) roles.push("fisher");
 
       // Rest roles randomly assigned
-      const possibleRoles = ["blacksmith", "builder", "guide", "merchant", "villager", "child"];
+      const possibleRoles = [
+        "blacksmith",
+        "builder",
+        "guide",
+        "merchant",
+        "villager",
+        "child",
+      ];
       while (roles.length < Math.max(numPeople, roles.length)) {
-        roles.push(possibleRoles[Math.floor(Math.random() * possibleRoles.length)]);
+        roles.push(
+          possibleRoles[Math.floor(Math.random() * possibleRoles.length)],
+        );
       }
 
       roles.forEach((role, i) => {
@@ -195,25 +237,37 @@ export class LifeformSpawner {
         // Near village center / player
         const sx = playerX + Math.cos(angle) * radius;
         const sy = playerY + Math.sin(angle) * radius;
-        
+
         let homeX = sx;
         let homeY = sy;
         if (numHouses > 0) {
           const house = starterVillage.data.houses[i % numHouses];
           // use the door coordinate or fallback to center of footprint
-          const hX = house.door ? house.door.x : house.x + (house.footprintW || 4) / 2;
-          const hY = house.door ? house.door.y : house.y + (house.footprintH || 4);
-          
+          const hX = house.door
+            ? house.door.x
+            : house.x + (house.footprintW || 4) / 2;
+          const hY = house.door
+            ? house.door.y
+            : house.y + (house.footprintH || 4);
+
           // Add offset to prevent overlapping if multiple people share the same house
           const personIndex = Math.floor(i / numHouses);
           const offsetX = (personIndex - 0.5) * 1.2; // space them out horizontally
-          
+
           homeX = starterVillage.gridX + hX + offsetX;
           homeY = starterVillage.gridY + hY + 1.2; // +1.2 to put them just in front of the house
         }
-        
+
         // Initial spawn is at their home
-        const npc = new NPC(this.nextEntityId++, config, homeX, homeY, homeX, homeY, role);
+        const npc = new NPC(
+          this.nextEntityId++,
+          config,
+          homeX,
+          homeY,
+          homeX,
+          homeY,
+          role,
+        );
         outNpcs.push(npc);
       });
     }
@@ -222,32 +276,33 @@ export class LifeformSpawner {
   /**
    * Spawns initial ducks in water bodies for a new settlement.
    */
-  public spawnInitialDucks(
-    starterVillage: any,
-    outAnimals: any[]
-  ) {
-    if (starterVillage && starterVillage.data && starterVillage.data.waterBodies) {
+  public spawnInitialDucks(starterVillage: any, outAnimals: any[]) {
+    if (
+      starterVillage &&
+      starterVillage.data &&
+      starterVillage.data.waterBodies
+    ) {
       for (const pond of starterVillage.data.waterBodies) {
         const duckCount = Math.max(1, Math.floor(pond.cells.length / 8));
         for (let i = 0; i < duckCount; i++) {
           const cellIndex = Math.floor(Math.random() * pond.cells.length);
           const cell = pond.cells[cellIndex];
-          
+
           // Loop for 25% chance to spawn another duck
           let keepSpawning = true;
           let currentX = cell.x;
           let currentY = cell.y;
-          
+
           while (keepSpawning) {
             const duckConfig = SPECIES_CONFIGS["duck"];
             const duck = new Animal(
               this.nextEntityId++,
               duckConfig,
               starterVillage.gridX + currentX + 0.5,
-              starterVillage.gridY + currentY + 0.5
+              starterVillage.gridY + currentY + 0.5,
             );
             outAnimals.push(duck);
-            
+
             if (Math.random() < 0.25) {
               // slightly offset the new one
               currentX += (Math.random() - 0.5) * 1.5;
@@ -264,38 +319,43 @@ export class LifeformSpawner {
   /**
    * Spawns initial terrestrial wildlife (cows, sheep, pigs, etc.) for a new settlement.
    */
-  public spawnInitialWildlife(
-    starterVillage: any,
-    outAnimals: any[]
-  ) {
+  public spawnInitialWildlife(starterVillage: any, outAnimals: any[]) {
     if (starterVillage && starterVillage.data) {
-      
       // Terrestrial Animals (cow, sheep, pig, chicken, rabbit, deer)
-      const terrestrialSpecies = ["cow", "sheep", "pig", "chicken", "rabbit", "deer"];
+      const terrestrialSpecies = [
+        "cow",
+        "sheep",
+        "pig",
+        "chicken",
+        "rabbit",
+        "deer",
+      ];
       const grid = starterVillage.data.grid;
       if (grid && grid.length > 0) {
         const height = grid.length;
         const width = grid[0].length;
-        
+
         // Spread uniformly by dividing the village into a 12x12 block grid (larger grid = 1/4th the clusters)
         const blockSize = 12;
-        
+
         for (let by = 0; by < height; by += blockSize) {
           for (let bx = 0; bx < width; bx += blockSize) {
-            
             // 90% chance to spawn a cluster in this block
-            if (Math.random() > 0.90) continue;
-            
-            const speciesKey = terrestrialSpecies[Math.floor(Math.random() * terrestrialSpecies.length)];
-            const config = SPECIES_CONFIGS[speciesKey as any];
+            if (Math.random() > 0.9) continue;
+
+            const speciesKey =
+              terrestrialSpecies[
+                Math.floor(Math.random() * terrestrialSpecies.length)
+              ];
+            const config = SPECIES_CONFIGS[speciesKey as keyof typeof SPECIES_CONFIGS];
             if (!config) continue;
-            
+
             // Try to find a valid spot within this block
             let rx = bx + Math.floor(Math.random() * blockSize);
             let ry = by + Math.floor(Math.random() * blockSize);
             rx = Math.min(rx, width - 1);
             ry = Math.min(ry, height - 1);
-            
+
             let cell = grid[ry] && grid[ry][rx] ? grid[ry][rx] : null;
             let attempts = 0;
             while ((!cell || cell.isWater || cell.blocked) && attempts < 10) {
@@ -306,28 +366,28 @@ export class LifeformSpawner {
               cell = grid[ry] && grid[ry][rx] ? grid[ry][rx] : null;
               attempts++;
             }
-            
+
             if (!cell || cell.isWater || cell.blocked) continue;
-            
+
             let currentX = rx;
             let currentY = ry;
-            
+
             // Each cluster has exactly 3 to 5 members
             const clusterSize = 3 + Math.floor(Math.random() * 3);
-            
+
             for (let j = 0; j < clusterSize; j++) {
               const animal = new Animal(
                 this.nextEntityId++,
                 config,
                 starterVillage.gridX + currentX + 0.5,
-                starterVillage.gridY + currentY + 0.5
+                starterVillage.gridY + currentY + 0.5,
               );
               outAnimals.push(animal);
-              
+
               // offset the next member slightly
               currentX += (Math.random() - 0.5) * 2;
               currentY += (Math.random() - 0.5) * 2;
-              
+
               // bounds check for safety
               currentX = Math.max(0, Math.min(width - 1, currentX));
               currentY = Math.max(0, Math.min(height - 1, currentY));
@@ -338,14 +398,12 @@ export class LifeformSpawner {
     }
   }
 
-
-
   public handlePeriodicSpawns(
     dt: number,
     playerX: number,
     playerY: number,
     currentAnimalsCount: number,
-    outAnimals: any[]
+    outAnimals: any[],
   ) {
     // Note: The timer state is kept in the spawner now.
     // However we'll need to add these timers as fields to LifeformSpawner.
@@ -379,6 +437,4 @@ export class LifeformSpawner {
       }
     }
   }
-
-
 }

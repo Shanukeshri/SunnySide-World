@@ -1846,12 +1846,17 @@ export class SurvivalEngine {
       : null;
 
     let power = 5;
-    if (activeItemDef?.gatherType === "wood" && res.type === "tree") {
+    if (res.type === "tree") {
+      if (activeItemDef?.gatherType !== "wood") {
+        this.addFloatingText("Needs Axe", res.x, res.y - 0.5, "#f87171");
+        return;
+      }
       power = activeItemDef.gatherPower || 12;
-    } else if (
-      activeItemDef?.gatherType === "stone" &&
-      (res.type === "rock" || res.type === "iron_rock")
-    ) {
+    } else if (res.type === "rock" || res.type === "iron_rock") {
+      if (activeItemDef?.gatherType !== "stone") {
+        this.addFloatingText("Needs Pickaxe", res.x, res.y - 0.5, "#f87171");
+        return;
+      }
       power = activeItemDef.gatherPower || 12;
     }
 

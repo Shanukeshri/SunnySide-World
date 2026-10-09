@@ -31,7 +31,6 @@ import {
   PlacedStructure,
   InventorySlot,
 } from "./game/GameTypes";
-import { NetworkClient } from "./client/NetworkClient";
 import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 import { isAssetCollidable } from "./data/assetCollision";
 import { WorldManager } from "./game/WorldManager";
@@ -491,12 +490,8 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     } else {
       // Single player
-      if (networkClient) {
-        networkClient.disconnect();
-      }
-      if (survivalEngine) {
-        (survivalEngine as any).networkPrediction = null;
-      }
+      currentSeed = Math.floor(Math.random() * 1000000);
+      ensureSurvivalGameLoaded();
     }
   });
 });
@@ -1007,7 +1002,7 @@ const settlementViewport = document.getElementById(
 ) as HTMLElement;
 
 let currentSettlementData: SettlementData | null = null;
-let currentSeed = 42891;
+let currentSeed = Math.floor(Math.random() * 1000000);
 let currentZoomLevel = 1.5;
 let optShowGrid = false;
 let optShowClearance = false;
@@ -1063,15 +1058,23 @@ function settlementLoop(now: number) {
   const dt = Math.min(0.1, (now - lastTime) / 1000);
   lastTime = now;
 
-  if (worldGenEngine && worldGenRenderer && settlementCanvas && viewSettlement) {
+  if (
+    worldGenEngine &&
+    worldGenRenderer &&
+    settlementCanvas &&
+    viewSettlement
+  ) {
     const rect = viewSettlement.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      if (settlementCanvas.width !== rect.width || settlementCanvas.height !== rect.height) {
+      if (
+        settlementCanvas.width !== rect.width ||
+        settlementCanvas.height !== rect.height
+      ) {
         settlementCanvas.width = rect.width;
         settlementCanvas.height = rect.height;
       }
     }
-    
+
     worldGenEngine.update(dt);
     worldGenRenderer.render(settlementCanvas, worldGenEngine, dt);
   }
@@ -1104,8 +1107,10 @@ function ensureSettlementLoaded() {
         if (!isWorldGenDragging || !worldGenEngine || !worldGenRenderer) return;
         const dx = e.clientX - worldGenLastX;
         const dy = e.clientY - worldGenLastY;
-        const tilesX = dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
-        const tilesY = dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesX =
+          dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesY =
+          dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
         worldGenEngine.player.x -= tilesX;
         worldGenEngine.player.y -= tilesY;
         worldGenRenderer.cameraX -= tilesX;
@@ -1126,11 +1131,19 @@ function ensureSettlementLoaded() {
         }
       });
       window.addEventListener("touchmove", (e) => {
-        if (!isWorldGenDragging || !worldGenEngine || !worldGenRenderer || e.touches.length === 0) return;
+        if (
+          !isWorldGenDragging ||
+          !worldGenEngine ||
+          !worldGenRenderer ||
+          e.touches.length === 0
+        )
+          return;
         const dx = e.touches[0].clientX - worldGenLastX;
         const dy = e.touches[0].clientY - worldGenLastY;
-        const tilesX = dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
-        const tilesY = dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesX =
+          dx / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
+        const tilesY =
+          dy / (worldGenRenderer.baseTileSize * worldGenRenderer.zoom);
         worldGenEngine.player.x -= tilesX;
         worldGenEngine.player.y -= tilesY;
         worldGenRenderer.cameraX -= tilesX;
@@ -1195,31 +1208,37 @@ let currentGenPhase = 0;
 const TOTAL_GEN_PHASES = 10;
 
 const PHASE_LABELS: Record<number, string> = {
-  0:  "Phase 0 — Not Started",
-  1:  "Phase 1 — Base Terrain (Grass, Roads, Water)",
-  2:  "Phase 2 — House Placement",
-  3:  "Phase 3 — Village Infrastructure (Paths, Wells)",
-  4:  "Phase 4 — Farmland Layout (Tilled Soil, Fences)",
-  5:  "Phase 5 — Crop Cultivation (Plants on Farmland)",
-  6:  "Phase 6 — Nature & Scatter (Trees, Bushes)",
-  7:  "Phase 7 — Validation",
-  8:  "Phase 8 — Villager Spawning (Roles)",
-  9:  "Phase 9 — Wildlife Spawning",
+  0: "Phase 0 — Not Started",
+  1: "Phase 1 — Base Terrain (Grass, Roads, Water)",
+  2: "Phase 2 — House Placement",
+  3: "Phase 3 — Village Infrastructure (Paths, Wells)",
+  4: "Phase 4 — Farmland Layout (Tilled Soil, Fences)",
+  5: "Phase 5 — Crop Cultivation (Plants on Farmland)",
+  6: "Phase 6 — Nature & Scatter (Trees, Bushes)",
+  7: "Phase 7 — Validation",
+  8: "Phase 8 — Villager Spawning (Roles)",
+  9: "Phase 9 — Wildlife Spawning",
   10: "Phase 10 — World Complete & Playable!",
 };
 
 function updatePhaseIndicator() {
   const indicator = document.getElementById("phase-indicator-label");
-  const nextBtn = document.getElementById("btn-next-phase") as HTMLButtonElement | null;
+  const nextBtn = document.getElementById(
+    "btn-next-phase",
+  ) as HTMLButtonElement | null;
   if (indicator) {
-    indicator.textContent = PHASE_LABELS[currentGenPhase] ?? `Phase ${currentGenPhase}`;
-    indicator.style.color = currentGenPhase === TOTAL_GEN_PHASES ? "#34d399" : "#fde68a";
+    indicator.textContent =
+      PHASE_LABELS[currentGenPhase] ?? `Phase ${currentGenPhase}`;
+    indicator.style.color =
+      currentGenPhase === TOTAL_GEN_PHASES ? "#34d399" : "#fde68a";
   }
   if (nextBtn) {
     nextBtn.disabled = currentGenPhase >= TOTAL_GEN_PHASES;
     nextBtn.style.opacity = currentGenPhase >= TOTAL_GEN_PHASES ? "0.4" : "1";
     nextBtn.querySelector("span:last-child")!.textContent =
-      currentGenPhase >= TOTAL_GEN_PHASES ? "Complete!" : `Next Phase (${currentGenPhase + 1}/${TOTAL_GEN_PHASES})`;
+      currentGenPhase >= TOTAL_GEN_PHASES
+        ? "Complete!"
+        : `Next Phase (${currentGenPhase + 1}/${TOTAL_GEN_PHASES})`;
   }
 }
 
@@ -1227,7 +1246,9 @@ async function generateAndRenderSettlement(seed?: number) {
   currentSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
   currentGenPhase = 0;
 
-  const seedInput = document.getElementById("settlement-seed-input") as HTMLInputElement;
+  const seedInput = document.getElementById(
+    "settlement-seed-input",
+  ) as HTMLInputElement;
   if (seedInput) seedInput.value = String(currentSeed);
 
   updatePhaseIndicator();
@@ -1359,7 +1380,7 @@ function initSettlementUI() {
     });
   }
 
-    // Player movement removed from Generator tab
+  // Player movement removed from Generator tab
 
   // ── MOUSE PAN, CLICK TO MOVE & PET ──────────────────────────
   if (settlementViewport) {
@@ -1416,6 +1437,7 @@ const radarCanvas = document.getElementById(
 ) as HTMLCanvasElement;
 
 let survivalEngine: SurvivalEngine | null = null;
+let networkClient: any = null;
 let survivalRenderer: SurvivalRenderer | null = null;
 let survivalAnimFrameId: number | null = null;
 let lastSurvivalTime = 0;
@@ -1480,631 +1502,10 @@ const modalChestPlayerGrid = document.getElementById(
 )!;
 
 let activeCraftCategory = "tools";
-let networkClient: NetworkClient | null = null;
 
 const hudServerStatus = document.getElementById("hud-server-status");
 const hudServerDot = document.getElementById("hud-server-dot");
 const hudPlayerCount = document.getElementById("hud-player-count");
-
-function setupNetworkClientHandlers() {
-  if (!networkClient) return;
-
-  networkClient.onStateChange((state) => {
-    if (hudServerDot && hudServerStatus) {
-      if (state === "CONNECTED") {
-        hudServerDot.style.background = "#22c55e";
-        hudServerDot.style.boxShadow = "0 0 8px #22c55e";
-        const displayHost = networkClient?.serverUrl
-          ? networkClient.serverUrl.replace(/^https?:\/\//, "")
-          : "Online";
-        hudServerStatus.textContent = `Authoritative Server: Multiplayer (${displayHost} • 20Hz)`;
-        hudServerStatus.style.color = "#4ade80";
-      } else if (state === "LOCAL_SERVER") {
-        hudServerDot.style.background = "#38bdf8";
-        hudServerDot.style.boxShadow = "0 0 8px #38bdf8";
-        hudServerStatus.textContent =
-          "Authoritative Server: Single Player (Local • 20Hz)";
-        hudServerStatus.style.color = "#38bdf8";
-      } else if (state === "CONNECTING") {
-        hudServerDot.style.background = "#eab308";
-        hudServerDot.style.boxShadow = "0 0 6px #eab308";
-        hudServerStatus.textContent = "Authoritative Server: Connecting...";
-        hudServerStatus.style.color = "#facc15";
-      } else {
-        hudServerDot.style.background = "#f97316";
-        hudServerDot.style.boxShadow = "0 0 6px #f97316";
-        hudServerStatus.textContent = "Authoritative Server: Offline";
-        hudServerStatus.style.color = "#fb923c";
-      }
-    }
-  });
-
-  networkClient.onInit((init) => {
-    if (!survivalEngine) return;
-
-    // CRITICAL FIX: Rebuild client WorldManager with the server's authoritative seed
-    // so that client-side collision checks (canMoveTo) match the actual rendered world.
-    // Without this, the client checks collisions against a world generated with a
-    // different seed, causing the player to walk through houses, fences, trees, etc.
-    if (
-      init.seed !== undefined &&
-      init.seed !== (survivalEngine as any)._lastSyncedSeed
-    ) {
-      survivalEngine.worldManager = new WorldManager(init.seed);
-      (survivalEngine as any)._lastSyncedSeed = init.seed;
-      console.log(
-        `[Collision] Rebuilt client WorldManager with server seed: ${init.seed}`,
-      );
-    }
-
-    if (init.player) {
-      survivalEngine.player.x = init.player.x;
-      survivalEngine.player.y = init.player.y;
-      survivalEngine.worldManager.updatePlayerLocation(
-        init.player.x,
-        init.player.y,
-      );
-    }
-    if (init.placedStructures) {
-      survivalEngine.placedStructures = (init.placedStructures as any[]).map(
-        (s) => ({
-          ...s,
-          type: s.type || s.structureType,
-        }),
-      );
-      for (const s of survivalEngine.placedStructures) {
-        if (s.type === "wood_wall") {
-          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
-          tile.isBlocked = true;
-        } else if (s.type === "wood_door") {
-          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
-          tile.isBlocked = !s.isOpen;
-        }
-      }
-    }
-    if (init.droppedItems) {
-      survivalEngine.droppedItems = init.droppedItems as any;
-    }
-    if (init.depletedResourceIds) {
-      for (const rid of init.depletedResourceIds) {
-        survivalEngine.worldManager.markResourceDepleted(rid);
-      }
-    }
-    if (init.worldTime) {
-      survivalEngine.worldTime = init.worldTime;
-    }
-  });
-
-  networkClient.onSync((sync) => {
-    if (!survivalEngine) return;
-
-    if (hudPlayerCount) {
-      const total = 1 + (sync.otherPlayers?.length || 0);
-      hudPlayerCount.textContent = ` ${total} Online`;
-    }
-
-    // Synchronize local player authoritative stats
-    if (sync.player) {
-      survivalEngine.player.health = sync.player.health;
-      survivalEngine.player.maxHealth = sync.player.maxHealth;
-      survivalEngine.player.hunger = sync.player.hunger;
-      survivalEngine.player.maxHunger = sync.player.maxHunger;
-      survivalEngine.player.stamina = sync.player.stamina;
-      survivalEngine.player.maxStamina = sync.player.maxStamina;
-      survivalEngine.player.isDead = sync.player.isDead;
-      survivalEngine.player.isSwimming = sync.player.isSwimming;
-      survivalEngine.player.direction = sync.player.direction;
-      survivalEngine.player.facing = sync.player.facing;
-      survivalEngine.inventory = sync.player.inventory;
-      survivalEngine.hotbar = sync.player.hotbar;
-    }
-
-    if (sync.worldTime) {
-      survivalEngine.worldTime = sync.worldTime;
-    }
-    if (sync.placedStructures) {
-      survivalEngine.placedStructures = (sync.placedStructures as any[]).map(
-        (s) => ({
-          ...s,
-          type: s.type || s.structureType,
-        }),
-      );
-      for (const s of survivalEngine.placedStructures) {
-        if (s.type === "wood_wall") {
-          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
-          tile.isBlocked = true;
-        } else if (s.type === "wood_door") {
-          const tile = survivalEngine.worldManager.getTile(s.x, s.y);
-          tile.isBlocked = !s.isOpen;
-        }
-      }
-    }
-    if (sync.depletedResourceIds) {
-      for (const rid of sync.depletedResourceIds) {
-        survivalEngine.worldManager.markResourceDepleted(rid);
-      }
-    }
-
-    // Synchronize remote players with interpolated positions
-    if (sync.otherPlayers) {
-      survivalEngine.remotePlayers = sync.otherPlayers.map((op) => {
-        const res = networkClient!.interpolator.getInterpolatedEntity(
-          op.id,
-          op.x,
-          op.y,
-        );
-        return {
-          ...op,
-          x: res.x,
-          y: res.y,
-          vx: res.vx,
-          vy: res.vy,
-        };
-      });
-    }
-
-    // Synchronize wildlife animals from authoritative server
-    if (sync.animals) {
-      const activeIds = new Set(sync.animals.map((a) => a.id));
-      survivalEngine.animals = survivalEngine.animals.filter((a: any) =>
-        activeIds.has(a.id),
-      );
-      for (const sa of sync.animals) {
-        let existing = survivalEngine.animals.find((a: any) => a.id === sa.id);
-        if (!existing) {
-          const cfg =
-            (SPECIES_CONFIGS as any)[sa.species] || SPECIES_CONFIGS["cow"];
-          existing = new Animal(sa.id, cfg, sa.x, sa.y);
-          survivalEngine.animals.push(existing);
-        }
-        existing.health = sa.health;
-        existing.direction = sa.direction;
-        existing.behaviorState = sa.behaviorState as any;
-        // Sync authoritative position from server (critical for collision relocation)
-        existing.position.x = sa.x;
-        existing.position.y = sa.y;
-      }
-    }
-
-    // Synchronize village NPCs from authoritative server
-    if (sync.npcs) {
-      const activeIds = new Set(sync.npcs.map((n) => n.id));
-      survivalEngine.npcs = survivalEngine.npcs.filter((n: any) =>
-        activeIds.has(n.id),
-      );
-      for (const sn of sync.npcs) {
-        let existing = survivalEngine.npcs.find((n: any) => n.id === sn.id);
-        if (!existing) {
-          const cfg =
-            (SPECIES_CONFIGS as any)["villager"] || SPECIES_CONFIGS["cow"];
-          existing = new NPC(
-            sn.id,
-            cfg,
-            sn.x,
-            sn.y,
-            sn.x,
-            sn.y,
-            sn.role as any,
-          );
-          survivalEngine.npcs.push(existing);
-        }
-        existing.direction = sn.direction;
-        existing.behaviorState = sn.behaviorState as any;
-        // Sync authoritative position from server
-        existing.position.x = sn.x;
-        existing.position.y = sn.y;
-      }
-    }
-
-    // Synchronize hostile enemies from authoritative server
-    if (sync.enemies) {
-      const activeIds = new Set(sync.enemies.map((e) => e.id));
-      survivalEngine.enemies = survivalEngine.enemies.filter((e: any) =>
-        activeIds.has(e.id),
-      );
-      for (const se of sync.enemies) {
-        let existing = survivalEngine.enemies.find((e: any) => e.id === se.id);
-        if (!existing) {
-          existing = {
-            id: se.id,
-            type: se.enemyType,
-            name: se.name,
-            x: se.x,
-            y: se.y,
-            vx: se.vx,
-            vy: se.vy,
-            direction: se.direction,
-            health: se.health,
-            maxHealth: se.maxHealth,
-            damage: se.damage,
-            speed: se.speed,
-            state: se.state,
-            attackCooldown: se.attackCooldown,
-            patrolTimer: se.patrolTimer,
-            hurtTimer: se.hurtTimer,
-            deathTimer: se.deathTimer,
-            isAlive: se.isAlive,
-          };
-          survivalEngine.enemies.push(existing);
-        } else {
-          existing.health = se.health;
-          existing.isAlive = se.isAlive;
-          existing.direction = se.direction;
-          existing.state = se.state;
-        }
-      }
-    }
-
-    // Synchronize dropped items
-    if (sync.droppedItems) {
-      survivalEngine.droppedItems = sync.droppedItems as any;
-    }
-  });
-
-  networkClient.onEvent((ev) => {
-    if (!survivalEngine) return;
-
-    if (ev.type === "TREE_HIT") {
-      GameAudio.playChop();
-      (survivalEngine as any).emitWoodChips(
-        ev.payload.x,
-        ev.payload.y,
-        "#a16207",
-      );
-    } else if (ev.type === "ROCK_HIT") {
-      GameAudio.playMine();
-      (survivalEngine as any).emitWoodChips(
-        ev.payload.x,
-        ev.payload.y,
-        "#94a3b8",
-      );
-    } else if (ev.type === "TREE_DESTROYED" || ev.type === "ROCK_DESTROYED") {
-      const rid = (ev.payload as any)?.resourceId;
-      if (rid !== undefined) {
-        survivalEngine.worldManager.markResourceDepleted(rid);
-      }
-      if (ev.type === "TREE_DESTROYED") {
-        GameAudio.playChop();
-        (survivalEngine as any).emitWoodChips(
-          ev.payload.x,
-          ev.payload.y,
-          "#a16207",
-        );
-      } else {
-        GameAudio.playMine();
-        (survivalEngine as any).emitWoodChips(
-          ev.payload.x,
-          ev.payload.y,
-          "#94a3b8",
-        );
-      }
-    } else if (ev.type === "ANIMAL_PETTED" || ev.type === "ANIMAL_FED") {
-      GameAudio.playHeartChime();
-      (survivalEngine as any).emitHeart(ev.payload.x, ev.payload.y);
-    } else if (ev.type === "PLAYER_DAMAGED") {
-      GameAudio.playHurt();
-    } else if (ev.type === "ITEM_PICKED_UP") {
-      GameAudio.playPickup();
-    } else if (ev.type === "ITEM_CRAFTED") {
-      GameAudio.playCraft();
-    } else if (ev.type === "BUILDING_PLACED") {
-      GameAudio.playBuild();
-    } else if (ev.type === "FLOATING_TEXT") {
-      survivalEngine.addFloatingText(
-        ev.payload.text,
-        ev.payload.x,
-        ev.payload.y,
-        ev.payload.color,
-      );
-    } else if (ev.type === "AUDIO_TRIGGER") {
-      const s = ev.payload.sound;
-      if (s === "chop") GameAudio.playChop();
-      else if (s === "mine") GameAudio.playMine();
-      else if (s === "hurt") GameAudio.playHurt();
-      else if (s === "jump") GameAudio.playJump();
-      else if (s === "craft") GameAudio.playCraft();
-      else if (s === "build") GameAudio.playBuild();
-      else if (s === "pickup") GameAudio.playPickup();
-      else if (s === "eat") GameAudio.playEat();
-      else if (s === "heart") GameAudio.playHeartChime();
-    }
-  });
-
-  // ── Multiplayer invite events ──────────────────────────────────────────────
-  networkClient.onInviteReceived((invite) => {
-    showInviteModal(invite.inviteId, invite.fromName);
-  });
-
-  networkClient.onInviteResponse((resp) => {
-    const toast = document.getElementById("mp-toast");
-    if (toast) {
-      toast.textContent = resp.accepted
-        ? `✅ ${resp.byName} joined your world!`
-        : `❌ ${resp.byName} declined your invite.`;
-      toast.classList.remove("hidden");
-      setTimeout(() => toast.classList.add("hidden"), 4000);
-    }
-  });
-
-  networkClient.onServerError((err) => {
-    const toast = document.getElementById("mp-toast");
-    if (toast) {
-      toast.textContent = `⚠️ ${err.message}`;
-      toast.classList.remove("hidden");
-      setTimeout(() => toast.classList.add("hidden"), 5000);
-    }
-  });
-
-  // Show invite code in UI when we become a room host
-  networkClient.onInit((init) => {
-    if (init.inviteCode) {
-      const codeEl = document.getElementById("mp-invite-code-display");
-      if (codeEl) {
-        codeEl.textContent = init.inviteCode;
-        const banner = document.getElementById("mp-host-banner");
-        if (banner) banner.classList.remove("hidden");
-      }
-    }
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Multiplayer UI — Host / Join / Invite (spec items 20-23)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Shows a popup when someone invites you to their world */
-function showInviteModal(inviteId: string, fromName: string): void {
-  let modal = document.getElementById("mp-invite-modal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "mp-invite-modal";
-    modal.style.cssText = `
-      position:fixed; bottom:24px; right:24px; z-index:9999;
-      border: 14px solid transparent;
-      border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer2.png') 16 fill / 16px stretch;
-      image-rendering: pixelated;
-      padding:16px 20px; min-width:280px;
-      box-shadow:0 8px 32px rgba(0,0,0,0.6);
-      color:#fef08a;
-      animation: slideInRight 0.3s ease;
-    `;
-    document.body.appendChild(modal);
-  }
-
-  modal.innerHTML = `
-    <div style="font-size:12px;color:#cbd5e1;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-      <img src="/assets/ui/playercount.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Players" />
-      Multiplayer Invite
-    </div>
-    <div style="font-size:14px;font-weight:600;margin-bottom:14px;color:#fff;">
-      <span style="color:#fef08a">${fromName}</span> invited you to join their world!
-    </div>
-    <div style="display:flex;gap:10px;">
-      <button id="mp-accept-btn" style="
-        flex:1;padding:6px 12px;border:8px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
-        image-rendering:pixelated;cursor:pointer;
-        color:#86efac;font-weight:700;font-size:12px;
-        display:flex;align-items:center;justify-content:center;gap:6px;
-      "><img src="/assets/ui/confirm.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Accept" /> Accept</button>
-      <button id="mp-decline-btn" style="
-        flex:1;padding:6px 12px;border:8px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
-        image-rendering:pixelated;cursor:pointer;
-        color:#fca5a5;font-weight:700;font-size:12px;
-        display:flex;align-items:center;justify-content:center;gap:6px;
-      "><img src="/assets/ui/cancel.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="Decline" /> Decline</button>
-    </div>
-  `;
-  modal.classList.remove("hidden");
-
-  document.getElementById("mp-accept-btn")?.addEventListener("click", () => {
-    networkClient?.acceptInvite(inviteId);
-    modal!.remove();
-  });
-  document.getElementById("mp-decline-btn")?.addEventListener("click", () => {
-    networkClient?.declineInvite(inviteId);
-    modal!.remove();
-  });
-
-  // Auto-dismiss after 30s
-  setTimeout(() => modal?.remove(), 30000);
-}
-
-/** Injects multiplayer Host/Join panel into the survival HUD */
-function initMultiplayerUI(): void {
-  // Inject CSS for mp-panel animations if not already present
-  if (!document.getElementById("mp-ui-styles")) {
-    const style = document.createElement("style");
-    style.id = "mp-ui-styles";
-    style.textContent = `
-      @keyframes slideInRight { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-      #mp-toast {
-        position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-        border: 12px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer1.png') 16 fill / 16px stretch;
-        image-rendering: pixelated;
-        color:#fef08a; padding:6px 16px; font-size:13px; font-weight:700;
-        box-shadow:0 6px 20px rgba(0,0,0,0.6); z-index:10000;
-        transition:opacity 0.3s;
-      }
-      #mp-toast.hidden { display:none; }
-      #mp-panel {
-        position:fixed; top:70px; right:16px; z-index:5000;
-        border: 14px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer2.png') 16 fill / 16px stretch;
-        image-rendering: pixelated;
-        padding:8px 12px; min-width:250px;
-        box-shadow:0 8px 32px rgba(0,0,0,0.6);
-        color:#fef08a;
-        display:none;
-      }
-      #mp-panel.open { display:block; animation:slideInRight 0.25s ease; }
-      #mp-host-banner {
-        border: 10px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/BoxesContainers/WoodenContainers/WoodenContainer4.png') 12 fill / 12px stretch;
-        image-rendering: pixelated;
-        padding:6px 10px; margin-top:10px;
-      }
-      #mp-host-banner.hidden { display:none; }
-      .mp-btn {
-        width:100%; padding:6px 10px; border: 8px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
-        image-rendering: pixelated;
-        cursor:pointer; font-weight:700; font-size:12px; color:#fef08a;
-        margin-top:8px; transition:transform 0.1s;
-        display:flex; align-items:center; justify-content:center; gap:6px;
-      }
-      .mp-btn:hover { transform:scale(1.02); }
-      .mp-input {
-        width:100%; padding:6px 8px; border:1.5px solid #78350f; background:#1e1b18;
-        color:#fef08a; font-size:13px; box-sizing:border-box; margin-top:6px;
-      }
-      .mp-input:focus { outline:none; border-color:#eab308; }
-      .mp-label { font-size:11px; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.5px; margin-top:10px; display:block; }
-      #mp-toggle-btn {
-        position:fixed; top:14px; right:80px; z-index:5001;
-        border: 8px solid transparent;
-        border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
-        image-rendering: pixelated;
-        color:#fef08a;
-        padding:4px 10px; font-size:12px; font-weight:700;
-        cursor:pointer;
-        box-shadow:0 4px 12px rgba(0,0,0,0.5);
-        transition:transform 0.1s;
-        display:flex; align-items:center; gap:6px;
-      }
-      #mp-toggle-btn:hover { transform:scale(1.04); }
-    `;
-    document.head.appendChild(style);
-  }
-
-  // Toast notification element
-  if (!document.getElementById("mp-toast")) {
-    const toast = document.createElement("div");
-    toast.id = "mp-toast";
-    toast.className = "hidden";
-    document.body.appendChild(toast);
-  }
-
-  // Multiplayer toggle button
-  if (!document.getElementById("mp-toggle-btn")) {
-    const btn = document.createElement("button");
-    btn.id = "mp-toggle-btn";
-    btn.innerHTML = `<img src="/assets/ui/playercount.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Multiplayer`;
-    btn.addEventListener("click", () => {
-      const panel = document.getElementById("mp-panel");
-      if (panel) panel.classList.toggle("open");
-    });
-    document.body.appendChild(btn);
-  }
-
-  // Multiplayer panel
-  if (!document.getElementById("mp-panel")) {
-    const panel = document.createElement("div");
-    panel.id = "mp-panel";
-    panel.innerHTML = `
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-        <img src="/assets/ui/playercount.png" style="width:16px;height:16px;image-rendering:pixelated;" alt="" /> Multiplayer
-      </div>
-      <div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">Play with friends in a shared world.</div>
-
-      <button id="mp-host-btn" class="mp-btn mp-btn-host">
-        <img src="/assets/ui/plan alt.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Host World
-      </button>
-
-      <span class="mp-label">Join via Invite Code</span>
-      <input id="mp-join-code-input" class="mp-input" type="text" placeholder="SUNNY-4821" maxlength="10" style="text-transform:uppercase;" />
-      <button id="mp-join-btn" class="mp-btn mp-btn-join">
-        <img src="/assets/ui/confirm.png" style="width:14px;height:14px;image-rendering:pixelated;" alt="" /> Join World
-      </button>
-
-      <div id="mp-host-banner" class="hidden">
-        <div style="font-size:11px;color:#fef08a;margin-bottom:4px;display:flex;align-items:center;gap:4px;">
-          <img src="/assets/ui/indicator.png" style="width:12px;height:12px;image-rendering:pixelated;" alt="" /> Your Invite Code
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span id="mp-invite-code-display" style="
-            font-size:18px;font-weight:800;letter-spacing:2px;color:#fef08a;
-            font-family:'Courier New',monospace;
-          ">——</span>
-          <button id="mp-copy-code-btn" style="
-            background:#26201b;border:1px solid #78350f;border-radius:4px;
-            color:#fef08a;font-size:11px;padding:3px 8px;cursor:pointer;
-          ">Copy</button>
-        </div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Share this code with a friend to invite them.</div>
-      </div>
-    `;
-    document.body.appendChild(panel);
-
-    // Host button
-    document.getElementById("mp-host-btn")?.addEventListener("click", () => {
-      if (!networkClient) return;
-      const name = (survivalEngine?.player as any)?.name || "Explorer";
-      const hairstyle =
-        (survivalEngine?.player as any)?.hairstyle || "style_01";
-      networkClient.hostWorld(name, hairstyle);
-      const toast = document.getElementById("mp-toast");
-      if (toast) {
-        toast.textContent = "Hosting world... waiting for invite code...";
-        toast.classList.remove("hidden");
-        setTimeout(() => toast.classList.add("hidden"), 3000);
-      }
-    });
-
-    // Join button
-    document.getElementById("mp-join-btn")?.addEventListener("click", () => {
-      if (!networkClient) return;
-      const input = document.getElementById(
-        "mp-join-code-input",
-      ) as HTMLInputElement;
-      const code = (input?.value || "").trim().toUpperCase();
-      if (!code || code.length < 6) {
-        const toast = document.getElementById("mp-toast");
-        if (toast) {
-          toast.textContent =
-            "Please enter a valid invite code (e.g. SUNNY-4821)";
-          toast.classList.remove("hidden");
-          setTimeout(() => toast.classList.add("hidden"), 3000);
-        }
-        return;
-      }
-      const name = (survivalEngine?.player as any)?.name || "Explorer";
-      const hairstyle =
-        (survivalEngine?.player as any)?.hairstyle || "style_01";
-      networkClient.joinWorld(code, name, hairstyle);
-      const toast = document.getElementById("mp-toast");
-      if (toast) {
-        toast.textContent = `Joining world ${code}...`;
-        toast.classList.remove("hidden");
-        setTimeout(() => toast.classList.add("hidden"), 3000);
-      }
-    });
-
-    // Copy invite code button
-    document
-      .getElementById("mp-copy-code-btn")
-      ?.addEventListener("click", () => {
-        const codeEl = document.getElementById("mp-invite-code-display");
-        const code = codeEl?.textContent?.trim();
-        if (code && code !== "——") {
-          navigator.clipboard
-            .writeText(code)
-            .then(() => {
-              const btn = document.getElementById("mp-copy-code-btn");
-              if (btn) {
-                btn.textContent = "Copied!";
-                setTimeout(() => {
-                  btn.textContent = "Copy";
-                }, 2000);
-              }
-            })
-            .catch(() => {});
-        }
-      });
-  }
-}
 
 function ensureSurvivalGameLoaded() {
   if (!isSurvivalInitialized) {
@@ -2115,14 +1516,6 @@ function ensureSurvivalGameLoaded() {
     initSurvivalInputs();
     initSurvivalUI();
     resizeSurvivalCanvas();
-
-    // Initialize Network Client for authoritative server (auto-detects Render or localhost)
-    networkClient = new NetworkClient();
-    (window as any).networkClient = networkClient;
-    networkClient.collisionChecker = (x, y) =>
-      (survivalEngine as any).canMoveTo(x, y);
-    setupNetworkClientHandlers();
-    networkClient.connect("Explorer", "mophair");
 
     isSurvivalInitialized = true;
   }
@@ -2655,7 +2048,7 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
         canSprint,
         survivalEngine.player.isSwimming,
         dt,
-        (x, y) => (survivalEngine as any).canMoveTo(x, y),
+        (x: number, y: number) => (survivalEngine as any).canMoveTo(x, y),
       );
 
       // Render at smoothly interpolated visual coordinates (predicted + decaying error offset)
@@ -2692,7 +2085,7 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
           false,
           survivalEngine.player.isSwimming,
           dt,
-          (x, y) => (survivalEngine as any).canMoveTo(x, y),
+          (x: number, y: number) => (survivalEngine as any).canMoveTo(x, y),
         );
         networkClient.sendInput(0, 0, false, input.seq, dt);
       }
@@ -2721,20 +2114,16 @@ function initSurvivalInputs() {
       if (survivalEngine) {
         const idx = parseInt(key, 10) - 1;
         survivalEngine.activeHotbarIndex = idx;
-        networkClient?.sendAction({ type: "SELECT_HOTBAR", index: idx });
       }
     }
 
     // Interact [E]
     if (key === "e") {
-      networkClient?.sendAction({ type: "INTERACT" });
       survivalEngine?.handleInteractKey();
     }
 
     // Feed / Eat [F]
     if (key === "f") {
-      networkClient?.sendAction({ type: "FEED" });
-      networkClient?.sendAction({ type: "EAT" });
       survivalEngine?.handleFeedKey();
       survivalEngine?.eatActiveFood();
     }
@@ -2769,7 +2158,6 @@ function initSurvivalInputs() {
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
         survivalEngine.jump();
-        networkClient?.sendAction({ type: "JUMP" });
       }
     }
 
@@ -2823,23 +2211,12 @@ function initSurvivalInputs() {
       const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
 
       if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
-        networkClient?.sendAction({
-          type: "BUILD",
-          pieceId: survivalEngine.buildPiece,
-          wx: worldX,
-          wy: worldY,
-        });
         survivalEngine.placeStructure(
           survivalEngine.buildPiece,
           worldX,
           worldY,
         );
       } else {
-        networkClient?.sendAction({
-          type: "CLICK",
-          wx: worldX,
-          wy: worldY,
-        });
         survivalEngine.handleWorldClick(worldX, worldY);
       }
     });
@@ -2880,10 +2257,6 @@ function initSurvivalInputs() {
           survivalEngine.activeHotbarIndex =
             (survivalEngine.activeHotbarIndex + 7) % 8;
         }
-        networkClient?.sendAction({
-          type: "SELECT_HOTBAR",
-          index: survivalEngine.activeHotbarIndex,
-        });
       },
       { passive: false },
     );
@@ -2892,7 +2265,6 @@ function initSurvivalInputs() {
 
 function initSurvivalUI() {
   // Initialize multiplayer Host/Join/Invite UI panel
-  initMultiplayerUI();
 
   // Fullscreen button
   btnToggleFullscreen.addEventListener("click", () => {
@@ -2988,7 +2360,6 @@ function initSurvivalUI() {
   });
 
   btnRespawn.addEventListener("click", () => {
-    networkClient?.sendAction({ type: "RESPAWN" });
     survivalEngine?.respawnPlayer();
     modalGameOver.classList.add("hidden");
   });
@@ -3107,7 +2478,6 @@ function renderCraftingList() {
 
     const craftBtn = card.querySelector(".btn-craft")!;
     craftBtn.addEventListener("click", () => {
-      networkClient?.sendAction({ type: "CRAFT", recipeId: rec.id });
       if (survivalEngine && survivalEngine.craftRecipe(rec)) {
         renderInventoryGrids();
         renderCraftingList();
