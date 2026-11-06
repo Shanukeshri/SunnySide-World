@@ -801,8 +801,6 @@ export class SurvivalEngine {
     hurtTimer: number;
     rollTimer: number;
     isSwimming: boolean;
-    idleStillTimer: number;
-    isWaiting: boolean;
     doingTimer: number;
     fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
     fishingTimer: number;
@@ -954,8 +952,6 @@ export class SurvivalEngine {
       hurtTimer: 0,
       rollTimer: 0,
       isSwimming: false,
-      idleStillTimer: 0,
-      isWaiting: false,
       doingTimer: 0,
       fishingState: "NONE",
       fishingTimer: 0,
@@ -1245,23 +1241,6 @@ export class SurvivalEngine {
       this.player.hopOffset = Math.sin(progress * Math.PI) * 0.55;
     } else {
       this.player.hopOffset = 0;
-    }
-
-    // Still / idle detection for WAITING animation (> 3 seconds still)
-    if (
-      this.player.vx === 0 &&
-      this.player.vy === 0 &&
-      this.player.swingTimer <= 0 &&
-      this.player.hopTimer <= 0 &&
-      !this.player.isSwimming
-    ) {
-      this.player.idleStillTimer += dt;
-      if (this.player.idleStillTimer >= 3.0) {
-        this.player.isWaiting = true;
-      }
-    } else {
-      this.player.idleStillTimer = 0;
-      this.player.isWaiting = false;
     }
 
     // Tool swing animation timer
@@ -1682,7 +1661,7 @@ export class SurvivalEngine {
       );
       if (clickTile.isWater) {
         this.player.fishingState = "CASTING";
-        this.player.fishingTimer = 1.4;
+        this.player.fishingTimer = 2.0;
         this.addFloatingText(
           "Casting line... 🎣",
           this.player.x,

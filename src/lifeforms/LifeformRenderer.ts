@@ -31,7 +31,7 @@ export const HUMAN_ANIMATIONS: Record<string, HumanAnimDef> = {
   DOING:     { folder: 'DOING',     prefix: 'doing',    totalFrames: 8,  speed: 0.08 },
   ROLL:      { folder: 'ROLL',      prefix: 'roll',     totalFrames: 10, speed: 0.06 },
   SWIMMING:  { folder: 'SWIMMING',  prefix: 'swimming', totalFrames: 12, speed: 0.08 },
-  WAITING:   { folder: 'WAITING',   prefix: 'waiting',  totalFrames: 9,  speed: 0.12 },
+
 };
 
 export class LifeformRenderer {
@@ -352,7 +352,7 @@ export class LifeformRenderer {
       const toolActionSet = new Set([
         'AXE', 'MINING', 'ATTACK', 'DIG', 'WATERING', 'HAMMERING',
         'CASTING', 'REELING', 'CAUGHT', 'DOING', 'CARRY', 'ROLL',
-        'SWIMMING', 'WAITING', 'IDLE', 'WALK', 'WALKING', 'RUN', 'JUMP', 'HURT', 'DEATH'
+        'SWIMMING', 'IDLE', 'WALK', 'WALKING', 'RUN', 'JUMP', 'HURT', 'DEATH'
       ]);
       const shouldDrawTool = entity.anim?.showTool ?? (entity.anim?.hasTool && toolActionSet.has(actionKey));
 

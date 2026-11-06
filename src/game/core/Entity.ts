@@ -54,7 +54,6 @@ export interface PlayerEntityState extends IBaseEntity {
   doingTimer: number;
   fishingTimer: number;
   fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
-  isWaiting: boolean;
   inventory: InventorySlot[];
   hotbar: InventorySlot[];
   activeHotbarIndex: number;

@@ -1203,10 +1203,10 @@ export class SurvivalRenderer {
           frameIndex = Math.floor(Date.now() / 110) % 8;
         } else if (p.swingTimer > 0) {
           const activeItem = activeSlot?.item || "";
-          if (activeItem.includes("axe")) {
-            action = "AXE";
-          } else if (activeItem.includes("pickaxe")) {
+          if (activeItem.includes("pickaxe")) {
             action = "MINING";
+          } else if (activeItem.includes("axe")) {
+            action = "AXE";
           } else if (
             activeItem.includes("hoe") ||
             activeItem.includes("shovel")
@@ -1241,9 +1241,7 @@ export class SurvivalRenderer {
         } else if (p.vx !== 0 || p.vy !== 0) {
           action = "WALK";
           frameIndex = Math.floor(Date.now() / 110) % 8;
-        } else if (p.isWaiting) {
-          action = "WAITING";
-          frameIndex = Math.floor(Date.now() / 140) % 9;
+
         } else {
           action = "IDLE";
           frameIndex = Math.floor(Date.now() / 140) % 9;
@@ -1284,7 +1282,7 @@ export class SurvivalRenderer {
                 "DOING",
                 "JUMP",
                 "SWIMMING",
-                "WAITING",
+
               ].includes(action),
           },
         };

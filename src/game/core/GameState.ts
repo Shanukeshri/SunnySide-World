@@ -226,7 +226,6 @@ export class GameState {
       doingTimer: 0,
       fishingTimer: 0,
       fishingState: "NONE",
-      isWaiting: false,
       inventory: Array.from({ length: 20 }, () => ({ item: null, count: 0 })),
       hotbar: [
         { item: "wooden_axe", count: 1, durability: 40, maxDurability: 40 },

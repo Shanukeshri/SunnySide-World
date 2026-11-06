@@ -145,16 +145,6 @@ export class PlayerSystem {
       player.hopOffset = 0;
     }
 
-    // Idle wait timer
-    const isMoving = player.vx !== 0 || player.vy !== 0;
-    if (!isMoving && player.swingTimer <= 0 && player.hopTimer <= 0 && !player.isSwimming) {
-      if (!player.isWaiting) {
-        player.isWaiting = true;
-      }
-    } else {
-      player.isWaiting = false;
-    }
-
     // Tool swing, hurt, roll, doing timers
     if (player.swingTimer > 0) player.swingTimer -= dt;
     if (player.hurtTimer > 0) player.hurtTimer -= dt;
