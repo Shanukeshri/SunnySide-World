@@ -194,6 +194,8 @@ export class GameState {
    */
   public addPlayer(sessionId: string, name: string = "Explorer", hairstyle: string = "style_01"): PlayerEntityState {
     const playerId = this.getNextId();
+    // Keep new co-op arrivals visibly distinct instead of stacking everyone at spawn.
+    const spawnOffset = this.players.size * 2;
     // Default starter spawn location (Oakvale center)
     const player: PlayerEntityState = {
       id: playerId,
@@ -201,7 +203,7 @@ export class GameState {
       sessionId,
       name,
       hairstyle,
-      x: 22,
+      x: 22 + spawnOffset,
       y: 18,
       vx: 0,
       vy: 0,

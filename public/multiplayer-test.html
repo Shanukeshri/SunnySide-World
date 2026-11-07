@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Multiplayer Sync Test — 2 Players Side by Side</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0c0f17; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+    .header { text-align: center; padding: 12px; background: #1e293b; border-bottom: 2px solid #334155; }
+    .header h1 { font-size: 20px; color: #38bdf8; }
+    .header p { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .controls { display: flex; gap: 8px; justify-content: center; padding: 10px; background: #131a28; }
+    .controls button { padding: 6px 16px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .controls button:hover { background: #0369a1; }
+    .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .controls button.danger { background: #dc2626; }
+    .controls button.success { background: #16a34a; }
+    .container { display: flex; gap: 0; height: calc(100vh - 200px); }
+    .player-view { flex: 1; border: 2px solid #334155; position: relative; overflow: hidden; }
+    .player-view canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+    .player-label { position: absolute; top: 8px; left: 8px; background: rgba(15,23,42,0.9); padding: 4px 12px; border-radius: 6px; font-weight: 600; font-size: 13px; border: 1px solid #334155; z-index: 10; }
+    .player-label.host { color: #38bdf8; border-color: #0284c7; }
+    .player-label.guest { color: #a78bfa; border-color: #7c3aed; }
+    .player-stats { position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(15,23,42,0.9); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-family: monospace; color: #94a3b8; z-index: 10; line-height: 1.6; border: 1px solid #334155; }
+    .log-panel { height: 120px; overflow-y: auto; background: #0f172a; border-top: 2px solid #334155; padding: 6px 12px; font-size: 11px; font-family: monospace; color: #94a3b8; }
+    .log-panel .pass { color: #4ade80; }
+    .log-panel .fail { color: #f87171; }
+    .log-panel .info { color: #38bdf8; }
+    .log-panel .warn { color: #facc15; }
+    .divider { width: 3px; background: #334155; position: relative; }
+    .divider::after { content: 'VS'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; color: #f59e0b; font-weight: 700; padding: 4px 6px; border-radius: 4px; font-size: 10px; border: 1px solid #f59e0b; }
+    .test-status { text-align: center; padding: 4px; font-weight: 600; font-size: 13px; }
+    .test-status.running { background: #1e3a5f; color: #38bdf8; }
+    .test-status.passed { background: #14532d; color: #4ade80; }
+    .test-status.failed { background: #450a0a; color: #f87171; }
+    .key-indicator { position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; z-index: 10; }
+    .key-box { width: 26px; height: 26px; background: rgba(30,41,59,0.9); border: 1px solid #475569; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #64748b; }
+    .key-box.active { background: #0284c7; border-color: #38bdf8; color: white; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎮 Multiplayer Sync Visual Test</h1>
+    <p>Two players in the same world — verify positions, movement & direction match</p>
+  </div>
+  <div class="controls">
+    <button id="btn-start" class="success">▶ Start Test</button>
+    <button id="btn-auto" disabled>🤖 Run Auto-Test Suite</button>
+    <button id="btn-stop" class="danger" disabled>⏹ Stop</button>
+    <span id="room-code" style="color:#f59e0b;font-weight:600;padding:6px 12px;"></span>
+  </div>
+  <div id="test-status" class="test-status running">Ready — click Start Test</div>
+  <div class="container">
+    <div class="player-view" id="host-view">
+      <div class="player-label host">👑 HOST (Player 1)</div>
+      <div class="key-indicator" id="host-keys">
+        <div class="key-box" data-key="w">W</div>
+        <div class="key-box" data-key="a">A</div>
+        <div class="key-box" data-key="s">S</div>
+        <div class="key-box" data-key="d">D</div>
+        <div class="key-box" data-key="shift">⇧</div>
+      </div>
+      <canvas id="host-canvas"></canvas>
+      <div class="player-stats" id="host-stats">Waiting...</div>
+    </div>
+    <div class="divider"></div>
+    <div class="player-view" id="guest-view">
+      <div class="player-label guest">🎮 GUEST (Player 2)</div>
+      <div class="key-indicator" id="guest-keys">
+        <div class="key-box" data-key="w">W</div>
+        <div class="key-box" data-key="a">A</div>
+        <div class="key-box" data-key="s">S</div>
+        <div class="key-box" data-key="d">D</div>
+        <div class="key-box" data-key="shift">⇧</div>
+      </div>
+      <canvas id="guest-canvas"></canvas>
+      <div class="player-stats" id="guest-stats">Waiting...</div>
+    </div>
+  </div>
+  <div class="log-panel" id="log-panel"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module">
+    // Try loading socket.io from server or CDN
+    const io = window.io || await import('https://cdn.socket.io/4.8.1/socket.io.esm.min.js').then(m => m.io);
+
+    const SERVER = location.protocol + '//' + location.hostname + ':3001';
+    const logEl = document.getElementById('log-panel');
+    const statusEl = document.getElementById('test-status');
+    const hostCanvas = document.getElementById('host-canvas');
+    const guestCanvas = document.getElementById('guest-canvas');
+    const hostStats = document.getElementById('host-stats');
+    const guestStats = document.getElementById('guest-stats');
+    const roomCodeEl = document.getElementById('room-code');
+
+    let hostSocket = null, guestSocket = null;
+    let hostState = null, guestState = null;
+    let hostLatestSnapshot = null, guestLatestSnapshot = null;
+    let roomCode = '';
+    let renderLoop = null;
+    let testResults = [];
+    let inputSeqHost = 0, inputSeqGuest = 0;
+
+    // Active keys per player
+    const hostActiveKeys = new Set();
+    const guestActiveKeys = new Set();
+
+    function log(msg, cls = 'info') {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = `[${new Date().toISOString().slice(11,23)}] ${msg}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = 'test-status ' + cls;
+    }
+
+    function resizeCanvases() {
+      [hostCanvas, guestCanvas].forEach(c => {
+        const parent = c.parentElement;
+        c.width = parent.clientWidth;
+        c.height = parent.clientHeight;
+      });
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // ─── RENDERING ────────────────────────────────────────────────
+    const TILE_SIZE = 32;
+    const PLAYER_COLORS = {};
+    const COLOR_PALETTE = ['#38bdf8', '#a78bfa', '#f472b6', '#fb923c', '#4ade80', '#facc15'];
+    let colorIdx = 0;
+    function getPlayerColor(id) {
+      if (!PLAYER_COLORS[id]) PLAYER_COLORS[id] = COLOR_PALETTE[colorIdx++ % COLOR_PALETTE.length];
+      return PLAYER_COLORS[id];
+    }
+
+    function renderView(canvas, snapshot, localId, label) {
+      if (!snapshot || !snapshot.players) return;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const localPlayer = snapshot.players.find(p => p.sessionId === localId);
+      if (!localPlayer) return;
+
+      const cameraX = localPlayer.x;
+      const cameraY = localPlayer.y;
+      const halfW = canvas.width / 2;
+      const halfH = canvas.height / 2;
+
+      // Clear
+      ctx.fillStyle = '#568735';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid
+      const tileSize = TILE_SIZE;
+      const startTX = Math.floor(cameraX - halfW / tileSize) - 1;
+      const endTX = Math.ceil(cameraX + halfW / tileSize) + 1;
+      const startTY = Math.floor(cameraY - halfH / tileSize) - 1;
+      const endTY = Math.ceil(cameraY + halfH / tileSize) + 1;
+
+      for (let ty = startTY; ty <= endTY; ty++) {
+        for (let tx = startTX; tx <= endTX; tx++) {
+          const sx = halfW + (tx - cameraX) * tileSize;
+          const sy = halfH + (ty - cameraY) * tileSize;
+          // Alternate grass colors
+          const isAlt = (tx + ty) % 2 === 0;
+          ctx.fillStyle = isAlt ? '#5a8f38' : '#4e7d30';
+          ctx.fillRect(Math.floor(sx), Math.floor(sy), tileSize + 1, tileSize + 1);
+          // Grid lines
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(Math.floor(sx), Math.floor(sy), tileSize, tileSize);
+        }
+      }
+
+      // Spawn cross
+      const spawnSX = halfW + (22 - cameraX) * tileSize;
+      const spawnSY = halfH + (18 - cameraY) * tileSize;
+      ctx.strokeStyle = 'rgba(255,255,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(spawnSX - 10, spawnSY); ctx.lineTo(spawnSX + 10, spawnSY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(spawnSX, spawnSY - 10); ctx.lineTo(spawnSX, spawnSY + 10); ctx.stroke();
+
+      // Draw players sorted by Y
+      const sorted = [...snapshot.players].sort((a, b) => a.y - b.y);
+      for (const p of sorted) {
+        const sx = halfW + (p.x - cameraX) * tileSize;
+        const sy = halfH + (p.y - cameraY) * tileSize;
+        const isLocal = p.sessionId === localId;
+        const color = getPlayerColor(p.sessionId);
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 10, 10, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(sx, sy - 4, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head
+        ctx.fillStyle = isLocal ? '#fbbf24' : '#e2e8f0';
+        ctx.beginPath();
+        ctx.arc(sx, sy - 18, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Direction arrow
+        const arrowLen = 14;
+        let arrowDX = 0, arrowDY = 0;
+        if (p.direction === 'RIGHT') arrowDX = arrowLen;
+        else if (p.direction === 'LEFT') arrowDX = -arrowLen;
+        else if (p.direction === 'DOWN') arrowDY = arrowLen;
+        else if (p.direction === 'UP') arrowDY = -arrowLen;
+
+        if (arrowDX || arrowDY) {
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - 4);
+          ctx.lineTo(sx + arrowDX, sy - 4 + arrowDY);
+          ctx.stroke();
+          // Arrowhead
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.arc(sx + arrowDX, sy - 4 + arrowDY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Velocity trail
+        if (Math.abs(p.vx) > 0.01 || Math.abs(p.vy) > 0.01) {
+          ctx.strokeStyle = p.isSprinting ? '#f87171' : 'rgba(255,255,255,0.3)';
+          ctx.lineWidth = p.isSprinting ? 2 : 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx - p.vx * tileSize * 0.5, sy - p.vy * tileSize * 0.5);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Sprint indicator
+        if (p.isSprinting) {
+          ctx.strokeStyle = '#f87171';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(sx, sy - 4, 14, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Name tag
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        const tag = isLocal ? `${p.name} (YOU)` : p.name;
+        const tw = ctx.measureText(tag).width + 8;
+        ctx.fillStyle = 'rgba(15,23,42,0.85)';
+        ctx.fillRect(sx - tw / 2, sy - 34, tw, 14);
+        ctx.fillStyle = isLocal ? '#fbbf24' : '#38bdf8';
+        ctx.fillText(tag, sx, sy - 23);
+      }
+
+      // Coords display
+      ctx.fillStyle = 'rgba(15,23,42,0.8)';
+      ctx.fillRect(canvas.width - 170, 6, 164, 20);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${label} view | ${snapshot.players.length}P | tick ${snapshot.tick}`, canvas.width - 12, 20);
+    }
+
+    function updateStats(el, snapshot, localId) {
+      if (!snapshot || !snapshot.players) return;
+      const local = snapshot.players.find(p => p.sessionId === localId);
+      if (!local) return;
+      const others = snapshot.players.filter(p => p.sessionId !== localId);
+      let html = `<b>Local:</b> x=${local.x.toFixed(2)} y=${local.y.toFixed(2)} vel=(${local.vx.toFixed(2)},${local.vy.toFixed(2)}) dir=${local.direction} facing=${local.facing} sprint=${local.isSprinting} hp=${local.health} sta=${local.stamina.toFixed(0)}`;
+      for (const o of others) {
+        html += `<br><b>Remote ${o.name}:</b> x=${o.x.toFixed(2)} y=${o.y.toFixed(2)} vel=(${o.vx.toFixed(2)},${o.vy.toFixed(2)}) dir=${o.direction} facing=${o.facing} sprint=${o.isSprinting}`;
+      }
+      el.innerHTML = html;
+    }
+
+    function updateKeyIndicator(containerId, activeKeys) {
+      const boxes = document.querySelectorAll(`#${containerId} .key-box`);
+      boxes.forEach(box => {
+        const key = box.dataset.key;
+        box.classList.toggle('active', activeKeys.has(key));
+      });
+    }
+
+    // ─── SOCKET CONNECTIONS ────────────────────────────────────────
+    function connectSockets() {
+      return new Promise((resolve, reject) => {
+        hostSocket = io(SERVER, { transports: ['websocket', 'polling'], timeout: 5000 });
+        guestSocket = io(SERVER, { transports: ['websocket', 'polling'], timeout: 5000 });
+        let hostReady = false, guestReady = false;
+
+        const checkBoth = () => { if (hostReady && guestReady) resolve(); };
+
+        hostSocket.on('connect', () => { log('Host socket connected: ' + hostSocket.id, 'pass'); hostReady = true; checkBoth(); });
+        guestSocket.on('connect', () => { log('Guest socket connected: ' + guestSocket.id, 'pass'); guestReady = true; checkBoth(); });
+
+        hostSocket.on('connect_error', e => reject(new Error('Host connect failed: ' + e.message)));
+        guestSocket.on('connect_error', e => reject(new Error('Guest connect failed: ' + e.message)));
+
+        hostSocket.on('snapshot', s => { hostLatestSnapshot = s; });
+        guestSocket.on('snapshot', s => { guestLatestSnapshot = s; });
+
+        setTimeout(() => reject(new Error('Socket connection timeout')), 8000);
+      });
+    }
+
+    function hostWorld() {
+      return new Promise((resolve, reject) => {
+        hostSocket.emit('host-world', { name: 'Host_Alice', hairstyle: 'mophair' }, result => {
+          if (result.ok) {
+            roomCode = result.code;
+            roomCodeEl.textContent = '🔗 Room: ' + roomCode;
+            log('Host created room: ' + roomCode, 'pass');
+
+            hostSocket.once('world-joined', snapshot => {
+              hostLatestSnapshot = snapshot;
+              log(`Host joined world (seed: ${snapshot.seed}, ${snapshot.players.length} player(s))`, 'pass');
+              resolve(snapshot);
+            });
+          } else {
+            reject(new Error(result.error || 'Host failed'));
+          }
+        });
+      });
+    }
+
+    function joinWorld() {
+      return new Promise((resolve, reject) => {
+        guestSocket.emit('join-world', { code: roomCode, name: 'Guest_Bob', hairstyle: 'curlyhair' }, result => {
+          if (result.ok) {
+            log('Guest join acknowledged', 'pass');
+
+            guestSocket.once('world-joined', snapshot => {
+              guestLatestSnapshot = snapshot;
+              log(`Guest joined world (${snapshot.players.length} player(s) visible)`, 'pass');
+              resolve(snapshot);
+            });
+          } else {
+            reject(new Error(result.error || 'Guest join failed'));
+          }
+        });
+      });
+    }
+
+    function sendInput(socket, vx, vy, isSprinting, seqRef) {
+      const seq = ++seqRef.val;
+      socket.emit('player-input', {
+        seq, vx, vy, isSprinting,
+        dt: 0.05,
+        clientTimeMs: Date.now(),
+        x: 0, y: 0
+      });
+      return seq;
+    }
+
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function waitForCondition(check, timeoutMs = 5000, pollMs = 50) {
+      return new Promise((resolve, reject) => {
+        const start = Date.now();
+        const interval = setInterval(() => {
+          if (check()) { clearInterval(interval); resolve(true); }
+          else if (Date.now() - start > timeoutMs) { clearInterval(interval); reject(new Error('Condition timeout')); }
+        }, pollMs);
+      });
+    }
+
+    // ─── TEST SUITE ────────────────────────────────────────────────
+    const hostSeq = { val: 0 };
+    const guestSeq = { val: 0 };
+
+    async function runTest(name, fn) {
+      log(`--- TEST: ${name} ---`, 'info');
+      try {
+        await fn();
+        log(`✅ PASS: ${name}`, 'pass');
+        testResults.push({ name, pass: true });
+      } catch (e) {
+        log(`❌ FAIL: ${name}: ${e.message}`, 'fail');
+        testResults.push({ name, pass: false, error: e.message });
+      }
+    }
+
+    function findPlayerInSnapshot(snapshot, name) {
+      return snapshot?.players?.find(p => p.name === name);
+    }
+
+    async function testBothPlayersVisible() {
+      await waitForCondition(() => {
+        return hostLatestSnapshot?.players?.length === 2 && guestLatestSnapshot?.players?.length === 2;
+      }, 5000);
+      const hostSeesGuest = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const guestSeesHost = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+      if (!hostSeesGuest) throw new Error('Host cannot see Guest');
+      if (!guestSeesHost) throw new Error('Guest cannot see Host');
+      log(`  Host sees Guest at (${hostSeesGuest.x.toFixed(2)}, ${hostSeesGuest.y.toFixed(2)})`, 'info');
+      log(`  Guest sees Host at (${guestSeesHost.x.toFixed(2)}, ${guestSeesHost.y.toFixed(2)})`, 'info');
+    }
+
+    async function testGuestMoveRight() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startX = before?.x || 0;
+      // Send movement inputs
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, 1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.x > startX + 0.3;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Guest moved from x=${startX.toFixed(2)} to x=${after.x.toFixed(2)} (delta=${(after.x - startX).toFixed(2)})`, 'info');
+      if (after.direction !== 'RIGHT') log(`  ⚠ Direction is ${after.direction}, expected RIGHT`, 'warn');
+    }
+
+    async function testGuestMoveLeft() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startX = before?.x || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, -1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.x < startX - 0.3;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Guest moved LEFT from x=${startX.toFixed(2)} to x=${after.x.toFixed(2)}`, 'info');
+      if (after.direction !== 'LEFT' && after.facing !== 'LEFT') throw new Error(`Direction is ${after.direction}/${after.facing}, expected LEFT`);
+    }
+
+    async function testGuestMoveDown() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startY = before?.y || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, 0, 1, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.y > startY + 0.3;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Guest moved DOWN from y=${startY.toFixed(2)} to y=${after.y.toFixed(2)}`, 'info');
+      if (after.direction !== 'DOWN') log(`  ⚠ Direction is ${after.direction}, expected DOWN`, 'warn');
+    }
+
+    async function testGuestMoveUp() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startY = before?.y || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, 0, -1, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.y < startY - 0.3;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Guest moved UP from y=${startY.toFixed(2)} to y=${after.y.toFixed(2)}`, 'info');
+      if (after.direction !== 'UP') log(`  ⚠ Direction is ${after.direction}, expected UP`, 'warn');
+    }
+
+    async function testHostMoveRight() {
+      const before = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+      const startX = before?.x || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(hostSocket, 1, 0, false, hostSeq);
+        await wait(50);
+      }
+      sendInput(hostSocket, 0, 0, false, hostSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+        return p && p.x > startX + 0.3;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+      log(`  Host moved RIGHT as seen by Guest: x=${startX.toFixed(2)} → ${after.x.toFixed(2)}`, 'info');
+    }
+
+    async function testDiagonalMovement() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startX = before?.x || 0;
+      const startY = before?.y || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, 1, 1, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.x > startX + 0.2 && p.y > startY + 0.2;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Diagonal: (${startX.toFixed(2)},${startY.toFixed(2)}) → (${after.x.toFixed(2)},${after.y.toFixed(2)})`, 'info');
+    }
+
+    async function testSprintMovement() {
+      const before = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const startX = before?.x || 0;
+      for (let i = 0; i < 10; i++) {
+        sendInput(guestSocket, 1, 0, true, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(300);
+
+      await waitForCondition(() => {
+        const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+        return p && p.x > startX + 0.5;
+      }, 4000);
+
+      const after = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Sprint moved: ${startX.toFixed(2)} → ${after.x.toFixed(2)} (delta=${(after.x - startX).toFixed(2)}, should be > walk speed)`, 'info');
+    }
+
+    async function testPositionSync() {
+      await wait(500);
+      const hostView = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const guestView = findPlayerInSnapshot(guestLatestSnapshot, 'Guest_Bob');
+      if (!hostView || !guestView) throw new Error('Cannot find Guest_Bob in both snapshots');
+
+      const dx = Math.abs(hostView.x - guestView.x);
+      const dy = Math.abs(hostView.y - guestView.y);
+      log(`  Position sync: Host sees Guest at (${hostView.x.toFixed(3)}, ${hostView.y.toFixed(3)}), Guest sees self at (${guestView.x.toFixed(3)}, ${guestView.y.toFixed(3)})`, 'info');
+      log(`  Delta: dx=${dx.toFixed(4)}, dy=${dy.toFixed(4)}`, 'info');
+
+      // Server snapshots should be identical since both receive the same authoritative state
+      if (dx > 0.01 || dy > 0.01) throw new Error(`Position mismatch too large: dx=${dx.toFixed(4)}, dy=${dy.toFixed(4)}`);
+    }
+
+    async function testDirectionSync() {
+      // Move guest right and check direction
+      for (let i = 0; i < 5; i++) {
+        sendInput(guestSocket, 1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(400);
+
+      const hostView = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const guestView = findPlayerInSnapshot(guestLatestSnapshot, 'Guest_Bob');
+      log(`  Direction sync: Host sees dir=${hostView?.direction}, Guest sees dir=${guestView?.direction}`, 'info');
+      if (hostView?.direction !== guestView?.direction) {
+        throw new Error(`Direction mismatch: host=${hostView?.direction} vs guest=${guestView?.direction}`);
+      }
+    }
+
+    async function testFacingSync() {
+      // Move guest left and check facing
+      for (let i = 0; i < 5; i++) {
+        sendInput(guestSocket, -1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(400);
+
+      const hostView = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const guestView = findPlayerInSnapshot(guestLatestSnapshot, 'Guest_Bob');
+      log(`  Facing sync: Host sees facing=${hostView?.facing}, Guest sees facing=${guestView?.facing}`, 'info');
+      if (hostView?.facing !== guestView?.facing) {
+        throw new Error(`Facing mismatch: host=${hostView?.facing} vs guest=${guestView?.facing}`);
+      }
+    }
+
+    async function testIdleAfterMovement() {
+      // Move then stop
+      for (let i = 0; i < 5; i++) {
+        sendInput(guestSocket, 1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(600);
+
+      const p = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      if (Math.abs(p?.vx) > 0.01 || Math.abs(p?.vy) > 0.01) {
+        throw new Error(`Player not idle after stop: vx=${p.vx}, vy=${p.vy}`);
+      }
+      log(`  Player correctly idle: vx=${p.vx.toFixed(3)}, vy=${p.vy.toFixed(3)}`, 'info');
+    }
+
+    async function testSimultaneousMovement() {
+      const hostBefore = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+      const guestBefore = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const hStartX = hostBefore?.x || 0;
+      const gStartX = guestBefore?.x || 0;
+
+      // Both move right simultaneously
+      for (let i = 0; i < 10; i++) {
+        sendInput(hostSocket, 1, 0, false, hostSeq);
+        sendInput(guestSocket, -1, 0, false, guestSeq);
+        await wait(50);
+      }
+      sendInput(hostSocket, 0, 0, false, hostSeq);
+      sendInput(guestSocket, 0, 0, false, guestSeq);
+      await wait(500);
+
+      const hostAfter = findPlayerInSnapshot(guestLatestSnapshot, 'Host_Alice');
+      const guestAfter = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      log(`  Host moved: ${hStartX.toFixed(2)} → ${hostAfter.x.toFixed(2)}`, 'info');
+      log(`  Guest moved: ${gStartX.toFixed(2)} → ${guestAfter.x.toFixed(2)}`, 'info');
+      if (hostAfter.x <= hStartX) throw new Error('Host did not move right');
+      if (guestAfter.x >= gStartX) throw new Error('Guest did not move left');
+    }
+
+    async function testSeedMatch() {
+      if (!hostLatestSnapshot || !guestLatestSnapshot) throw new Error('No snapshots');
+      if (hostLatestSnapshot.seed !== guestLatestSnapshot.seed) {
+        throw new Error(`Seed mismatch: host=${hostLatestSnapshot.seed} vs guest=${guestLatestSnapshot.seed}`);
+      }
+      log(`  Seeds match: ${hostLatestSnapshot.seed}`, 'info');
+    }
+
+    async function testHealthSync() {
+      const hostView = findPlayerInSnapshot(hostLatestSnapshot, 'Guest_Bob');
+      const guestView = findPlayerInSnapshot(guestLatestSnapshot, 'Guest_Bob');
+      if (hostView?.health !== guestView?.health) {
+        throw new Error(`Health mismatch: ${hostView?.health} vs ${guestView?.health}`);
+      }
+      log(`  Health synced: ${hostView?.health}`, 'info');
+    }
+
+    // ─── MANUAL KEYBOARD CONTROL ──────────────────────────────────
+    // Player 1 (Host): WASD + Shift
+    // Player 2 (Guest): Arrow keys + Space for sprint
+    let manualMode = false;
+
+    function setupManualControls() {
+      manualMode = true;
+      const keyToDir = {
+        // Host controls: WASD
+        'w': { player: 'host', vx: 0, vy: -1 },
+        'a': { player: 'host', vx: -1, vy: 0 },
+        's': { player: 'host', vx: 0, vy: 1 },
+        'd': { player: 'host', vx: 1, vy: 0 },
+      };
+
+      window.addEventListener('keydown', e => {
+        if (!hostSocket || !guestSocket) return;
+        const key = e.key.toLowerCase();
+
+        if (key === 'shift') {
+          hostActiveKeys.add('shift');
+          return;
+        }
+
+        const mapping = keyToDir[key];
+        if (mapping && mapping.player === 'host') {
+          hostActiveKeys.add(key);
+        }
+      });
+
+      window.addEventListener('keyup', e => {
+        const key = e.key.toLowerCase();
+        if (key === 'shift') {
+          hostActiveKeys.delete('shift');
+          return;
+        }
+        hostActiveKeys.delete(key);
+      });
+
+      // Continuous input loop for manual control
+      setInterval(() => {
+        if (!hostSocket?.connected) return;
+        let vx = 0, vy = 0;
+        if (hostActiveKeys.has('w')) vy -= 1;
+        if (hostActiveKeys.has('s')) vy += 1;
+        if (hostActiveKeys.has('a')) vx -= 1;
+        if (hostActiveKeys.has('d')) vx += 1;
+        const sprint = hostActiveKeys.has('shift');
+        if (vx !== 0 || vy !== 0) {
+          sendInput(hostSocket, vx, vy, sprint, hostSeq);
+        }
+        updateKeyIndicator('host-keys', hostActiveKeys);
+        updateKeyIndicator('guest-keys', guestActiveKeys);
+      }, 50);
+    }
+
+    // ─── RENDER LOOP ────────────────────────────────────────
+    function startRendering() {
+      resizeCanvases();
+      function frame() {
+        if (hostLatestSnapshot && hostSocket) {
+          renderView(hostCanvas, hostLatestSnapshot, hostSocket.id, 'HOST');
+          updateStats(hostStats, hostLatestSnapshot, hostSocket.id);
+        }
+        if (guestLatestSnapshot && guestSocket) {
+          renderView(guestCanvas, guestLatestSnapshot, guestSocket.id, 'GUEST');
+          updateStats(guestStats, guestLatestSnapshot, guestSocket.id);
+        }
+        renderLoop = requestAnimationFrame(frame);
+      }
+      renderLoop = requestAnimationFrame(frame);
+    }
+
+    // ─── MAIN ─────────────────────────────────────────────────────
+    document.getElementById('btn-start').addEventListener('click', async () => {
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('btn-stop').disabled = false;
+      document.getElementById('btn-auto').disabled = false;
+      setStatus('Connecting to server...', 'running');
+
+      try {
+        await connectSockets();
+        setStatus('Creating world...', 'running');
+        await hostWorld();
+        setStatus('Guest joining...', 'running');
+        await wait(300);
+        await joinWorld();
+        setStatus('Both players connected — use WASD to move Host, click Auto-Test for full suite', 'running');
+
+        startRendering();
+        setupManualControls();
+
+        log('✨ Both players in world! Use WASD+Shift to move Host manually, or click Auto-Test.', 'pass');
+      } catch (e) {
+        log('FATAL: ' + e.message, 'fail');
+        setStatus('Connection failed: ' + e.message, 'failed');
+      }
+    });
+
+    document.getElementById('btn-auto').addEventListener('click', async () => {
+      document.getElementById('btn-auto').disabled = true;
+      setStatus('Running automated test suite...', 'running');
+      testResults = [];
+
+      await runTest('Both Players Visible', testBothPlayersVisible);
+      await runTest('World Seed Match', testSeedMatch);
+      await runTest('Guest Move RIGHT', testGuestMoveRight);
+      await runTest('Guest Move LEFT', testGuestMoveLeft);
+      await runTest('Guest Move DOWN', testGuestMoveDown);
+      await runTest('Guest Move UP', testGuestMoveUp);
+      await runTest('Host Move RIGHT (seen by Guest)', testHostMoveRight);
+      await runTest('Diagonal Movement', testDiagonalMovement);
+      await runTest('Sprint Movement', testSprintMovement);
+      await runTest('Position Sync Accuracy', testPositionSync);
+      await runTest('Direction Sync', testDirectionSync);
+      await runTest('Facing Sync', testFacingSync);
+      await runTest('Idle After Movement', testIdleAfterMovement);
+      await runTest('Simultaneous Movement', testSimultaneousMovement);
+      await runTest('Health Sync', testHealthSync);
+
+      const passed = testResults.filter(t => t.pass).length;
+      const failed = testResults.filter(t => !t.pass).length;
+      const total = testResults.length;
+
+      if (failed === 0) {
+        setStatus(`✅ ALL ${total} TESTS PASSED`, 'passed');
+        log(`🎉 ALL ${total} TESTS PASSED!`, 'pass');
+      } else {
+        setStatus(`⚠ ${passed}/${total} passed, ${failed} failed`, 'failed');
+        log(`Results: ${passed}/${total} passed, ${failed} failed`, 'fail');
+      }
+
+      document.getElementById('btn-auto').disabled = false;
+    });
+
+    document.getElementById('btn-stop').addEventListener('click', () => {
+      if (renderLoop) cancelAnimationFrame(renderLoop);
+      hostSocket?.close();
+      guestSocket?.close();
+      log('Test stopped', 'warn');
+      setStatus('Stopped', 'failed');
+      document.getElementById('btn-start').disabled = false;
+      document.getElementById('btn-stop').disabled = true;
+      document.getElementById('btn-auto').disabled = true;
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,242 @@
+[
+  {
+    "name": "Host Room Creation",
+    "passed": true,
+    "detail": "Room Code: DHFWN, Seed: 666220",
+    "timestamp": "2026-11-07T13:21:13.446Z"
+  },
+  {
+    "name": "2 Players Connected",
+    "passed": true,
+    "detail": "Both Host and Guest report \"2 Online\" in same room",
+    "timestamp": "2026-11-07T13:21:15.628Z"
+  },
+  {
+    "name": "World Seed Match",
+    "passed": true,
+    "detail": "Host seed=666220, Guest seed=666220",
+    "timestamp": "2026-11-07T13:21:16.639Z"
+  },
+  {
+    "name": "Host Sees Guest",
+    "passed": true,
+    "detail": "Host remotes count=1",
+    "timestamp": "2026-11-07T13:21:16.640Z"
+  },
+  {
+    "name": "Guest Sees Host",
+    "passed": true,
+    "detail": "Guest remotes count=1",
+    "timestamp": "2026-11-07T13:21:16.640Z"
+  },
+  {
+    "name": "Guest Position Sync Accuracy",
+    "passed": true,
+    "detail": "Guest local=(24.000, 18.000) vs Host sees=(24.000, 18.000) | delta=0.0000",
+    "timestamp": "2026-11-07T13:21:16.640Z"
+  },
+  {
+    "name": "Host Position Sync Accuracy",
+    "passed": true,
+    "detail": "Host local=(22.000, 18.000) vs Guest sees=(22.000, 18.000) | delta=0.0000",
+    "timestamp": "2026-11-07T13:21:16.640Z"
+  },
+  {
+    "name": "Guest Moved Right (Local)",
+    "passed": true,
+    "detail": "Guest x: 24.00 -> 26.00 (delta: +2.00)",
+    "timestamp": "2026-11-07T13:21:17.758Z"
+  },
+  {
+    "name": "Host Saw Guest Move Right (Remote)",
+    "passed": true,
+    "detail": "Host sees guest at x=26.00",
+    "timestamp": "2026-11-07T13:21:17.758Z"
+  },
+  {
+    "name": "Guest Facing RIGHT on Host View",
+    "passed": true,
+    "detail": "dir=RIGHT, facing=RIGHT",
+    "timestamp": "2026-11-07T13:21:17.758Z"
+  },
+  {
+    "name": "Guest Moved Left (Local)",
+    "passed": true,
+    "detail": "Guest x: 26.00 -> 24.00 (delta: -2.00)",
+    "timestamp": "2026-11-07T13:21:18.909Z"
+  },
+  {
+    "name": "Host Saw Guest Move Left (Remote)",
+    "passed": true,
+    "detail": "Host sees guest at x=24.00",
+    "timestamp": "2026-11-07T13:21:18.909Z"
+  },
+  {
+    "name": "Guest Facing LEFT on Host View",
+    "passed": true,
+    "detail": "dir=LEFT, facing=LEFT",
+    "timestamp": "2026-11-07T13:21:18.909Z"
+  },
+  {
+    "name": "Guest Moved Down (Local)",
+    "passed": true,
+    "detail": "Guest y: 18.00 -> 19.42 (delta: +1.42)",
+    "timestamp": "2026-11-07T13:21:19.860Z"
+  },
+  {
+    "name": "Host Saw Guest Move Down (Remote)",
+    "passed": true,
+    "detail": "Host sees guest at y=19.42",
+    "timestamp": "2026-11-07T13:21:19.860Z"
+  },
+  {
+    "name": "Guest Direction DOWN on Host View",
+    "passed": true,
+    "detail": "dir=DOWN",
+    "timestamp": "2026-11-07T13:21:19.860Z"
+  },
+  {
+    "name": "Guest Moved Up (Local)",
+    "passed": true,
+    "detail": "Guest y: 19.42 -> 18.00 (delta: -1.43)",
+    "timestamp": "2026-11-07T13:21:20.809Z"
+  },
+  {
+    "name": "Host Saw Guest Move Up (Remote)",
+    "passed": true,
+    "detail": "Host sees guest at y=18.00",
+    "timestamp": "2026-11-07T13:21:20.809Z"
+  },
+  {
+    "name": "Guest Direction UP on Host View",
+    "passed": true,
+    "detail": "dir=UP",
+    "timestamp": "2026-11-07T13:21:20.809Z"
+  },
+  {
+    "name": "ArrowRight Moves Player",
+    "passed": true,
+    "detail": "x: 24.00 -> 25.62",
+    "timestamp": "2026-11-07T13:21:21.886Z"
+  },
+  {
+    "name": "Guest Diagonal Movement (Both axes changed)",
+    "passed": true,
+    "detail": "dx=+1.51, dy=-1.37 (X increased, Y decreased)",
+    "timestamp": "2026-11-07T13:21:23.409Z"
+  },
+  {
+    "name": "Host Observed Diagonal Movement",
+    "passed": true,
+    "detail": "Host sees: dx=+1.51, dy=-1.37",
+    "timestamp": "2026-11-07T13:21:23.409Z"
+  },
+  {
+    "name": "Sprint Speed > Walk Speed",
+    "passed": true,
+    "detail": "Walk distance=2.00 tiles vs Sprint distance=3.04 tiles (Ratio: 1.52x)",
+    "timestamp": "2026-11-07T13:21:27.015Z"
+  },
+  {
+    "name": "Jump Triggered Hop Action",
+    "passed": true,
+    "detail": "Hop offset during jump: 0.000",
+    "timestamp": "2026-11-07T13:21:32.077Z"
+  },
+  {
+    "name": "Player Stopped to Complete Idle",
+    "passed": true,
+    "detail": "Local vel=(0, 0), Remote vel=(0, 0)",
+    "timestamp": "2026-11-07T13:21:32.717Z"
+  },
+  {
+    "name": "Idle Position Match (<0.08 tiles)",
+    "passed": true,
+    "detail": "Guest local=(23.865, 18.179) vs Host remote=(23.865, 18.179) | delta=0.0000",
+    "timestamp": "2026-11-07T13:21:32.717Z"
+  },
+  {
+    "name": "Host Moved Left (Local)",
+    "passed": true,
+    "detail": "Host x: 22.00 -> 19.50",
+    "timestamp": "2026-11-07T13:21:34.849Z"
+  },
+  {
+    "name": "Guest Observed Host Move Left",
+    "passed": true,
+    "detail": "Guest sees Host at x=19.50",
+    "timestamp": "2026-11-07T13:21:34.849Z"
+  },
+  {
+    "name": "Host-to-Guest Sync Accuracy",
+    "passed": true,
+    "detail": "Host=(19.498, 18.000) vs Guest sees=(19.498, 18.000) | delta=0.0000",
+    "timestamp": "2026-11-07T13:21:34.849Z"
+  },
+  {
+    "name": "Simultaneous Movement: Host Moved Right",
+    "passed": true,
+    "detail": "Host x: 19.50 -> 21.94",
+    "timestamp": "2026-11-07T13:21:36.376Z"
+  },
+  {
+    "name": "Simultaneous Movement: Guest Moved Left",
+    "passed": true,
+    "detail": "Guest x: 23.86 -> 21.43",
+    "timestamp": "2026-11-07T13:21:36.376Z"
+  },
+  {
+    "name": "Host Sees Guest Shifted Left",
+    "passed": true,
+    "detail": "Host sees guest at x=21.43",
+    "timestamp": "2026-11-07T13:21:36.376Z"
+  },
+  {
+    "name": "Guest Sees Host Shifted Right",
+    "passed": true,
+    "detail": "Guest sees host at x=21.94",
+    "timestamp": "2026-11-07T13:21:36.376Z"
+  },
+  {
+    "name": "3 Players In Same World",
+    "passed": true,
+    "detail": "Host, Guest, and Player 3 all report \"3 Online\"",
+    "timestamp": "2026-11-07T13:21:42.280Z"
+  },
+  {
+    "name": "Host Sees 2 Remote Players",
+    "passed": true,
+    "detail": "Remotes count: 2",
+    "timestamp": "2026-11-07T13:21:43.087Z"
+  },
+  {
+    "name": "Guest Sees 2 Remote Players",
+    "passed": true,
+    "detail": "Remotes count: 2",
+    "timestamp": "2026-11-07T13:21:43.087Z"
+  },
+  {
+    "name": "Player 3 Sees 2 Remote Players",
+    "passed": true,
+    "detail": "Remotes count: 2",
+    "timestamp": "2026-11-07T13:21:43.087Z"
+  },
+  {
+    "name": "Player 3 Moved Right",
+    "passed": true,
+    "detail": "P3 x: 26.00 -> 28.00",
+    "timestamp": "2026-11-07T13:21:43.903Z"
+  },
+  {
+    "name": "Host Synced With Player 3",
+    "passed": true,
+    "detail": "Host found P3 at x=28.00",
+    "timestamp": "2026-11-07T13:21:43.903Z"
+  },
+  {
+    "name": "Guest Synced With Player 3",
+    "passed": true,
+    "detail": "Guest found P3 at x=28.00",
+    "timestamp": "2026-11-07T13:21:43.903Z"
+  }
+]

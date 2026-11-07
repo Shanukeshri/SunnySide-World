@@ -52,6 +52,11 @@
               <span>Single Player</span>
             </button>
 
+            <button id="btn-menu-multiplayer" class="menu-btn multiplayer-menu-btn">
+              <span aria-hidden="true">👥</span>
+              <span>Multiplayer</span>
+            </button>
+
             <button id="btn-menu-settings" class="menu-btn secondary-menu-btn">
               <img
                 src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SettingsButton.png"
@@ -60,6 +65,21 @@
               />
               <span>Settings</span>
             </button>
+          </div>
+        </div>
+
+        <div id="modal-multiplayer" class="menu-modal hidden" role="dialog" aria-modal="true" aria-labelledby="multiplayer-title">
+          <div class="menu-modal-card">
+            <button id="btn-close-multiplayer" class="menu-modal-close" aria-label="Close multiplayer">×</button>
+            <h2 id="multiplayer-title">Play Together</h2>
+            <p>Host a shared world, then give its invite code to a friend.</p>
+            <button id="btn-host-game" class="menu-btn primary-menu-btn">Host New World</button>
+            <div class="menu-divider"><span>or join a friend</span></div>
+            <label for="invite-code-input">Invite code</label>
+            <input id="invite-code-input" class="menu-text-input" maxlength="5" placeholder="ABCDE" autocomplete="off" />
+            <p id="join-error-text" class="menu-error" role="alert"></p>
+            <button id="btn-join-game" class="menu-btn multiplayer-menu-btn">Join World</button>
+            <small>WebRTC improves peer responsiveness; Socket.IO keeps the world in sync.</small>
           </div>
         </div>
       </div>

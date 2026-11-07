@@ -34,6 +34,7 @@ import {
 import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 import { isAssetCollidable } from "./data/assetCollision";
 import { WorldManager } from "./game/WorldManager";
+import { NetworkClient } from "./client/NetworkClient";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -1507,6 +1508,39 @@ const hudServerStatus = document.getElementById("hud-server-status");
 const hudServerDot = document.getElementById("hud-server-dot");
 const hudPlayerCount = document.getElementById("hud-player-count");
 
+function setMultiplayerStatus(text: string, players: number) {
+  if (hudServerStatus) hudServerStatus.textContent = `Multiplayer: ${text}`;
+  if (hudPlayerCount) hudPlayerCount.textContent = ` ${players} Online`;
+  if (hudServerDot) hudServerDot.classList.toggle("online", text.startsWith("Connected") || text.startsWith("Online"));
+}
+
+function applyMultiplayerSnapshot(snapshot: any) {
+  if (!survivalEngine || !networkClient) return;
+  const localId = networkClient.clientId;
+  const local = snapshot.players.find((player: any) => player.sessionId === localId);
+  if (local) {
+    networkClient.prediction.reconcile(local);
+    Object.assign(survivalEngine.player, {
+      health: local.health, hunger: local.hunger, stamina: local.stamina,
+      isSprinting: local.isSprinting, direction: local.direction, facing: local.facing,
+    });
+  }
+  survivalEngine.remotePlayers = snapshot.players.filter((player: any) => player.sessionId !== localId).map((player: any) => {
+    networkClient.interpolator.push(player.sessionId, player.x, player.y, player.vx, player.vy);
+    const old = survivalEngine!.remotePlayers.find((item: any) => item.id === player.sessionId);
+    return { ...old, ...player, id: player.sessionId };
+  });
+}
+
+function joinMultiplayerWorld(snapshot: any) {
+  // Each client creates the same deterministic map from the server's shared seed.
+  survivalEngine = new SurvivalEngine(snapshot.seed);
+  (window as any).survivalEngine = survivalEngine;
+  (window as any).gameEngine = survivalEngine;
+  applyMultiplayerSnapshot(snapshot);
+  setMultiplayerStatus(`Online · invite code ${snapshot.roomCode}`, snapshot.players.length);
+}
+
 function ensureSurvivalGameLoaded() {
   if (!isSurvivalInitialized) {
     survivalEngine = new SurvivalEngine(currentSeed);
@@ -1519,6 +1553,15 @@ function ensureSurvivalGameLoaded() {
 
     isSurvivalInitialized = true;
   }
+  if (!networkClient) {
+    networkClient = new NetworkClient({
+      onSnapshot: applyMultiplayerSnapshot,
+      onJoined: joinMultiplayerWorld,
+      onStatus: setMultiplayerStatus,
+    });
+    (window as any).networkClient = networkClient;
+    setMultiplayerStatus("Single player", 1);
+  }
 }
 
 export function startSurvivalGameLoop() {
@@ -1526,14 +1569,19 @@ export function startSurvivalGameLoop() {
   resizeSurvivalCanvas();
   if (!survivalAnimFrameId) {
     lastSurvivalTime = performance.now();
+    if (document.hidden) {
+    survivalAnimFrameId = setTimeout(() => survivalGameLoop(performance.now()), 50) as any;
+  } else {
     survivalAnimFrameId = requestAnimationFrame(survivalGameLoop);
+  }
   }
 }
 
 export function stopSurvivalGameLoop() {
   isSurvivalTabActive = false;
   if (survivalAnimFrameId) {
-    cancelAnimationFrame(survivalAnimFrameId);
+    cancelAnimationFrame(survivalAnimFrameId as number);
+    clearTimeout(survivalAnimFrameId as any);
     survivalAnimFrameId = null;
   }
 }
@@ -1733,7 +1781,11 @@ function survivalGameLoop(now: number) {
     }
   }
 
-  survivalAnimFrameId = requestAnimationFrame(survivalGameLoop);
+  if (document.hidden) {
+    survivalAnimFrameId = setTimeout(() => survivalGameLoop(performance.now()), 50) as any;
+  } else {
+    survivalAnimFrameId = requestAnimationFrame(survivalGameLoop);
+  }
 }
 
 function updateSurvivalHUD() {
