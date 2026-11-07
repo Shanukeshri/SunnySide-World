@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Host Room Created",
+    "passed": true,
+    "detail": "Room Code: KXKW3",
+    "timestamp": "2026-11-07T13:55:24.908Z"
+  },
+  {
+    "name": "Both Tabs Connected to World",
+    "passed": true,
+    "detail": "Host and Guest report 2 Online",
+    "timestamp": "2026-11-07T13:55:27.563Z"
+  },
+  {
+    "name": "Guest Hop Triggered Locally",
+    "passed": true,
+    "detail": "hopTimer=0.48",
+    "timestamp": "2026-11-07T13:55:28.741Z"
+  },
+  {
+    "name": "Host Observes Guest Jump / Hop",
+    "passed": true,
+    "detail": "Host sees: hopTimer=0.50, hopOffset=0.155",
+    "timestamp": "2026-11-07T13:55:28.742Z"
+  },
+  {
+    "name": "Guest Swing Triggered Locally",
+    "passed": true,
+    "detail": "swingTimer=0.20",
+    "timestamp": "2026-11-07T13:55:30.047Z"
+  },
+  {
+    "name": "Host Observes Guest Tool Swing",
+    "passed": true,
+    "detail": "Host sees: swingTimer=0.15, facing=RIGHT",
+    "timestamp": "2026-11-07T13:55:30.048Z"
+  },
+  {
+    "name": "Guest Switched to Pickaxe (Slot 2)",
+    "passed": true,
+    "detail": "Guest slot=1, item=wooden_pickaxe",
+    "timestamp": "2026-11-07T13:55:31.059Z"
+  },
+  {
+    "name": "Host Sees Guest Holding Pickaxe",
+    "passed": true,
+    "detail": "Host sees: item=wooden_pickaxe, slot=1",
+    "timestamp": "2026-11-07T13:55:31.059Z"
+  },
+  {
+    "name": "Host Observes Mining Swing with Pickaxe",
+    "passed": true,
+    "detail": "Host sees: swingTimer=0.20, item=wooden_pickaxe",
+    "timestamp": "2026-11-07T13:55:31.112Z"
+  },
+  {
+    "name": "Guest Switched to Sword (Slot 3)",
+    "passed": true,
+    "detail": "Guest slot=2, item=wooden_sword",
+    "timestamp": "2026-11-07T13:55:32.033Z"
+  },
+  {
+    "name": "Host Sees Guest Holding Sword",
+    "passed": true,
+    "detail": "Host sees: item=wooden_sword, slot=2",
+    "timestamp": "2026-11-07T13:55:32.033Z"
+  },
+  {
+    "name": "Host Observes Attack Swing with Sword",
+    "passed": true,
+    "detail": "Host sees: swingTimer=0.20, item=wooden_sword",
+    "timestamp": "2026-11-07T13:55:32.089Z"
+  },
+  {
+    "name": "Host Jump Observed by Guest",
+    "passed": true,
+    "detail": "Guest sees Host: hopTimer=0.45, hopOffset=0.297",
+    "timestamp": "2026-11-07T13:55:33.158Z"
+  },
+  {
+    "name": "Host Swing Observed by Guest",
+    "passed": true,
+    "detail": "Guest sees Host: swingTimer=0.20, facing=LEFT",
+    "timestamp": "2026-11-07T13:55:33.714Z"
+  },
+  {
+    "name": "Simultaneous Jump/Swing during Movement Succeeded",
+    "passed": true,
+    "detail": "Host x=22.09, Guest x=24.00",
+    "timestamp": "2026-11-07T13:55:35.274Z"
+  }
+]

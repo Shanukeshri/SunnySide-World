@@ -2,6 +2,12 @@ import { LivingEntity } from "./LivingEntity";
 import { SpeciesConfig } from "./types";
 import { EnvironmentDetector } from "./EnvironmentDetector";
 
+function seededRand(seed: number, step: number, subIndex: number = 0): number {
+  let h = (seed * 374761393 + step * 668265263 + subIndex * 12345) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 export const HAIRSTYLE_VARIANTS = [
   "bowlhair",
   "curlyhair",
@@ -124,6 +130,7 @@ export class NPC extends LivingEntity {
   public customTitle?: string;
   public customDialogue?: string;
   private stateTimer: number = 0;
+  private aiDecisionCount: number = 0;
 
   public homeX: number;
   public homeY: number;
@@ -230,18 +237,22 @@ export class NPC extends LivingEntity {
             targetY = waterCell.y;
           }
         } else if (this.role === "blacksmith") {
-          targetX = this.homeX + (Math.random() - 0.5) * 6;
-          targetY = this.homeY + (Math.random() - 0.5) * 6;
+          const step = ++this.aiDecisionCount;
+          targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 6;
+          targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 6;
         } else if (this.role === "guide") {
-          targetX = this.homeX + (Math.random() - 0.5) * 20;
-          targetY = this.homeY + (Math.random() - 0.5) * 20;
+          const step = ++this.aiDecisionCount;
+          targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 20;
+          targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 20;
         } else {
-          targetX = this.homeX + (Math.random() - 0.5) * 8;
-          targetY = this.homeY + (Math.random() - 0.5) * 8;
+          const step = ++this.aiDecisionCount;
+          targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 8;
+          targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 8;
         }
       } else {
-        targetX = this.homeX + (Math.random() - 0.5) * 2;
-        targetY = this.homeY + (Math.random() - 0.5) * 2;
+        const step = ++this.aiDecisionCount;
+        targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 2;
+        targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 2;
       }
 
       if (det.isAreaWalkable(targetX, targetY, 0.2, 0.2, false, false)) {
@@ -296,7 +307,7 @@ export class NPC extends LivingEntity {
 
   onTargetReached() {
     if (this.role && this.role !== "villager" && this.role !== "child") {
-      this.behaviorState = Math.random() > 0.3 ? "WORKING" : "IDLE";
+      this.behaviorState = seededRand(this.id, ++this.aiDecisionCount, 3) > 0.3 ? "WORKING" : "IDLE";
     } else {
       this.behaviorState = "IDLE";
     }

@@ -248,6 +248,8 @@ export class LifeformRenderer {
     ctx.imageSmoothingEnabled = false;
     if (entity.behaviorState === 'DEAD') {
       ctx.globalAlpha = Math.max(0, Math.min(1, entity.anim?.deathAlpha ?? 1.0));
+    } else if (entity.hurtTimer && entity.hurtTimer > 0) {
+      ctx.filter = 'brightness(2.2) drop-shadow(0 0 5px #ef4444)';
     }
 
     ctx.translate(screenX, screenY + visualOffsetY);

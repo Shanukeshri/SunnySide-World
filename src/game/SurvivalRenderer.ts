@@ -932,7 +932,12 @@ export class SurvivalRenderer {
       depthList.push({
         yOrder: struct.y + struct.h,
         draw: () => {
-          const screen = worldToScreen(struct.x, struct.y);
+          const rawScreen = worldToScreen(struct.x, struct.y);
+          const shakeOffset =
+            struct.shakeTimer && struct.shakeTimer > 0
+              ? Math.random() * 4 - 2
+              : 0;
+          const screen = { sx: rawScreen.sx + shakeOffset, sy: rawScreen.sy };
           if (struct.type === "wood_wall") {
             ctx.fillStyle = "#78350f";
             ctx.fillRect(
@@ -1023,6 +1028,28 @@ export class SurvivalRenderer {
               screen.sy + cellSize / 2 - 2,
               4,
               4,
+            );
+          }
+
+          if (
+            struct.health !== undefined &&
+            struct.maxHealth &&
+            struct.health < struct.maxHealth
+          ) {
+            const barW = cellSize * 0.8;
+            const barH = 4;
+            const barX = screen.sx + (cellSize - barW) / 2;
+            const barY = screen.sy - 8;
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(
+              barX,
+              barY,
+              barW * Math.max(0, struct.health / struct.maxHealth),
+              barH,
             );
           }
         },
@@ -1203,6 +1230,7 @@ export class SurvivalRenderer {
           frameIndex = Math.floor(Date.now() / 110) % 8;
         } else if (p.swingTimer > 0) {
           const activeItem = activeSlot?.item || "";
+          let dur = (p as any).swingDuration || 0.25;
           if (activeItem.includes("pickaxe")) {
             action = "MINING";
           } else if (activeItem.includes("axe")) {
@@ -1212,16 +1240,20 @@ export class SurvivalRenderer {
             activeItem.includes("shovel")
           ) {
             action = "DIG";
+            dur = 0.35;
           } else if (activeItem.includes("water")) {
             action = "WATERING";
+            dur = 0.35;
           } else if (activeItem.includes("hammer") || engine.buildPiece) {
             action = "HAMMERING";
+            dur = 0.35;
           } else if (activeItem.includes("rod")) {
             action = "CASTING";
+            dur = 0.35;
           } else {
             action = "ATTACK";
           }
-          const progress = Math.min(1, Math.max(0, 1 - p.swingTimer / 0.25));
+          const progress = Math.min(1, Math.max(0, 1 - p.swingTimer / dur));
           const totalF = HUMAN_ANIMATIONS[action]?.totalFrames || 10;
           frameIndex = Math.min(totalF - 1, Math.floor(progress * totalF));
         } else if (p.isSwimming) {
@@ -1312,15 +1344,82 @@ export class SurvivalRenderer {
             const groundY = screen.sy + cellSize / 2;
             const isFacingLeft =
               rp.facing === "LEFT" || rp.direction === "LEFT";
-            const isTool = !!rp.activeHeldItem;
+
+            // Determine active held tool/item
+            const rpItem = rp.activeHeldItem || (rp.hotbar ? rp.hotbar[rp.activeHotbarIndex || 0]?.item : null);
+            const rpItemDef = rpItem ? (ITEM_CATALOG as Record<string, any>)[rpItem] : null;
+            const isToolOrWeapon = rpItemDef?.category === "tool" || rpItemDef?.category === "weapon" || (!!rpItem && (rpItem.includes("axe") || rpItem.includes("pickaxe") || rpItem.includes("sword") || rpItem.includes("shovel") || rpItem.includes("water") || rpItem.includes("hammer") || rpItem.includes("rod")));
 
             let action = "IDLE";
-            if (rp.isDead) action = "DEATH";
-            else if (rp.hurtTimer > 0) action = "HURT";
-            else if (rp.swingTimer > 0) action = "AXE";
-            else if (rp.isSwimming) action = "SWIMMING";
-            else if (rp.vx !== 0 || rp.vy !== 0)
-              action = rp.isSprinting ? "RUN" : "WALK";
+            let frameIndex = 0;
+
+            if (rp.isDead) {
+              action = "DEATH";
+              frameIndex = Math.min(12, Math.floor(Date.now() / 100) % 13);
+            } else if (rp.hurtTimer > 0) {
+              action = "HURT";
+              frameIndex = Math.floor(Date.now() / 90) % 8;
+            } else if (rp.fishingState && rp.fishingState !== "NONE") {
+              if (rp.fishingState === "CASTING") {
+                action = "CASTING";
+                frameIndex = Math.floor(Date.now() / 90) % 15;
+              } else if (rp.fishingState === "REELING") {
+                action = "REELING";
+                frameIndex = Math.floor(Date.now() / 90) % 13;
+              } else if (rp.fishingState === "CAUGHT") {
+                action = "CAUGHT";
+                frameIndex = Math.floor(Date.now() / 90) % 10;
+              }
+            } else if (rp.doingTimer > 0) {
+              action = "DOING";
+              frameIndex = Math.floor(Date.now() / 110) % 8;
+            } else if (rp.rollTimer > 0) {
+              action = "ROLL";
+              frameIndex = Math.floor(Date.now() / 80) % 10;
+            } else if (rp.swingTimer > 0) {
+              const activeItem = rpItem || "";
+              let dur = (rp as any).swingDuration || 0.25;
+              if (rp.activeAction) {
+                action = rp.activeAction;
+              } else if (activeItem.includes("pickaxe")) {
+                action = "MINING";
+              } else if (activeItem.includes("axe")) {
+                action = "AXE";
+              } else if (activeItem.includes("hoe") || activeItem.includes("shovel")) {
+                action = "DIG";
+                dur = 0.35;
+              } else if (activeItem.includes("water")) {
+                action = "WATERING";
+                dur = 0.35;
+              } else if (activeItem.includes("hammer")) {
+                action = "HAMMERING";
+                dur = 0.35;
+              } else if (activeItem.includes("rod")) {
+                action = "CASTING";
+                dur = 0.35;
+              } else {
+                action = "ATTACK";
+              }
+              const progress = Math.min(1, Math.max(0, 1 - rp.swingTimer / dur));
+              const totalF = HUMAN_ANIMATIONS[action]?.totalFrames || 10;
+              frameIndex = Math.min(totalF - 1, Math.floor(progress * totalF));
+            } else if (rp.isSwimming) {
+              action = "SWIMMING";
+              frameIndex = Math.floor(Date.now() / 100) % 12;
+            } else if (rp.hopTimer > 0) {
+              action = "JUMP";
+              const progress = Math.max(0, Math.min(1, 1 - rp.hopTimer / 0.55));
+              frameIndex = Math.min(8, Math.floor(progress * 9));
+            } else if (rp.isSprinting && (rp.vx !== 0 || rp.vy !== 0)) {
+              action = "RUN";
+              frameIndex = Math.floor(Date.now() / 90) % 8;
+            } else if (rp.vx !== 0 || rp.vy !== 0) {
+              action = "WALK";
+              frameIndex = Math.floor(Date.now() / 110) % 8;
+            } else {
+              action = "IDLE";
+              frameIndex = Math.floor(Date.now() / 140) % 9;
+            }
 
             const remoteEntity: any = {
               position: { x: rp.x, y: rp.y },
@@ -1331,13 +1430,28 @@ export class SurvivalRenderer {
               hairstyle: rp.hairstyle || "curlyhair",
               anim: {
                 action,
-                currentFrame: Math.floor(Date.now() / 110) % 8,
+                currentFrame: frameIndex,
                 flipX: isFacingLeft,
                 jumpOffset: (rp.hopOffset || 0) * 24,
                 eatingBobOffset: 0,
                 deathAlpha: 1.0,
-                hasTool: isTool,
-                showTool: isTool,
+                hasTool: isToolOrWeapon,
+                showTool:
+                  isToolOrWeapon ||
+                  [
+                    "AXE",
+                    "MINING",
+                    "ATTACK",
+                    "DIG",
+                    "WATERING",
+                    "HAMMERING",
+                    "CASTING",
+                    "REELING",
+                    "CAUGHT",
+                    "DOING",
+                    "JUMP",
+                    "SWIMMING",
+                  ].includes(action),
               },
             };
 

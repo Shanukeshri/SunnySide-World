@@ -111,7 +111,9 @@ export class WorldManager {
     generated: boolean;
   }[] = [];
 
-  private nextResourceId = 1;
+  public getResourceId(wx: number, wy: number): number {
+    return ((Math.round(wx) + 10000) * 20000 + (Math.round(wy) + 10000)) >>> 0;
+  }
   public depletedResourceIds: Set<number> = new Set();
   private stampedVillages = new Set<number>();
 
@@ -465,7 +467,7 @@ export class WorldManager {
         this.getTile(wx + fdx, wy + h - 1).isBlocked = true;
       }
       this.addResourceToWorld({
-        id: this.nextResourceId++,
+        id: this.getResourceId(wx, wy),
         type: "tree",
         x: wx,
         y: wy,
@@ -483,7 +485,7 @@ export class WorldManager {
       const wx = startX + b.x;
       const wy = startY + b.y;
       this.addResourceToWorld({
-        id: this.nextResourceId++,
+        id: this.getResourceId(wx, wy),
         type: "bush",
         x: wx,
         y: wy,
@@ -505,7 +507,7 @@ export class WorldManager {
         const wx = startX + cell.x;
         const wy = startY + cell.y;
         this.addResourceToWorld({
-          id: this.nextResourceId++,
+          id: this.getResourceId(wx, wy),
           type: "crop",
           x: wx,
           y: wy,
@@ -745,7 +747,7 @@ export class WorldManager {
           if (!canPlaceTree) continue;
 
           chunk.resources.push({
-            id: this.nextResourceId++,
+            id: this.getResourceId(wx, wy),
             type: "tree",
             x: wx,
             y: wy,
@@ -768,7 +770,7 @@ export class WorldManager {
         if (roll < treeChance + 0.05) {
           const isIron = rng() < 0.25;
           chunk.resources.push({
-            id: this.nextResourceId++,
+            id: this.getResourceId(wx, wy),
             type: isIron ? "iron_rock" : "rock",
             x: wx,
             y: wy,
@@ -787,7 +789,7 @@ export class WorldManager {
         // 3. Berry Bushes
         if (roll < treeChance + 0.1) {
           chunk.resources.push({
-            id: this.nextResourceId++,
+            id: this.getResourceId(wx, wy),
             type: "bush",
             x: wx,
             y: wy,
@@ -867,7 +869,15 @@ export class WorldManager {
           const centerX = res.x + res.w / 2;
           const centerY = res.y + res.h / 2;
           const dist = Math.hypot(wx - centerX, wy - centerY);
-          if (dist <= radius) {
+          const inside =
+            wx >= res.x &&
+            wx < res.x + res.w &&
+            wy >= res.y &&
+            wy < res.y + res.h;
+          if (
+            inside ||
+            dist <= Math.max(radius, Math.max(res.w, res.h) * 0.85)
+          ) {
             return res;
           }
         }

@@ -821,6 +821,7 @@ export class SurvivalEngine {
   public woodChips: WoodChipParticle[] = [];
   public floatingTexts: FloatingText[] = [];
   public remotePlayers: any[] = [];
+  public onWorldAction?: (action: any) => void;
 
   // Day / Night World Clock
   public worldTime: WorldTime = {
@@ -907,7 +908,7 @@ export class SurvivalEngine {
 
   public detector: EnvironmentDetector;
 
-  private nextEntityId = 1000;
+  private nextEntityId = 10000;
   private nextItemId = 1;
   private nextParticleId = 1;
   private hungerTickTimer = 0;
@@ -1120,6 +1121,12 @@ export class SurvivalEngine {
 
     // 8. Update Particles & VFX
     this.updateParticles(dt);
+
+    for (const struct of this.placedStructures) {
+      if (struct.shakeTimer && struct.shakeTimer > 0) {
+        struct.shakeTimer = Math.max(0, struct.shakeTimer - dt);
+      }
+    }
 
     // 9. Periodic Spawning (Wildlife)
     this.lifeformSpawner.setNextEntityId(this.nextEntityId);
@@ -1401,7 +1408,8 @@ export class SurvivalEngine {
               item.y,
               "#38bdf8",
             );
-            this.droppedItems.splice(i, 1);
+            const itemId = item.id;
+            this.removeDroppedItem(itemId, false);
 
             // Check quest progress
             if (item.item === "wood")
@@ -1420,7 +1428,7 @@ export class SurvivalEngine {
    * Updates state of living wildlife animals and village NPCs.
    * Entities > 4 chunks away: animals are culled/not simulated, NPCs are frozen in place.
    */
-  private updateLifeforms(dt: number) {
+  public updateLifeforms(dt: number) {
     const pcx = Math.floor(this.player.x / 16);
     const pcy = Math.floor(this.player.y / 16);
 
@@ -1561,13 +1569,255 @@ export class SurvivalEngine {
    * Performs an attack/hit in a small radius in front of the player based on facing direction.
    * Strikes any living creature (animals sprint away, enemies take damage) or harvestable resources.
    */
+  /**
+   * Universal Animal Hit & Damage Synchronization
+   */
+  public hitAnimal(
+    animalId: number,
+    damage: number,
+    attackerX: number,
+    attackerY: number,
+    isRemote = false,
+  ): boolean {
+    const animal = this.animals.find((a) => a.id === animalId);
+    if (!animal || !animal.isActive || animal.behaviorState === "DEAD") return false;
+
+    animal.takeDamage(damage);
+    animal.fleeFrom(attackerX, attackerY, this.detector);
+    GameAudio.playHurt();
+    this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
+    this.addFloatingText(
+      `-${damage}`,
+      animal.position.x,
+      animal.position.y - 0.6,
+      "#ef4444",
+    );
+
+    if (!isRemote) {
+      this.useActiveToolDurability();
+      this.onWorldAction?.({
+        type: "hit-animal",
+        animalId: animal.id,
+        damage,
+        attackerX,
+        attackerY,
+      });
+    }
+
+    if (animal.health <= 0) {
+      animal.behaviorState = "DEAD";
+      this.addFloatingText("Defeated!", animal.position.x, animal.position.y - 0.8, "#fbbf24");
+      const isBird = animal.species === "duck" || animal.species === "chicken";
+      this.spawnDroppedItem("raw_meat", 1 + (animal.species === "cow" ? 1 : 0), animal.position.x, animal.position.y);
+      if (isBird) {
+        this.spawnDroppedItem("feathers" as ItemId, 1, animal.position.x + 0.2, animal.position.y);
+      } else if (animal.species === "cow" || animal.species === "deer") {
+        this.spawnDroppedItem("leather" as ItemId, 1, animal.position.x + 0.2, animal.position.y);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Universal Resource Node Hit & Depletion Synchronization
+   */
+  public hitResource(
+    resX: number,
+    resY: number,
+    power: number,
+    activeItem: string | null = null,
+    isRemote = false,
+    resId?: number,
+  ): boolean {
+    let res: ResourceNode | null = null;
+    if (resId !== undefined) {
+      res = this.worldManager.getResourceById(resId);
+    }
+    if (!res) {
+      res = this.worldManager.getResourceAt(resX, resY, 1.4);
+    }
+    if (!res || res.isDepleted) return false;
+
+    res.health -= power;
+    res.shakeTimer = 0.25;
+
+    if (res.type === "tree" || res.type.startsWith("tree_")) {
+      GameAudio.playChop();
+      this.emitWoodChips(res.x + res.w / 2, res.y + res.h / 2, "#a16207");
+      this.addFloatingText(`-${power}`, res.x + res.w / 2, res.y - 0.4, "#f59e0b");
+    } else if (res.type === "rock" || res.type === "iron_rock") {
+      GameAudio.playMine();
+      this.emitWoodChips(res.x + res.w / 2, res.y + res.h / 2, "#94a3b8");
+      this.addFloatingText(`-${power}`, res.x + res.w / 2, res.y - 0.4, "#94a3b8");
+    } else if (res.type === "bush") {
+      GameAudio.playPickup();
+      this.emitWoodChips(res.x + 0.5, res.y + 0.5, "#4ade80");
+      this.addFloatingText(`-${power}`, res.x + 0.5, res.y - 0.4, "#4ade80");
+    } else {
+      GameAudio.playPickup();
+      this.emitWoodChips(res.x + 0.5, res.y + 0.5, "#facc15");
+      this.addFloatingText(`-${power}`, res.x + 0.5, res.y - 0.4, "#facc15");
+    }
+
+    if (!isRemote) {
+      this.useActiveToolDurability();
+      this.onWorldAction?.({
+        type: "hit-resource",
+        id: res.id,
+        x: res.x,
+        y: res.y,
+        damage: power,
+        tool: activeItem,
+      });
+    }
+
+    if (res.health <= 0) {
+      res.isDepleted = true;
+      this.worldManager.markResourceDepleted(res.id);
+
+      if (res.type === "crop") {
+        this.spawnDroppedItem("wheat", 1 + Math.floor(Math.random() * 2), res.x + 0.5, res.y + 0.5);
+        if (Math.random() < 0.5) this.spawnDroppedItem("seeds", 1, res.x + 0.7, res.y + 0.5);
+      } else if (res.type === "tree" || res.type.startsWith("tree_")) {
+        const count = 3 + Math.floor(Math.random() * 3);
+        this.spawnDroppedItem(res.lootItem, count, res.x + 1.0, res.y + 1.0);
+        if (res.secondaryLoot && Math.random() < 0.55) {
+          this.spawnDroppedItem(res.secondaryLoot, 1, res.x + 1.3, res.y + 1.0);
+        }
+      } else {
+        const count = 2 + Math.floor(Math.random() * 2);
+        this.spawnDroppedItem(res.lootItem, count, res.x + 0.5, res.y + 0.5);
+        if (res.secondaryLoot && Math.random() < 0.55) {
+          this.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.7, res.y + 0.5);
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Universal Hostile Enemy Hit Synchronization
+   */
+  public hitEnemy(
+    enemyId: number,
+    damage: number,
+    attackerX: number,
+    attackerY: number,
+    isRemote = false,
+  ): boolean {
+    const enemy = this.enemies.find((e) => e.id === enemyId);
+    if (!enemy || !enemy.isAlive) return false;
+
+    enemy.health -= damage;
+    enemy.hurtTimer = 0.25;
+    GameAudio.playHurt();
+    this.addFloatingText(`-${damage}`, enemy.x, enemy.y - 0.5, "#ef4444");
+
+    const angle = Math.atan2(enemy.y - attackerY, enemy.x - attackerX);
+    enemy.x += Math.cos(angle) * 0.6;
+    enemy.y += Math.sin(angle) * 0.6;
+
+    if (!isRemote) {
+      this.useActiveToolDurability();
+      this.onWorldAction?.({
+        type: "hit-enemy",
+        enemyId: enemy.id,
+        damage,
+        attackerX,
+        attackerY,
+      });
+    }
+
+    if (enemy.health <= 0) {
+      enemy.isAlive = false;
+      this.addFloatingText("Defeated!", enemy.x, enemy.y - 0.7, "#fbbf24");
+      if (enemy.type === "slime") {
+        this.spawnDroppedItem("slime_gel", Math.floor(1 + Math.random() * 2), enemy.x, enemy.y);
+      } else {
+        this.spawnDroppedItem("raw_meat", 1, enemy.x, enemy.y);
+        if (Math.random() < 0.5) this.spawnDroppedItem("iron_ore", 1, enemy.x, enemy.y);
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Universal Placed Structure Damage / Dismantling Synchronization
+   */
+  public hitStructure(
+    structX: number,
+    structY: number,
+    damage: number,
+    isRemote = false,
+  ): boolean {
+    const tileX = Math.round(structX);
+    const tileY = Math.round(structY);
+    const idx = this.placedStructures.findIndex((s) => s.x === tileX && s.y === tileY);
+    if (idx < 0) return false;
+
+    const struct = this.placedStructures[idx];
+    if (struct.health === undefined) {
+      struct.health = 25;
+      struct.maxHealth = 25;
+    }
+    struct.health -= damage;
+    struct.shakeTimer = 0.25;
+
+    GameAudio.playCraft();
+    this.emitWoodChips(struct.x + 0.5, struct.y + 0.5, "#a16207");
+    this.addFloatingText(`-${damage}`, struct.x + 0.5, struct.y - 0.4, "#f59e0b");
+
+    if (!isRemote) {
+      this.useActiveToolDurability();
+      this.onWorldAction?.({
+        type: "hit-structure",
+        x: tileX,
+        y: tileY,
+        damage,
+      });
+    }
+
+    if (struct.health <= 0) {
+      this.placedStructures.splice(idx, 1);
+      const tile = this.worldManager.getTile(tileX, tileY);
+      tile.isBlocked = false;
+      GameAudio.playHurt();
+      this.addFloatingText("Dismantled!", tileX + 0.5, tileY - 0.5, "#f87171");
+      this.spawnDroppedItem(struct.type as ItemId, 1, tileX + 0.5, tileY + 0.5);
+    }
+    return true;
+  }
+
+  /**
+   * Universal Door State Toggle Synchronization
+   */
+  public toggleDoor(tileX: number, tileY: number, isRemote = false): boolean {
+    tileX = Math.round(tileX);
+    tileY = Math.round(tileY);
+    const struct = this.placedStructures.find((s) => s.x === tileX && s.y === tileY && s.type === "wood_door");
+    if (!struct) return false;
+    struct.isOpen = !struct.isOpen;
+    GameAudio.playBuild();
+    if (!isRemote) {
+      this.onWorldAction?.({
+        type: "toggle-door",
+        x: tileX,
+        y: tileY,
+        isOpen: struct.isOpen,
+      });
+    }
+    return true;
+  }
+
+  /**
+   * Performs an attack/hit in front of the player based on facing direction.
+   */
   public performDirectionalHit(): boolean {
     if (this.player.isDead) return false;
 
     this.player.swingTimer = 0.25;
     GameAudio.playSwing();
 
-    // Small radius in the direction the player is facing
     const reach = 0.95;
     let hitX = this.player.x;
     let hitY = this.player.y;
@@ -1585,27 +1835,17 @@ export class SurvivalEngine {
     }
 
     const hitRadius = 1.35;
+    const activeSlot = this.getActiveItemSlot();
+    const activeItem = activeSlot?.item || "";
+    const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
 
-    // 1. Check Living Animals in facing hit cone -> take damage & sprint away!
+    // 1. Check Living Animals in facing hit cone
     for (const animal of this.animals) {
       if (!animal.isActive || animal.behaviorState === "DEAD") continue;
-      const dist = Math.hypot(
-        hitX - animal.position.x,
-        hitY - animal.position.y,
-      );
+      const dist = Math.hypot(hitX - animal.position.x, hitY - animal.position.y);
       if (dist <= hitRadius) {
-        const dmg = 15;
-        animal.takeDamage(dmg);
-        animal.fleeFrom(this.player.x, this.player.y, this.detector);
-        GameAudio.playHurt();
-        this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
-        this.addFloatingText(
-          `-${dmg}`,
-          animal.position.x,
-          animal.position.y - 0.6,
-          "#ef4444",
-        );
-        this.useActiveToolDurability();
+        const dmg = activeItemDef?.damage || 15;
+        this.hitAnimal(animal.id, dmg, this.player.x, this.player.y, false);
         return true;
       }
     }
@@ -1615,7 +1855,8 @@ export class SurvivalEngine {
       if (!enemy.isAlive) continue;
       const dist = Math.hypot(hitX - enemy.x, hitY - enemy.y);
       if (dist <= hitRadius + 0.2) {
-        this.attackEnemy(enemy);
+        const dmg = activeItemDef?.damage || 6;
+        this.hitEnemy(enemy.id, dmg, this.player.x, this.player.y, false);
         return true;
       }
     }
@@ -1623,8 +1864,33 @@ export class SurvivalEngine {
     // 3. Check Harvestable Resources (Trees, Rocks, Bushes, Crops)
     const resource = this.worldManager.getResourceAt(hitX, hitY, hitRadius);
     if (resource && !resource.isDepleted) {
-      this.harvestResource(resource);
+      let power = 5;
+      if (resource.type === "tree" || resource.type.startsWith("tree_")) {
+        if (activeItemDef?.gatherType !== "wood") {
+          this.addFloatingText("Needs Axe", resource.x, resource.y - 0.5, "#f87171");
+          return true;
+        }
+        power = activeItemDef.gatherPower || 12;
+      } else if (resource.type === "rock" || resource.type === "iron_rock") {
+        if (activeItemDef?.gatherType !== "stone") {
+          this.addFloatingText("Needs Pickaxe", resource.x, resource.y - 0.5, "#f87171");
+          return true;
+        }
+        power = activeItemDef.gatherPower || 12;
+      }
+      this.hitResource(resource.x, resource.y, power, activeItem, false);
       return true;
+    }
+
+    // 4. Check Placed Structures in hit cone
+    for (const struct of this.placedStructures) {
+      const dist = Math.hypot(hitX - (struct.x + 0.5), hitY - (struct.y + 0.5));
+      if (dist <= hitRadius) {
+        if (activeItem.includes("hammer") || activeItem.includes("axe") || activeItem.includes("pickaxe")) {
+          this.hitStructure(struct.x, struct.y, 10, false);
+          return true;
+        }
+      }
     }
 
     return false;
@@ -1652,6 +1918,7 @@ export class SurvivalEngine {
 
     const activeSlot = this.getActiveItemSlot();
     const activeItem = activeSlot?.item || "";
+    const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
 
     // Fishing Rod interaction on water
     if (activeItem === "fishing_rod") {
@@ -1698,7 +1965,7 @@ export class SurvivalEngine {
       return;
     }
 
-    // 1. Check if clicking on an animal within interaction reach -> hits and sprints away!
+    // 1. Check if clicking on an animal within interaction reach
     for (const animal of this.animals) {
       if (!animal.isActive || animal.behaviorState === "DEAD") continue;
       const dist = Math.hypot(wx - animal.position.x, wy - animal.position.y);
@@ -1707,18 +1974,8 @@ export class SurvivalEngine {
         this.player.y - animal.position.y,
       );
       if (dist < 1.3 && playerDist <= 3.2) {
-        const dmg = 15;
-        animal.takeDamage(dmg);
-        animal.fleeFrom(this.player.x, this.player.y, this.detector);
-        GameAudio.playHurt();
-        this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
-        this.addFloatingText(
-          `-${dmg}`,
-          animal.position.x,
-          animal.position.y - 0.6,
-          "#ef4444",
-        );
-        this.useActiveToolDurability();
+        const dmg = activeItemDef?.damage || 15;
+        this.hitAnimal(animal.id, dmg, this.player.x, this.player.y, false);
         return;
       }
     }
@@ -1731,7 +1988,8 @@ export class SurvivalEngine {
         dist < 1.4 &&
         Math.hypot(this.player.x - enemy.x, this.player.y - enemy.y) < 3.2
       ) {
-        this.attackEnemy(enemy);
+        const dmg = activeItemDef?.damage || 6;
+        this.hitEnemy(enemy.id, dmg, this.player.x, this.player.y, false);
         return;
       }
     }
@@ -1744,20 +2002,36 @@ export class SurvivalEngine {
         this.player.y - resource.y,
       );
       if (playerDist <= 3.2) {
-        this.harvestResource(resource);
+        let power = 5;
+        if (resource.type === "tree" || resource.type.startsWith("tree_")) {
+          if (activeItemDef?.gatherType !== "wood") {
+            this.addFloatingText("Needs Axe", resource.x, resource.y - 0.5, "#f87171");
+            return;
+          }
+          power = activeItemDef.gatherPower || 12;
+        } else if (resource.type === "rock" || resource.type === "iron_rock") {
+          if (activeItemDef?.gatherType !== "stone") {
+            this.addFloatingText("Needs Pickaxe", resource.x, resource.y - 0.5, "#f87171");
+            return;
+          }
+          power = activeItemDef.gatherPower || 12;
+        }
+        this.hitResource(resource.x, resource.y, power, activeItem, false);
         return;
       }
     }
 
-    // 4. Check if clicking on a placed chest or door
+    // 4. Check if clicking on a placed chest, door, or structure
     for (const struct of this.placedStructures) {
-      if (Math.hypot(wx - struct.x, wy - struct.y) < 1.2) {
+      if (Math.hypot(wx - (struct.x + 0.5), wy - (struct.y + 0.5)) < 1.2) {
         if (struct.type === "chest") {
           this.activeChest = struct;
           return;
         } else if (struct.type === "wood_door") {
-          struct.isOpen = !struct.isOpen;
-          GameAudio.playBuild();
+          this.toggleDoor(struct.x, struct.y, false);
+          return;
+        } else if (activeItem.includes("hammer") || activeItem.includes("axe") || activeItem.includes("pickaxe")) {
+          this.hitStructure(struct.x, struct.y, 10, false);
           return;
         }
       }
@@ -1765,134 +2039,6 @@ export class SurvivalEngine {
 
     // 5. Directional swing in front of player
     this.performDirectionalHit();
-  }
-
-  /**
-   * Attacks enemy with active weapon/tool.
-   */
-  private attackEnemy(enemy: EnemyEntity) {
-    const activeSlot = this.getActiveItemSlot();
-    const activeItemDef = activeSlot?.item
-      ? ITEM_CATALOG[activeSlot.item]
-      : null;
-
-    const baseDamage = activeItemDef?.damage || 6;
-    const finalDamage = Math.round(baseDamage * (0.9 + Math.random() * 0.2));
-
-    enemy.health -= finalDamage;
-    enemy.hurtTimer = 0.25;
-    GameAudio.playHurt();
-    this.addFloatingText(`-${finalDamage}`, enemy.x, enemy.y - 0.5, "#ef4444");
-
-    // Reduce tool durability
-    this.useActiveToolDurability();
-
-    // Knockback
-    const angle = Math.atan2(enemy.y - this.player.y, enemy.x - this.player.x);
-    enemy.x += Math.cos(angle) * 0.6;
-    enemy.y += Math.sin(angle) * 0.6;
-
-    if (enemy.health <= 0) {
-      enemy.isAlive = false;
-      this.addFloatingText("Defeated!", enemy.x, enemy.y - 0.7, "#fbbf24");
-
-      // Spawn loot drops
-      if (enemy.type === "slime") {
-        this.spawnDroppedItem(
-          "slime_gel",
-          Math.floor(1 + Math.random() * 2),
-          enemy.x,
-          enemy.y,
-        );
-      } else {
-        this.spawnDroppedItem("raw_meat", 1, enemy.x, enemy.y);
-        if (Math.random() < 0.5)
-          this.spawnDroppedItem("iron_ore", 1, enemy.x, enemy.y);
-      }
-    }
-  }
-
-  /**
-   * Harvests tree, rock, bush, or crop and generates dropped item pickups.
-   * Ensures crops have a finite harvest yield (not unlimited).
-   */
-  private harvestResource(res: ResourceNode) {
-    if (res.isDepleted) return;
-
-    const activeSlot = this.getActiveItemSlot();
-    const activeItemDef = activeSlot?.item
-      ? ITEM_CATALOG[activeSlot.item]
-      : null;
-
-    let power = 5;
-    if (res.type === "tree") {
-      if (activeItemDef?.gatherType !== "wood") {
-        this.addFloatingText("Needs Axe", res.x, res.y - 0.5, "#f87171");
-        return;
-      }
-      power = activeItemDef.gatherPower || 12;
-    } else if (res.type === "rock" || res.type === "iron_rock") {
-      if (activeItemDef?.gatherType !== "stone") {
-        this.addFloatingText("Needs Pickaxe", res.x, res.y - 0.5, "#f87171");
-        return;
-      }
-      power = activeItemDef.gatherPower || 12;
-    }
-
-    res.health -= power;
-    res.shakeTimer = 0.2;
-
-    if (res.type === "tree") {
-      GameAudio.playChop();
-      this.emitWoodChips(res.x, res.y, "#a16207");
-    } else if (res.type === "rock" || res.type === "iron_rock") {
-      GameAudio.playMine();
-      this.emitWoodChips(res.x, res.y, "#94a3b8");
-    } else {
-      GameAudio.playPickup();
-    }
-
-    this.useActiveToolDurability();
-
-    if (res.health <= 0) {
-      res.isDepleted = true;
-
-      if (res.type === "crop") {
-        // Finite harvest: single wheat yield + chance of seeds
-        this.spawnDroppedItem(
-          "wheat",
-          1 + Math.floor(Math.random() * 2),
-          res.x,
-          res.y,
-        );
-        if (Math.random() < 0.5) {
-          this.spawnDroppedItem("seeds", 1, res.x + 0.2, res.y);
-        }
-      } else if (res.type === "tree") {
-        const count = 3 + Math.floor(Math.random() * 3);
-        this.spawnDroppedItem(res.lootItem, count, res.x, res.y);
-        if (res.secondaryLoot && Math.random() < 0.55) {
-          this.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.3, res.y);
-        }
-      } else {
-        const count = 2 + Math.floor(Math.random() * 2);
-        this.spawnDroppedItem(res.lootItem, count, res.x, res.y);
-        if (res.secondaryLoot && Math.random() < 0.55) {
-          this.spawnDroppedItem(res.secondaryLoot, 1, res.x + 0.3, res.y);
-        }
-      }
-
-      // Unblock all tiles if obstacle was cleared
-      for (let dy = 0; dy < res.h; dy++) {
-        for (let dx = 0; dx < res.w; dx++) {
-          const tile = this.worldManager.getTile(
-            Math.floor(res.x + dx),
-            Math.floor(res.y + dy),
-          );
-          tile.isBlocked = false;
-        }
-      }
-    }
   }
 
   private useActiveToolDurability() {
@@ -1917,15 +2063,52 @@ export class SurvivalEngine {
   /**
    * Spawns dropped item entity into the world.
    */
-  public spawnDroppedItem(item: ItemId, count: number, x: number, y: number) {
-    this.droppedItems.push({
-      id: this.nextItemId++,
+  public spawnDroppedItem(
+    item: ItemId,
+    count: number,
+    x: number,
+    y: number,
+    id?: number,
+    isRemote = false,
+  ): DroppedItem {
+    const dropped: DroppedItem = {
+      id: id !== undefined ? id : this.nextItemId++,
       item,
       count,
       x: x + (Math.random() * 0.4 - 0.2),
       y: y + (Math.random() * 0.4 - 0.2),
       bobTimer: Math.random() * Math.PI,
-    });
+    };
+    this.droppedItems.push(dropped);
+    if (!isRemote) {
+      this.onWorldAction?.({
+        type: "spawn-item",
+        id: dropped.id,
+        item: dropped.item,
+        count: dropped.count,
+        x: dropped.x,
+        y: dropped.y,
+      });
+    }
+    return dropped;
+  }
+
+  /**
+   * Removes dropped item from world.
+   */
+  public removeDroppedItem(id: number, isRemote = false): boolean {
+    const idx = this.droppedItems.findIndex((i) => i.id === id);
+    if (idx >= 0) {
+      this.droppedItems.splice(idx, 1);
+      if (!isRemote) {
+        this.onWorldAction?.({
+          type: "pickup-item",
+          id,
+        });
+      }
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -2105,6 +2288,56 @@ export class SurvivalEngine {
   }
 
   /**
+   * Directly adds placed structure into world (used locally and on remote peer action).
+   */
+  public addPlacedStructure(
+    pieceId: ItemId,
+    tileX: number,
+    tileY: number,
+    isRemote = false,
+  ): boolean {
+    tileX = Math.round(tileX);
+    tileY = Math.round(tileY);
+
+    const existing = this.placedStructures.find((s) => s.x === tileX && s.y === tileY);
+    if (existing) return false;
+
+    const tile = this.worldManager.getTile(tileX, tileY);
+    const structType = pieceId as PlacedStructure["type"];
+    const struct: PlacedStructure = {
+      id: this.nextEntityId++,
+      type: structType,
+      x: tileX,
+      y: tileY,
+      w: 1,
+      h: 1,
+      health: 25,
+      maxHealth: 25,
+      shakeTimer: 0,
+      chestStorage:
+        structType === "chest"
+          ? Array.from({ length: 16 }, () => ({ item: null, count: 0 }))
+          : undefined,
+    };
+
+    this.placedStructures.push(struct);
+    tile.isBlocked =
+      structType === "wood_wall" ||
+      structType === "chest" ||
+      structType === "workbench";
+    GameAudio.playBuild();
+    this.emitWoodChips(tileX + 0.5, tileY + 0.5, "#a16207");
+    this.addFloatingText(
+      `Placed ${ITEM_CATALOG[pieceId]?.name || pieceId}`,
+      tileX,
+      tileY - 0.5,
+      "#22c55e",
+    );
+
+    return true;
+  }
+
+  /**
    * Places structure at world coordinate (wx, wy) during build mode.
    */
   public placeStructure(pieceId: ItemId, wx: number, wy: number): boolean {
@@ -2120,33 +2353,13 @@ export class SurvivalEngine {
     if (!this.hasItem(pieceId, 1)) return false;
 
     this.removeItem(pieceId, 1);
-
-    const structType = pieceId as PlacedStructure["type"];
-    const struct: PlacedStructure = {
-      id: this.nextEntityId++,
-      type: structType,
+    this.addPlacedStructure(pieceId, tileX, tileY, false);
+    this.onWorldAction?.({
+      type: "place-structure",
+      piece: pieceId,
       x: tileX,
       y: tileY,
-      w: 1,
-      h: 1,
-      chestStorage:
-        structType === "chest"
-          ? Array.from({ length: 16 }, () => ({ item: null, count: 0 }))
-          : undefined,
-    };
-
-    this.placedStructures.push(struct);
-    tile.isBlocked =
-      structType === "wood_wall" ||
-      structType === "chest" ||
-      structType === "workbench";
-    GameAudio.playBuild();
-    this.addFloatingText(
-      `Placed ${ITEM_CATALOG[pieceId]?.name}`,
-      tileX,
-      tileY - 0.5,
-      "#22c55e",
-    );
+    });
 
     if (pieceId === "campfire") this.updateQuestProgress("build_campfire", 1);
 

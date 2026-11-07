@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Host Room Created",
+    "passed": true,
+    "detail": "Room Code: 4S57K",
+    "timestamp": "2026-11-07T17:02:34.253Z"
+  },
+  {
+    "name": "Both Tabs Connected to World",
+    "passed": true,
+    "detail": "Host and Guest report 2 Online",
+    "timestamp": "2026-11-07T17:02:37.121Z"
+  },
+  {
+    "name": "Remote Player Movement Continues Smoothly Every Frame (60 FPS)",
+    "passed": true,
+    "detail": "86.4% frames showed continuous 60fps movement (no 50ms stutter freezing)",
+    "timestamp": "2026-11-07T17:03:01.977Z"
+  },
+  {
+    "name": "World Animals Position Sampled Continuously At 60 FPS",
+    "passed": true,
+    "detail": "Captured 60 continuous frame coordinates for animal #10020",
+    "timestamp": "2026-11-07T17:03:02.973Z"
+  }
+]

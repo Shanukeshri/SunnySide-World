@@ -115,9 +115,15 @@ export class PlayerSystem {
           player.direction = "UP";
         }
 
-        player.vx = vx;
-        player.vy = vy;
+        player.vx = vx * baseSpeed;
+        player.vy = vy * baseSpeed;
         player.isSprinting = isSprinting;
+        if ((input as any).activeHeldItem !== undefined) {
+          player.activeHeldItem = (input as any).activeHeldItem;
+        }
+        if ((input as any).activeHotbarIndex !== undefined) {
+          player.activeHotbarIndex = (input as any).activeHotbarIndex;
+        }
         if (input.seq !== undefined) {
           player.lastProcessedInputSeq = input.seq;
         }
@@ -132,7 +138,9 @@ export class PlayerSystem {
 
     // Update active held item
     const activeSlot = player.hotbar[player.activeHotbarIndex];
-    player.activeHeldItem = activeSlot?.item || null;
+    if (activeSlot && activeSlot.item) {
+      player.activeHeldItem = activeSlot.item;
+    }
   }
 
   private updatePlayerTimers(player: PlayerEntityState, dt: number): void {

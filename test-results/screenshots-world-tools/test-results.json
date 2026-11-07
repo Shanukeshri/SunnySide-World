@@ -1,0 +1,176 @@
+[
+  {
+    "name": "Host Room Created",
+    "passed": true,
+    "detail": "Room Code: VUHHU",
+    "timestamp": "2026-11-07T14:26:04.158Z"
+  },
+  {
+    "name": "Both Tabs Connected to World",
+    "passed": true,
+    "detail": "Host and Guest report 2 Online",
+    "timestamp": "2026-11-07T14:26:06.907Z"
+  },
+  {
+    "name": "World Animals Count Matches Identically",
+    "passed": true,
+    "detail": "Host count=56, Guest count=56",
+    "timestamp": "2026-11-07T14:26:08.637Z"
+  },
+  {
+    "name": "All Animals Have Matching Species & Synchronized Coordinates",
+    "passed": true,
+    "detail": "56/56 animals synchronized (max delta=0.108 tiles)",
+    "timestamp": "2026-11-07T14:26:08.637Z"
+  },
+  {
+    "name": "Village NPCs Count Matches Identically",
+    "passed": true,
+    "detail": "Host count=16, Guest count=16",
+    "timestamp": "2026-11-07T14:26:08.637Z"
+  },
+  {
+    "name": "All Village NPCs Have Matching Roles & Synchronized Coordinates",
+    "passed": true,
+    "detail": "16/16 NPCs synchronized (max delta=0.072 tiles)",
+    "timestamp": "2026-11-07T14:26:08.637Z"
+  },
+  {
+    "name": "Animals Movement Continues In Active 1:1 Synchronization Over Time",
+    "passed": true,
+    "detail": "56/56 animals synchronized during live movement",
+    "timestamp": "2026-11-07T14:26:10.669Z"
+  },
+  {
+    "name": "Host Equipped wooden_axe",
+    "passed": true,
+    "detail": "activeHotbarIndex=0, activeHeldItem=wooden_axe",
+    "timestamp": "2026-11-07T14:26:11.407Z"
+  },
+  {
+    "name": "Guest Sees Host Holding wooden_axe",
+    "passed": true,
+    "detail": "remote item=wooden_axe, remote slot=0",
+    "timestamp": "2026-11-07T14:26:11.409Z"
+  },
+  {
+    "name": "Guest Observes AXE Animation For wooden_axe",
+    "passed": true,
+    "detail": "remoteAction=AXE, swingTimer=0.17s",
+    "timestamp": "2026-11-07T14:26:11.499Z"
+  },
+  {
+    "name": "Host Equipped wooden_pickaxe",
+    "passed": true,
+    "detail": "activeHotbarIndex=1, activeHeldItem=wooden_pickaxe",
+    "timestamp": "2026-11-07T14:26:12.607Z"
+  },
+  {
+    "name": "Guest Sees Host Holding wooden_pickaxe",
+    "passed": true,
+    "detail": "remote item=wooden_pickaxe, remote slot=1",
+    "timestamp": "2026-11-07T14:26:12.608Z"
+  },
+  {
+    "name": "Guest Observes MINING Animation For wooden_pickaxe",
+    "passed": true,
+    "detail": "remoteAction=MINING, swingTimer=0.17s",
+    "timestamp": "2026-11-07T14:26:12.682Z"
+  },
+  {
+    "name": "Host Equipped wooden_sword",
+    "passed": true,
+    "detail": "activeHotbarIndex=2, activeHeldItem=wooden_sword",
+    "timestamp": "2026-11-07T14:26:13.784Z"
+  },
+  {
+    "name": "Guest Sees Host Holding wooden_sword",
+    "passed": true,
+    "detail": "remote item=wooden_sword, remote slot=2",
+    "timestamp": "2026-11-07T14:26:13.784Z"
+  },
+  {
+    "name": "Guest Observes ATTACK Animation For wooden_sword",
+    "passed": true,
+    "detail": "remoteAction=ATTACK, swingTimer=0.17s",
+    "timestamp": "2026-11-07T14:26:13.858Z"
+  },
+  {
+    "name": "Host Equipped wooden_shovel",
+    "passed": true,
+    "detail": "activeHotbarIndex=3, activeHeldItem=wooden_shovel",
+    "timestamp": "2026-11-07T14:26:15.135Z"
+  },
+  {
+    "name": "Guest Sees Host Holding wooden_shovel",
+    "passed": true,
+    "detail": "remote item=wooden_shovel, remote slot=3",
+    "timestamp": "2026-11-07T14:26:15.136Z"
+  },
+  {
+    "name": "Guest Observes DIG Animation For wooden_shovel",
+    "passed": true,
+    "detail": "remoteAction=DIG, swingTimer=0.23s",
+    "timestamp": "2026-11-07T14:26:15.202Z"
+  },
+  {
+    "name": "Host Equipped watering_can",
+    "passed": true,
+    "detail": "activeHotbarIndex=4, activeHeldItem=watering_can",
+    "timestamp": "2026-11-07T14:26:16.321Z"
+  },
+  {
+    "name": "Guest Sees Host Holding watering_can",
+    "passed": true,
+    "detail": "remote item=watering_can, remote slot=4",
+    "timestamp": "2026-11-07T14:26:16.321Z"
+  },
+  {
+    "name": "Guest Observes WATERING Animation For watering_can",
+    "passed": true,
+    "detail": "remoteAction=WATERING, swingTimer=0.28s",
+    "timestamp": "2026-11-07T14:26:16.387Z"
+  },
+  {
+    "name": "Host Equipped wooden_hammer",
+    "passed": true,
+    "detail": "activeHotbarIndex=5, activeHeldItem=wooden_hammer",
+    "timestamp": "2026-11-07T14:26:17.502Z"
+  },
+  {
+    "name": "Guest Sees Host Holding wooden_hammer",
+    "passed": true,
+    "detail": "remote item=wooden_hammer, remote slot=5",
+    "timestamp": "2026-11-07T14:26:17.502Z"
+  },
+  {
+    "name": "Guest Observes HAMMERING Animation For wooden_hammer",
+    "passed": true,
+    "detail": "remoteAction=HAMMERING, swingTimer=0.28s",
+    "timestamp": "2026-11-07T14:26:17.568Z"
+  },
+  {
+    "name": "Host Equipped fishing_rod",
+    "passed": true,
+    "detail": "activeHotbarIndex=6, activeHeldItem=fishing_rod",
+    "timestamp": "2026-11-07T14:26:18.686Z"
+  },
+  {
+    "name": "Guest Sees Host Holding fishing_rod",
+    "passed": true,
+    "detail": "remote item=fishing_rod, remote slot=6",
+    "timestamp": "2026-11-07T14:26:18.687Z"
+  },
+  {
+    "name": "Guest Observes CASTING Animation For fishing_rod",
+    "passed": true,
+    "detail": "remoteAction=CASTING, swingTimer=0.27s",
+    "timestamp": "2026-11-07T14:26:18.752Z"
+  },
+  {
+    "name": "Spacebar Jump Hop Synchronized Across Tabs",
+    "passed": true,
+    "detail": "Host observed guest jump animation in real time",
+    "timestamp": "2026-11-07T14:26:19.834Z"
+  }
+]

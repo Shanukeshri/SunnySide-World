@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-11-07T17:54:49.521Z",
+  "roomCode": "7A48B",
+  "tests": [
+    {
+      "desc": "Host Room Created",
+      "passed": true,
+      "details": "Room Code: 7A48B"
+    },
+    {
+      "desc": "Both Tabs Connected to World",
+      "passed": true,
+      "details": "Host and Guest report 2 Online"
+    },
+    {
+      "desc": "Animal Hit Synced to Guest",
+      "passed": true,
+      "details": "Guest sees animal #10035 health drop to 85 (Expected: 85)"
+    },
+    {
+      "desc": "Guest Hit on Animal Synced to Host",
+      "passed": true,
+      "details": "Host observed animal #10037 health drop from 100 to 85"
+    },
+    {
+      "desc": "Tree Hit Synced to Guest",
+      "passed": true,
+      "details": "Guest sees tree health: 20 (Expected: 20)"
+    },
+    {
+      "desc": "Tree Broken & Depleted on Both Tabs",
+      "passed": true,
+      "details": "Host depleted=true, Guest depleted=true"
+    },
+    {
+      "desc": "Tree Wood Drops Harvested & Synced on Both Tabs",
+      "passed": true,
+      "details": "Host gathered wood logs=0, ground drops remaining=3"
+    },
+    {
+      "desc": "Structure Placement Synced to Guest",
+      "passed": true,
+      "details": "Guest sees placed campfire at (26, 19)"
+    },
+    {
+      "desc": "Structure Dismantled & Cleared on Host",
+      "passed": true,
+      "details": "Host placedStructures contains structure: false, Tile blocked: false"
+    },
+    {
+      "desc": "Dropped Item Exists on Both Tabs",
+      "passed": true,
+      "details": "Item #88888 visible on guest ground before pickup"
+    },
+    {
+      "desc": "Item Pickup Cleared from Host Ground",
+      "passed": true,
+      "details": "Item #88888 cleanly removed from host ground upon guest pickup"
+    }
+  ]
+}

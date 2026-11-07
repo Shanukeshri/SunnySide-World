@@ -30,6 +30,7 @@ export abstract class LivingEntity implements ILivingEntity {
   public hairstyle?: string;
   public isAquatic?: boolean;
   public deathTimer?: number = 0;
+  public hurtTimer?: number = 0;
 
   protected config: SpeciesConfig;
 
@@ -208,6 +209,10 @@ export abstract class LivingEntity implements ILivingEntity {
    * Smooth continuous movement update at 60 FPS.
    */
   public updateMovement(dt: number, detector: EnvironmentDetector): void {
+    if (this.hurtTimer && this.hurtTimer > 0) {
+      this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+    }
+
     // Check death state (Section 28)
     if (this.behaviorState === 'DEAD') {
       if (this.deathTimer && this.deathTimer > 0) {
@@ -303,6 +308,7 @@ export abstract class LivingEntity implements ILivingEntity {
    */
   public takeDamage(amount: number): void {
     this.health = Math.max(0, this.health - amount);
+    this.hurtTimer = 0.3;
     if (this.health <= 0) {
       this.behaviorState = 'DEAD';
       this.clearTarget();

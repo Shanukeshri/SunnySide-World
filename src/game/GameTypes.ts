@@ -118,6 +118,9 @@ export interface PlacedStructure {
   y: number;
   w: number;
   h: number;
+  health?: number;
+  maxHealth?: number;
+  shakeTimer?: number;
   chestStorage?: InventorySlot[];
   isOpen?: boolean;
 }

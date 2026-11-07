@@ -8,25 +8,72 @@ type SnapshotPlayer = {
   lastProcessedInputSeq: number;
 };
 
-type Snapshot = { tick: number; seed: number; roomCode: string; players: SnapshotPlayer[] };
+type Snapshot = { tick: number; seed: number; roomCode: string; hostSessionId?: string; entities?: any; players: SnapshotPlayer[] };
 
-/** Small interpolation buffer used by the renderer for remote entities. */
+/** High-precision 60 FPS dead reckoning & exponential interpolator for remote entities. */
 class EntityInterpolator {
-  private targets = new Map<string | number, { x: number; y: number; vx: number; vy: number; receivedAt: number }>();
-  public push(id: string | number, x: number, y: number, vx = 0, vy = 0) { this.targets.set(id, { x, y, vx, vy, receivedAt: performance.now() }); }
-  public getInterpolatedEntity(id: string | number, x: number, y: number) {
+  private targets = new Map<
+    string | number,
+    { x: number; y: number; vx: number; vy: number; receivedAt: number }
+  >();
+
+  public push(id: string | number, x: number, y: number, vx = 0, vy = 0) {
+    this.targets.set(id, { x, y, vx, vy, receivedAt: performance.now() });
+  }
+
+  public getInterpolatedEntity(
+    id: string | number,
+    currentX: number,
+    currentY: number,
+    dt: number = 0.016,
+  ) {
     const target = this.targets.get(id);
-    if (!target) return { x, y, vx: 0, vy: 0, isMoving: false };
-    // Render ~100 ms behind the server and extrapolate for at most one tick.
-    // The bounded correction prevents rubber-banding under jitter.
-    const age = Math.min(50, Math.max(0, performance.now() - target.receivedAt));
-    const ahead = age / 1000;
-    const tx = target.x + target.vx * ahead;
-    const ty = target.y + target.vy * ahead;
-    const correction = Math.min(0.35, 1 - Math.exp(-14 / 60));
-    const nx = x + (tx - x) * correction;
-    const ny = y + (ty - y) * correction;
-    return { x: nx, y: ny, vx: target.vx, vy: target.vy, isMoving: Math.abs(target.vx) + Math.abs(target.vy) > 0.01 };
+    if (!target) return { x: currentX, y: currentY, vx: 0, vy: 0, isMoving: false };
+
+    const now = performance.now();
+    const elapsedSec = Math.max(0, (now - target.receivedAt) / 1000);
+
+    // Dead reckoning: extrapolate along velocity up to 350ms to bridge network ticks smoothly
+    const extrapolateSec = Math.min(0.35, elapsedSec);
+    const tx = target.x + target.vx * extrapolateSec;
+    const ty = target.y + target.vy * extrapolateSec;
+
+    const dist = Math.hypot(tx - currentX, ty - currentY);
+
+    // Instant snap if teleported or too far out of sync (> 3.5 tiles)
+    if (dist > 3.5) {
+      return {
+        x: tx,
+        y: ty,
+        vx: target.vx,
+        vy: target.vy,
+        isMoving: Math.hypot(target.vx, target.vy) > 0.02,
+      };
+    }
+
+    // Frame-rate independent exponential smoothing factor (lambda = 18.0)
+    // At 60 FPS (dt = 0.0166s), factor = 1 - exp(-18 * 0.0166) ≈ 0.26 per frame
+    const factor = Math.min(1.0, 1 - Math.exp(-18.0 * Math.max(0.001, dt)));
+
+    const nx = currentX + (tx - currentX) * factor;
+    const ny = currentY + (ty - currentY) * factor;
+
+    // Movement detection considers target velocity as well as active position convergence
+    const hasVelocity = Math.hypot(target.vx, target.vy) > 0.02;
+    const isClosingDistance = dist > 0.04 && elapsedSec < 0.4;
+    const isMoving = hasVelocity || isClosingDistance;
+
+    // Provide continuous velocity for animation states
+    const effVx = hasVelocity ? target.vx : (nx - currentX) / Math.max(0.001, dt);
+    const effVy = hasVelocity ? target.vy : (ny - currentY) / Math.max(0.001, dt);
+
+    return {
+      x: nx,
+      y: ny,
+      vx: isMoving ? effVx : 0,
+      vy: isMoving ? effVy : 0,
+      isMoving,
+    };
   }
 }
 
@@ -70,6 +117,7 @@ class ClientPrediction {
 
 export class NetworkClient {
   public connectionState: "DISCONNECTED" | "CONNECTING" | "CONNECTED" = "DISCONNECTED";
+  public isHost = false;
   public readonly prediction = new ClientPrediction();
   public readonly interpolator = new EntityInterpolator();
   private socket: Socket;
@@ -82,9 +130,17 @@ export class NetworkClient {
   private onSnapshot: (snapshot: Snapshot) => void;
   private onJoined: (snapshot: Snapshot) => void;
   private onStatus: (text: string, playerCount: number) => void;
+  private onAction?: (action: { sessionId: string; type: string; [key: string]: any }) => void;
+  private onSyncEntities?: (entities: any) => void;
 
-  constructor(options: { onSnapshot: (snapshot: Snapshot) => void; onJoined: (snapshot: Snapshot) => void; onStatus: (text: string, playerCount: number) => void }) {
-    this.onSnapshot = options.onSnapshot; this.onJoined = options.onJoined; this.onStatus = options.onStatus;
+  constructor(options: {
+    onSnapshot: (snapshot: Snapshot) => void;
+    onJoined: (snapshot: Snapshot) => void;
+    onStatus: (text: string, playerCount: number) => void;
+    onAction?: (action: { sessionId: string; type: string; [key: string]: any }) => void;
+    onSyncEntities?: (entities: any) => void;
+  }) {
+    this.onSnapshot = options.onSnapshot; this.onJoined = options.onJoined; this.onStatus = options.onStatus; this.onAction = options.onAction; this.onSyncEntities = options.onSyncEntities;
     const endpoint = (import.meta as any).env?.VITE_SERVER_URL || `${location.protocol}//${location.hostname}:3001`;
     this.socket = io(endpoint, { autoConnect: false, transports: ["websocket", "polling"] });
     this.socket.on("connect", () => {
@@ -98,24 +154,75 @@ export class NetworkClient {
     this.socket.on("disconnect", () => { this.connectionState = "DISCONNECTED"; this.shouldResume = !!this.lastJoin; this.onStatus("Reconnecting…", 1); this.closePeers(); });
     this.socket.on("world-joined", (snapshot: Snapshot) => {
       this.roomCode = snapshot.roomCode;
+      this.isHost = snapshot.hostSessionId ? snapshot.hostSessionId === this.socket.id : this.lastJoin?.event === "host-world";
       this.lastJoin = { event: "join-world", payload: { code: snapshot.roomCode, ...this.identity } };
       this.prediction.reset(snapshot.players.find(p => p.sessionId === this.socket.id)?.x ?? 22, snapshot.players.find(p => p.sessionId === this.socket.id)?.y ?? 18);
       this.onJoined(snapshot);
+      if (snapshot.entities) {
+        this.onSyncEntities?.(snapshot.entities);
+      }
     });
-    this.socket.on("snapshot", (snapshot: Snapshot & { serverTimeMs?: number }) => { if (snapshot.serverTimeMs) this.serverClockOffsetMs = this.serverClockOffsetMs * .85 + (snapshot.serverTimeMs - Date.now()) * .15; this.onSnapshot(snapshot); this.onStatus(`Online · ${snapshot.roomCode}`, snapshot.players.length); });
+    this.socket.on("snapshot", (snapshot: Snapshot & { serverTimeMs?: number }) => {
+      if (snapshot.serverTimeMs) this.serverClockOffsetMs = this.serverClockOffsetMs * .85 + (snapshot.serverTimeMs - Date.now()) * .15;
+      if (snapshot.hostSessionId) {
+        this.isHost = snapshot.hostSessionId === this.socket.id;
+      }
+      this.onSnapshot(snapshot);
+      this.onStatus(`Online · ${snapshot.roomCode}`, snapshot.players.length);
+    });
+    this.socket.on("sync-entities", (entities: any) => {
+      if (!this.isHost) {
+        this.onSyncEntities?.(entities);
+      }
+    });
+    this.socket.on("player-action", (data: { sessionId: string; type: string; [key: string]: any }) => {
+      this.onAction?.(data);
+    });
     this.socket.on("peer-joined", ({ peerId }: { peerId: string }) => this.openPeer(peerId, true));
     this.socket.on("webrtc-signal", ({ from, signal }: { from: string; signal: RTCSessionDescriptionInit | RTCIceCandidateInit }) => this.receiveSignal(from, signal));
   }
 
-  public hostWorld(name: string, hairstyle: string) { this.connectThen("host-world", { name, hairstyle }); }
-  public joinWorld(code: string, name: string, hairstyle: string) { this.connectThen("join-world", { code: code.toUpperCase(), name, hairstyle }); }
+  public hostWorld(name: string, hairstyle: string) {
+    this.isHost = true;
+    this.connectThen("host-world", { name, hairstyle });
+  }
+  public joinWorld(code: string, name: string, hairstyle: string) {
+    this.isHost = false;
+    this.connectThen("join-world", { code: code.toUpperCase(), name, hairstyle });
+  }
   public get clientId() { return this.socket.id; }
-  public sendInput(vx: number, vy: number, isSprinting: boolean, seq: number, dt: number) {
+  public sendInput(vx: number, vy: number, isSprinting: boolean, seq: number, dt: number, extra?: { activeHeldItem?: string | null; activeHotbarIndex?: number }) {
     const position = this.prediction.getVisualPosition();
-    const input = { vx, vy, isSprinting, seq, dt, clientTimeMs: Date.now(), x: position.x, y: position.y };
+    const input = { vx, vy, isSprinting, seq, dt, clientTimeMs: Date.now(), x: position.x, y: position.y, ...extra };
     this.socket.emit("player-input", input);
     // The data channel gives peers immediate cosmetic movement; Socket.IO remains authoritative.
-    this.peers.forEach(peer => { const channel = (peer as any)._gameChannel as RTCDataChannel | undefined; if (channel?.readyState === "open") channel.send(JSON.stringify({ type: "presence", ...input })); });
+    const speed = isSprinting ? SPRINT_SPEED : WALK_SPEED;
+    const presence = { ...input, vx: vx * speed, vy: vy * speed };
+    this.peers.forEach(peer => {
+      const channel = (peer as any)._gameChannel as RTCDataChannel | undefined;
+      if (channel?.readyState === "open") channel.send(JSON.stringify({ type: "presence", ...presence }));
+    });
+  }
+  public sendAction(action: { type: string; [key: string]: any }) {
+    if (!action.actionId) {
+      action.actionId = `${this.socket.id || "client"}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+    this.socket.emit("player-action", action);
+    this.peers.forEach(peer => {
+      const channel = (peer as any)._gameChannel as RTCDataChannel | undefined;
+      if (channel?.readyState === "open") {
+        channel.send(JSON.stringify({ type: "action", action }));
+      }
+    });
+  }
+  public sendEntitiesSync(entities: any) {
+    this.socket.emit("sync-entities", entities);
+    this.peers.forEach(peer => {
+      const channel = (peer as any)._gameChannel as RTCDataChannel | undefined;
+      if (channel?.readyState === "open") {
+        channel.send(JSON.stringify({ type: "sync-entities", entities }));
+      }
+    });
   }
   private connectThen(event: string, payload: Record<string, string>) {
     this.identity = { name: payload.name || "Explorer", hairstyle: payload.hairstyle || "mophair" };
@@ -137,7 +244,13 @@ export class NetworkClient {
     channel.onmessage = event => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === "presence" && Number.isFinite(message.x) && Number.isFinite(message.y)) this.interpolator.push(peerId, message.x, message.y, message.vx, message.vy);
+        if (message.type === "presence" && Number.isFinite(message.x) && Number.isFinite(message.y)) {
+          this.interpolator.push(peerId, message.x, message.y, message.vx, message.vy);
+        } else if (message.type === "action") {
+          this.onAction?.({ sessionId: peerId, ...message.action });
+        } else if (message.type === "sync-entities" && !this.isHost) {
+          this.onSyncEntities?.(message.entities);
+        }
       } catch { /* Ignore malformed unreliable channel data. */ }
     };
   }
