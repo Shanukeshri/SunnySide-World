@@ -755,34 +755,9 @@ export class SettlementGenerator {
         this.grid[gy][gx].isRoadReserved = false;
         pondCells.push({ x: gx, y: gy });
 
-        // Check 4 cardinal neighbors to identify outer corners of the joined squares
-        const hasN = isWaterCell(gx, gy - 1);
-        const hasS = isWaterCell(gx, gy + 1);
-        const hasW = isWaterCell(gx - 1, gy);
-        const hasE = isWaterCell(gx + 1, gy);
-
-        // Diagonals at the corners:
-        if (!hasN && !hasW && hasS && hasE) {
-          // Top-Left corner: water to South-East
-          this.grid[gy][gx].terrain = 'shore_transition_01';
-          this.grid[gy][gx].rotation = 0;
-        } else if (!hasN && !hasE && hasS && hasW) {
-          // Top-Right corner: water to South-West
-          this.grid[gy][gx].terrain = 'shore_transition_01';
-          this.grid[gy][gx].rotation = Math.PI / 2;
-        } else if (!hasS && !hasE && hasN && hasW) {
-          // Bottom-Right corner: water to North-West
-          this.grid[gy][gx].terrain = 'shore_transition_01';
-          this.grid[gy][gx].rotation = Math.PI;
-        } else if (!hasS && !hasW && hasN && hasE) {
-          // Bottom-Left corner: water to North-East
-          this.grid[gy][gx].terrain = 'shore_transition_01';
-          this.grid[gy][gx].rotation = -Math.PI / 2;
-        } else {
-          // Interior or straight border: pure calm cyan water
-          this.grid[gy][gx].terrain = 'water_tile_01';
-          this.grid[gy][gx].rotation = undefined;
-        }
+        // Set clean water terrain (autotiled seamlessly by the renderer)
+        this.grid[gy][gx].terrain = 'water_tile_01';
+        this.grid[gy][gx].rotation = undefined;
       }
 
       // Break path: completely overwrite and remove any road cells that overlap with waterMask!

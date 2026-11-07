@@ -171,6 +171,31 @@ export interface WoodChipParticle {
   maxLife: number;
 }
 
+export interface FootstepVFX {
+  id: number;
+  x: number;
+  y: number;
+  type: "turf" | "dust" | "ripple" | "wood";
+  radius: number;
+  maxRadius: number;
+  alpha: number;
+  vx: number;
+  vy: number;
+  color?: string;
+}
+
+export interface AmbientBird {
+  id: number;
+  x: number;
+  y: number;
+  isFlying: boolean;
+  flyTimer: number;
+  vx: number;
+  vy: number;
+  wingAngle: number;
+  color: string;
+}
+
 export interface Quest {
   id: string;
   title: string;

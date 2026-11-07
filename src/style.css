@@ -1820,6 +1820,40 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   font-size: 10px;
 }
 
+/* Server Status & Multiplayer Presence */
+.server-status-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.server-status-badge .server-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.server-status-badge .badge-pipe {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.server-status-badge .badge-players-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Right HUD Actions */
 .game-hud-actions {
   display: flex;

@@ -33,6 +33,7 @@ export interface WorldTile {
   isRoad: boolean;
   isFarm: boolean;
   isBlocked: boolean;
+  isBridge?: boolean;
   rotation?: number;
   inVillageId?: number;
 }
@@ -413,30 +414,25 @@ export class WorldManager {
       }
     }
 
-    // House collision hitbox: ALL of the house is collideable and non-passable (including doorway)
+    // House collision footprint: Exterior walls are solid, but bottom-center doorway is open and walkable
     for (const house of data.houses) {
       for (let dy = 0; dy < house.footprintH; dy++) {
         for (let dx = 0; dx < house.footprintW; dx++) {
           const wx = startX + house.x + dx;
           const wy = startY + house.y + dy;
-          this.getTile(wx, wy).isBlocked = true;
+          const isDoorway =
+            dy === house.footprintH - 1 &&
+            dx === Math.floor(house.footprintW / 2);
+          if (!isDoorway) {
+            this.getTile(wx, wy).isBlocked = true;
+          }
         }
       }
     }
 
-    // Mark fences as blocked (openings / gates remain walkable)
+    // Fences use precise continuous thin hull collision via isBlockedByFence
+    // Solid farm objects (chests, crates, troughs) remain blocked
     if (data.farmObjects) {
-      for (const obj of data.farmObjects) {
-        if (
-          typeof obj.id === "string" &&
-          obj.id.startsWith("fence") &&
-          obj.id !== "fence_wood_gate_open"
-        ) {
-          this.getTile(startX + obj.x, startY + obj.y).isBlocked = true;
-        }
-      }
-
-      // Mark visually solid farm objects as blocked (chests, crates, troughs, bowls)
       const SOLID_FARM_OBJECTS = [
         "farm_trough",
         "farm_waterbowl",
@@ -457,15 +453,12 @@ export class WorldManager {
     }
 
     // Add village harvestable resources (trees, bushes, crops) into chunk resources
+    // Tree collision is handled with sub-tile root precision by isBlockedByTreeTrunk
     data.trees.forEach((t) => {
       const wx = startX + t.x;
       const wy = startY + t.y;
       const w = t.footprintW || 2;
       const h = t.footprintH || 2;
-      // Mark trunk base on tilemap
-      for (let fdx = 0; fdx < w; fdx++) {
-        this.getTile(wx + fdx, wy + h - 1).isBlocked = true;
-      }
       this.addResourceToWorld({
         id: this.getResourceId(wx, wy),
         type: "tree",
@@ -620,13 +613,17 @@ export class WorldManager {
       const dx = t.x - v1.x;
       const dy = t.y - v1.y;
       const lenSq = dx * dx + dy * dy;
+      const len = Math.sqrt(lenSq);
       const param = ((x - v1.x) * dx + (y - v1.y) * dy) / lenSq;
-      if (param >= 0.08 && param <= 0.92) {
-        const wobble = this.noiseTerrain(x * 0.04, y * 0.04) * 2.2;
-        const projX = v1.x + param * dx;
-        const projY = v1.y + param * dy;
-        const dist = Math.hypot(x - projX, y - projY + wobble);
-        if (dist <= 1.25) {
+      if (param >= 0.06 && param <= 0.94) {
+        const nx = -dy / len;
+        const ny = dx / len;
+        // Smooth isotropic wobble perpendicular to the road centerline
+        const wobble = this.noiseTerrain(param * 10, 42.5) * 2.2;
+        const cx = v1.x + param * dx + nx * wobble;
+        const cy = v1.y + param * dy + ny * wobble;
+        const dist = Math.hypot(x - cx, y - cy);
+        if (dist <= 1.35) {
           return true;
         }
       }
@@ -638,21 +635,33 @@ export class WorldManager {
    * Procedurally computes the natural wilderness terrain tile at world coordinate (x, y).
    */
   private generateWildernessTile(x: number, y: number): WorldTile {
-    // 1. Organic connective highway roads between villages
-    if (this.isPointOnHighway(x, y)) {
-      return {
-        terrain: "path_tile_01",
-        isWater: false,
-        isRoad: true,
-        isFarm: false,
-        isBlocked: false,
-      };
-    }
-
     const scale = 0.035;
     const waterVal = this.noiseWater(x * scale, y * scale);
     const forestVal = this.noiseForest(x * scale, y * scale);
     const terrainVal = this.noiseTerrain(x * scale * 2, y * scale * 2);
+    const isOnHighway = this.isPointOnHighway(x, y);
+
+    // 1. Organic connective highway roads & bridges between villages
+    if (isOnHighway) {
+      if (waterVal > 0.65) {
+        return {
+          terrain: "bridge_wood",
+          isWater: false,
+          isRoad: true,
+          isBridge: true,
+          isFarm: false,
+          isBlocked: false,
+        };
+      }
+      return {
+        terrain: "path_tile_01",
+        isWater: false,
+        isRoad: true,
+        isBridge: false,
+        isFarm: false,
+        isBlocked: false,
+      };
+    }
 
     // Natural large coherent lakes (only in deep water basins > 0.65)
     if (waterVal > 0.65) {
@@ -759,10 +768,7 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          if (chunk.tiles[ty + 1]?.[tx])
-            chunk.tiles[ty + 1][tx].isBlocked = true;
-          if (chunk.tiles[ty + 1]?.[tx + 1])
-            chunk.tiles[ty + 1][tx + 1].isBlocked = true;
+          // Sub-tile tree trunk collision is accurately handled by isBlockedByTreeTrunk
           continue;
         }
 
@@ -919,9 +925,9 @@ export class WorldManager {
   }
 
   /**
-   * Checks if foot coordinates collide with the wooden trunk of any nearby living tree.
-   * Allows players to walk under tree foliage/canopy from behind or either side,
-   * colliding only with the solid central trunk base.
+   * Checks if foot coordinates collide with the wooden trunk root base of any nearby living tree.
+   * Restricts collision to the sub-tile root base (0.4 x 0.25 tiles),
+   * allowing characters to walk around trunks and freely walk behind tree canopies.
    */
   public isBlockedByTreeTrunk(footX: number, footY: number): boolean {
     const minCx = Math.floor((footX - 2) / CHUNK_SIZE);
@@ -941,11 +947,13 @@ export class WorldManager {
           ) {
             const w = res.w || 2;
             const h = res.h || 2;
+            // Physical root base is centered horizontally at res.x + w / 2, and vertically near the root base
             const cx = res.x + w / 2;
-            const cy = res.y + h - 0.45;
+            const cy = res.y + h - 0.25;
+            // 0.40 x 0.25 sub-tile footprint hull: rx=0.20, ry=0.13
             if (
-              Math.abs(footX - cx) < w * 0.45 &&
-              Math.abs(footY - cy) < 0.45
+              Math.abs(footX - cx) < 0.20 &&
+              Math.abs(footY - cy) < 0.13
             ) {
               return true;
             }
@@ -955,6 +963,139 @@ export class WorldManager {
     }
 
     return false;
+  }
+
+  /**
+   * Continuous thin collision line check along connected fence links (0.2 tile width),
+   * preventing players from catching on corner tiles or slipping through visual gaps.
+   */
+  public isBlockedByFence(footX: number, footY: number): boolean {
+    for (const village of this.villages) {
+      if (!village.data.farmObjects) continue;
+      if (
+        footX < village.gridX - 1 ||
+        footX > village.gridX + village.width + 1 ||
+        footY < village.gridY - 1 ||
+        footY > village.gridY + village.height + 1
+      ) {
+        continue;
+      }
+
+      for (const obj of village.data.farmObjects) {
+        if (
+          typeof obj.id === "string" &&
+          obj.id.startsWith("fence") &&
+          obj.id !== "fence_wood_gate" &&
+          obj.id !== "fence_wood_gate_open"
+        ) {
+          const fx = village.gridX + obj.x + 0.5;
+          const fy = village.gridY + obj.y + 0.5;
+
+          if (obj.id === "fence_wood_h") {
+            // Horizontal thin rail along Y=fy, spanning X: fx-0.5 to fx+0.5
+            if (Math.abs(footY - fy) < 0.14 && Math.abs(footX - fx) < 0.52) {
+              return true;
+            }
+          } else if (obj.id === "fence_wood_v") {
+            // Vertical thin rail along X=fx, spanning Y: fy-0.5 to fy+0.5
+            if (Math.abs(footX - fx) < 0.14 && Math.abs(footY - fy) < 0.52) {
+              return true;
+            }
+          } else {
+            // Corner / post hull
+            if (Math.abs(footX - fx) < 0.22 && Math.abs(footY - fy) < 0.22) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks if world coordinate is a road / path / cobblestone walkway / bridge.
+   */
+  public isRoadAt(wx: number, wy: number): boolean {
+    const tile = this.getTile(wx, wy);
+    return (
+      tile.isRoad ||
+      !!tile.isBridge ||
+      tile.terrain.startsWith("path_") ||
+      tile.terrain.startsWith("dirt_") ||
+      tile.terrain.startsWith("stone_cobble") ||
+      tile.terrain.startsWith("bridge_")
+    );
+  }
+
+  /**
+   * Computes 8-neighbor connectivity for road/path autotiling.
+   * Returns bitmask (0..15): N=1, E=2, S=4, W=8 and boolean neighbor flags.
+   */
+  public getRoadNeighbors(wx: number, wy: number) {
+    const n = this.isRoadAt(wx, wy - 1);
+    const e = this.isRoadAt(wx + 1, wy);
+    const s = this.isRoadAt(wx, wy + 1);
+    const w = this.isRoadAt(wx - 1, wy);
+    const ne = this.isRoadAt(wx + 1, wy - 1);
+    const se = this.isRoadAt(wx + 1, wy + 1);
+    const sw = this.isRoadAt(wx - 1, wy + 1);
+    const nw = this.isRoadAt(wx - 1, wy - 1);
+    const bitmask = (n ? 1 : 0) | (e ? 2 : 0) | (s ? 4 : 0) | (w ? 8 : 0);
+    return { bitmask, n, e, s, w, ne, se, sw, nw };
+  }
+
+  public getRoadBitmask(wx: number, wy: number): number {
+    return this.getRoadNeighbors(wx, wy).bitmask;
+  }
+
+  /**
+   * Computes 8-neighbor water shore adjacency bitmask for water / coastline autotiling.
+   */
+  public getWaterShoreBitmask(wx: number, wy: number) {
+    const hasWaterN = this.getTile(wx, wy - 1).isWater;
+    const hasWaterE = this.getTile(wx + 1, wy).isWater;
+    const hasWaterS = this.getTile(wx, wy + 1).isWater;
+    const hasWaterW = this.getTile(wx - 1, wy).isWater;
+    const hasWaterNE = this.getTile(wx + 1, wy - 1).isWater;
+    const hasWaterSE = this.getTile(wx + 1, wy + 1).isWater;
+    const hasWaterSW = this.getTile(wx - 1, wy + 1).isWater;
+    const hasWaterNW = this.getTile(wx - 1, wy - 1).isWater;
+    const isShore =
+      !hasWaterN ||
+      !hasWaterE ||
+      !hasWaterS ||
+      !hasWaterW ||
+      !hasWaterNE ||
+      !hasWaterSE ||
+      !hasWaterSW ||
+      !hasWaterNW;
+    const bitmask =
+      (hasWaterN ? 1 : 0) |
+      (hasWaterE ? 2 : 0) |
+      (hasWaterS ? 4 : 0) |
+      (hasWaterW ? 8 : 0);
+    return {
+      isShore,
+      bitmask,
+      hasWaterN,
+      hasWaterE,
+      hasWaterS,
+      hasWaterW,
+      hasWaterNE,
+      hasWaterSE,
+      hasWaterSW,
+      hasWaterNW,
+    };
+  }
+
+  /**
+   * Deterministic spatial hash scatter for organic meadow variety (eliminates grid lines).
+   */
+  public getGrassScatterVariant(wx: number, wy: number): string {
+    const val = Math.abs(Math.sin(wx * 12.9898 + wy * 78.233) * 43758.5453);
+    const variant = (Math.floor(val * 6) % 6) + 1;
+    return `grass_textured_0${variant}`;
   }
 
   /**

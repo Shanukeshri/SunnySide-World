@@ -28,6 +28,8 @@ import {
   EnemyEntity,
   FloatingText,
   WoodChipParticle,
+  FootstepVFX,
+  AmbientBird,
   Quest,
   WorldTime,
 } from "./GameTypes";
@@ -820,10 +822,20 @@ export class SurvivalEngine {
   public placedStructures: PlacedStructure[] = [];
   public particles: HeartParticle[] = [];
   public woodChips: WoodChipParticle[] = [];
+  public footstepParticles: FootstepVFX[] = [];
+  public ambientBirds: AmbientBird[] = [];
   public floatingTexts: FloatingText[] = [];
   public remotePlayers: any[] = [];
   public sessionId: string = "";
   public onWorldAction?: (action: any) => void;
+
+  // Juicy Micro-Feel & Screen Shake
+  public footstepTimer: number = 0;
+  public screenShakeTimer: number = 0;
+  public screenShakeIntensity: number = 0;
+  public screenShakeX: number = 0;
+  public screenShakeY: number = 0;
+  public hitStopTimer: number = 0;
 
   // Day / Night World Clock
   public worldTime: WorldTime = {
@@ -979,6 +991,8 @@ export class SurvivalEngine {
       console.log("[LIFECYCLE PHASE 10: World Playable] Player inventory and survival equipment initialized. Ready to play!");
       this.initInventory();
     }
+
+    this.spawnAmbientBirds();
   }
 
   private initInventory() {
@@ -1086,6 +1100,23 @@ export class SurvivalEngine {
   public update(dt: number) {
     if (this.player.isDead) return;
 
+    // 0. Hit Stop (40ms impact pause on strikes/combat for satisfying physical weight)
+    if (this.hitStopTimer > 0) {
+      this.hitStopTimer -= dt;
+      return;
+    }
+
+    // 0b. Screen Shake Decay
+    if (this.screenShakeTimer > 0) {
+      this.screenShakeTimer -= dt;
+      const decay = Math.max(0, this.screenShakeTimer / 0.16);
+      this.screenShakeX = (Math.random() - 0.5) * 2 * this.screenShakeIntensity * decay;
+      this.screenShakeY = (Math.random() - 0.5) * 2 * this.screenShakeIntensity * decay;
+    } else {
+      this.screenShakeX = 0;
+      this.screenShakeY = 0;
+    }
+
     // 1. Advance World Clock (8 minutes = 480 seconds per full 24h cycle)
     this.updateWorldTime(dt);
 
@@ -1097,6 +1128,12 @@ export class SurvivalEngine {
 
     // 2. Player Movement & Physics
     this.updatePlayerMovement(dt);
+
+    // 2b. Physically Reactive Flora (rustle + leaf flakes when entities brush past)
+    this.updateFloraReactions(dt);
+
+    // 2c. Ambient Wildlife / Birds Behavior
+    this.updateAmbientBirds(dt);
 
     // 3. Survival Needs (Hunger, Stamina, Health)
     this.updateSurvivalNeeds(dt);
@@ -1213,18 +1250,81 @@ export class SurvivalEngine {
     const nextX = this.player.x + this.player.vx * currentSpeed * dt;
     const nextY = this.player.y + this.player.vy * currentSpeed * dt;
 
-    // Smooth movement with diagonal sliding
+    // Smooth movement with beveled diagonal corner sliding
     if (this.canMoveTo(nextX, nextY)) {
       this.player.x = nextX;
       this.player.y = nextY;
     } else {
-      // Slide horizontally if clear
+      let moved = false;
+      // Primary axis sliding
       if (this.canMoveTo(nextX, this.player.y)) {
         this.player.x = nextX;
+        moved = true;
       }
-      // Slide vertically if clear
       if (this.canMoveTo(this.player.x, nextY)) {
         this.player.y = nextY;
+        moved = true;
+      }
+
+      // Beveled corner sliding: deflect along collision normals if stuck on obstacle corners
+      if (!moved && (this.player.vx !== 0 || this.player.vy !== 0)) {
+        const bevelOffset = 0.08;
+        if (this.player.vx !== 0) {
+          if (this.canMoveTo(nextX, this.player.y + bevelOffset)) {
+            this.player.x = nextX;
+            this.player.y += bevelOffset;
+          } else if (this.canMoveTo(nextX, this.player.y - bevelOffset)) {
+            this.player.x = nextX;
+            this.player.y -= bevelOffset;
+          }
+        } else if (this.player.vy !== 0) {
+          if (this.canMoveTo(this.player.x + bevelOffset, nextY)) {
+            this.player.x += bevelOffset;
+            this.player.y = nextY;
+          } else if (this.canMoveTo(this.player.x - bevelOffset, nextY)) {
+            this.player.x -= bevelOffset;
+            this.player.y = nextY;
+          }
+        }
+      }
+    }
+
+    // Surface-aware footsteps and particle FX
+    if (this.player.vx !== 0 || this.player.vy !== 0) {
+      this.footstepTimer -= dt;
+      if (this.footstepTimer <= 0) {
+        this.footstepTimer = this.player.isSprinting ? 0.22 : 0.35;
+        const curTile = this.worldManager.getTile(
+          Math.floor(this.player.x + 0.5),
+          Math.floor(this.player.y + 0.65),
+        );
+        let surface: "grass" | "dirt" | "sand" | "water" | "wood" = "grass";
+        if (this.player.isSwimming || curTile.isWater) {
+          surface = "water";
+        } else if (
+          this.placedStructures.some(
+            (s) =>
+              s.type === "wood_floor" &&
+              Math.abs(this.player.x + 0.5 - (s.x + 0.5)) < 0.5 &&
+              Math.abs(this.player.y + 0.65 - (s.y + 0.5)) < 0.5,
+          )
+        ) {
+          surface = "wood";
+        } else if (
+          curTile.isRoad ||
+          curTile.terrain.startsWith("sand") ||
+          curTile.terrain.startsWith("path") ||
+          curTile.terrain.startsWith("dirt")
+        ) {
+          surface = curTile.terrain.startsWith("sand") ? "sand" : "dirt";
+        }
+
+        GameAudio.playFootstep(surface);
+        this.emitFootstepVFX(
+          surface,
+          this.player.x + 0.5,
+          this.player.y + 0.68,
+        );
       }
     }
 
@@ -1334,6 +1434,7 @@ export class SurvivalEngine {
     }
     if (this.isBlockedByStructure(footX, footY)) return false;
     if (this.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
+    if (this.worldManager.isBlockedByFence(footX, footY)) return false;
     if (this.isBlockedByRemotePlayer(footX, footY)) return false;
     return true;
   }
@@ -1576,12 +1677,215 @@ export class SurvivalEngine {
       if (c.life <= 0) this.woodChips.splice(i, 1);
     }
 
+    // 2b. Footstep ground VFX & water ripples
+    for (let i = this.footstepParticles.length - 1; i >= 0; i--) {
+      const p = this.footstepParticles[i];
+      if (p.type === "ripple") {
+        p.radius += dt * 18;
+        p.alpha -= dt * 1.8;
+      } else {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 4.5 * dt; // slight gravity
+        p.alpha -= dt * 2.2;
+      }
+      if (p.alpha <= 0) {
+        this.footstepParticles.splice(i, 1);
+      }
+    }
+
     // 3. Floating Damage / Info Texts
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
       const t = this.floatingTexts[i];
       t.life -= dt;
       t.y -= 0.6 * dt; // float upwards
       if (t.life <= 0) this.floatingTexts.splice(i, 1);
+    }
+  }
+
+  /**
+   * Triggers micro-screen shake & 40ms hit stop for weighted, punchy impacts.
+   */
+  public triggerImpactJuice(intensity = 2.5, hitStopSeconds = 0.04) {
+    this.screenShakeTimer = 0.16;
+    this.screenShakeIntensity = intensity;
+    this.hitStopTimer = hitStopSeconds;
+  }
+
+  /**
+   * Spawns ground footstep particles (turf flakes, dust puffs, water ripples).
+   */
+  public emitFootstepVFX(
+    surface: "grass" | "dirt" | "sand" | "water" | "wood",
+    x: number,
+    y: number,
+  ) {
+    if (surface === "water") {
+      this.footstepParticles.push({
+        id: this.nextParticleId++,
+        x,
+        y,
+        type: "ripple",
+        radius: 2,
+        maxRadius: 10,
+        alpha: 0.85,
+        vx: 0,
+        vy: 0,
+        color: "rgba(186, 230, 253, 0.7)",
+      });
+    } else if (surface === "grass") {
+      for (let i = 0; i < 2; i++) {
+        this.footstepParticles.push({
+          id: this.nextParticleId++,
+          x: x + (Math.random() - 0.5) * 0.3,
+          y: y + (Math.random() - 0.5) * 0.1,
+          type: "turf",
+          radius: 1.5,
+          maxRadius: 2.2,
+          alpha: 0.8,
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: -0.7 - Math.random() * 0.7,
+          color: "#4ade80",
+        });
+      }
+    } else if (surface === "dirt" || surface === "sand") {
+      for (let i = 0; i < 2; i++) {
+        this.footstepParticles.push({
+          id: this.nextParticleId++,
+          x: x + (Math.random() - 0.5) * 0.25,
+          y: y + (Math.random() - 0.5) * 0.1,
+          type: "dust",
+          radius: 2,
+          maxRadius: 3.8,
+          alpha: 0.65,
+          vx: (Math.random() - 0.5) * 0.9,
+          vy: -0.6 - Math.random() * 0.6,
+          color: surface === "sand" ? "#fde68a" : "#d97706",
+        });
+      }
+    } else {
+      // Wood floor tap
+      this.footstepParticles.push({
+        id: this.nextParticleId++,
+        x,
+        y,
+        type: "wood",
+        radius: 1.5,
+        maxRadius: 2,
+        alpha: 0.6,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -0.5,
+        color: "#b45309",
+      });
+    }
+  }
+
+  /**
+   * Initializes ambient perched birds in the starting village.
+   */
+  public spawnAmbientBirds() {
+    this.ambientBirds = [];
+    const birdColors = ["#38bdf8", "#fb923c", "#facc15", "#a78bfa"];
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const dist = 6 + (i % 4) * 3;
+      this.ambientBirds.push({
+        id: this.nextEntityId++,
+        x: 22 + Math.cos(angle) * dist,
+        y: 18 + Math.sin(angle) * dist,
+        isFlying: false,
+        flyTimer: 0,
+        vx: 0,
+        vy: 0,
+        wingAngle: 0,
+        color: birdColors[i % birdColors.length],
+      });
+    }
+  }
+
+  /**
+   * Checks entities walking near flora (bushes/crops) and triggers rustle + leaf flakes.
+   */
+  private updateFloraReactions(dt: number) {
+    const testPositions = [{ x: this.player.x + 0.5, y: this.player.y + 0.65 }];
+    if (this.remotePlayers) {
+      for (const rp of this.remotePlayers) {
+        testPositions.push({ x: rp.x + 0.5, y: rp.y + 0.65 });
+      }
+    }
+
+    const pcx = Math.floor(this.player.x / 16);
+    const pcy = Math.floor(this.player.y / 16);
+
+    for (let dcy = -1; dcy <= 1; dcy++) {
+      for (let dcx = -1; dcx <= 1; dcx++) {
+        const chunk = this.worldManager.chunks.get(`${pcx + dcx},${pcy + dcy}`);
+        if (!chunk) continue;
+
+        for (const res of chunk.resources) {
+          if (res.isDepleted) continue;
+          if (res.type === "bush" || res.type === "crop") {
+            const rx = res.x + res.w / 2;
+            const ry = res.y + res.h / 2;
+
+            for (const pos of testPositions) {
+              if (Math.hypot(pos.x - rx, pos.y - ry) < 0.75) {
+                if (!res.shakeTimer || res.shakeTimer <= 0) {
+                  res.shakeTimer = 0.35;
+                  GameAudio.playRustle();
+                  for (let k = 0; k < 2; k++) {
+                    this.footstepParticles.push({
+                      id: this.nextParticleId++,
+                      x: rx + (Math.random() - 0.5) * 0.4,
+                      y: ry + (Math.random() - 0.5) * 0.4,
+                      type: "turf",
+                      radius: 2,
+                      maxRadius: 3,
+                      alpha: 0.9,
+                      vx: (Math.random() - 0.5) * 1.5,
+                      vy: -1.2 - Math.random() * 1.2,
+                      color: "#4ade80",
+                    });
+                  }
+                }
+              }
+            }
+          }
+          if (res.shakeTimer && res.shakeTimer > 0) {
+            res.shakeTimer -= dt;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Updates ambient birds: take flight when entity approaches.
+   */
+  private updateAmbientBirds(dt: number) {
+    for (let i = this.ambientBirds.length - 1; i >= 0; i--) {
+      const b = this.ambientBirds[i];
+      if (b.isFlying) {
+        b.flyTimer -= dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.wingAngle = Math.sin(Date.now() / 60) * 0.8;
+        if (b.flyTimer <= 0) {
+          this.ambientBirds.splice(i, 1);
+        }
+      } else {
+        const dist = Math.hypot(
+          this.player.x + 0.5 - b.x,
+          this.player.y + 0.65 - b.y,
+        );
+        if (dist < 2.2) {
+          b.isFlying = true;
+          b.flyTimer = 3.5;
+          b.vx =
+            (b.x >= this.player.x ? 1 : -1) * (2.2 + Math.random() * 1.5);
+          b.vy = -2.6 - Math.random() * 1.5;
+        }
+      }
     }
   }
 
@@ -1613,11 +1917,13 @@ export class SurvivalEngine {
         GameAudio.playCraft();
         this.emitWoodChips(this.player.x + 0.5, this.player.y + 0.65, "#38bdf8");
         this.addFloatingText("🛡️ Blocked!", this.player.x + 0.5, this.player.y - 0.6, "#38bdf8");
+        this.triggerImpactJuice(1.8, 0.03);
       } else {
         GameAudio.playHurt();
         this.player.hurtTimer = 0.45;
         this.emitWoodChips(this.player.x + 0.5, this.player.y + 0.65, "#ef4444");
         this.addFloatingText(`-${effectiveDmg} HP`, this.player.x + 0.5, this.player.y - 0.6, "#ef4444");
+        this.triggerImpactJuice(3.2, 0.04);
       }
 
       this.player.health = Math.max(0, this.player.health - effectiveDmg);
@@ -1659,11 +1965,13 @@ export class SurvivalEngine {
       GameAudio.playCraft();
       this.emitWoodChips(rp.x + 0.5, rp.y + 0.65, "#38bdf8");
       this.addFloatingText("🛡️ Blocked!", rp.x + 0.5, rp.y - 0.6, "#38bdf8");
+      this.triggerImpactJuice(1.8, 0.03);
     } else {
       GameAudio.playHurt();
       rp.hurtTimer = 0.45;
       this.emitWoodChips(rp.x + 0.5, rp.y + 0.65, "#ef4444");
       this.addFloatingText(`-${effectiveDmg} HP`, rp.x + 0.5, rp.y - 0.6, "#ef4444");
+      this.triggerImpactJuice(3.0, 0.04);
     }
 
     if (rp.health === undefined) rp.health = 100;
@@ -1709,6 +2017,7 @@ export class SurvivalEngine {
     animal.takeDamage(damage);
     animal.fleeFrom(attackerX, attackerY, this.detector);
     GameAudio.playHurt();
+    this.triggerImpactJuice(2.2, 0.04);
     this.emitWoodChips(animal.position.x, animal.position.y, "#f43f5e");
     this.addFloatingText(
       `-${damage}`,
@@ -1764,6 +2073,7 @@ export class SurvivalEngine {
 
     res.health -= power;
     res.shakeTimer = 0.25;
+    this.triggerImpactJuice(2.2, 0.04);
 
     if (res.type === "tree" || res.type.startsWith("tree_")) {
       GameAudio.playChop();
@@ -1835,6 +2145,7 @@ export class SurvivalEngine {
     enemy.health -= damage;
     enemy.hurtTimer = 0.25;
     GameAudio.playHurt();
+    this.triggerImpactJuice(3.0, 0.05);
     this.addFloatingText(`-${damage}`, enemy.x, enemy.y - 0.5, "#ef4444");
 
     const angle = Math.atan2(enemy.y - attackerY, enemy.x - attackerX);
@@ -1886,6 +2197,7 @@ export class SurvivalEngine {
     }
     struct.health -= damage;
     struct.shakeTimer = 0.25;
+    this.triggerImpactJuice(2.2, 0.03);
 
     GameAudio.playCraft();
     this.emitWoodChips(struct.x + 0.5, struct.y + 0.5, "#a16207");

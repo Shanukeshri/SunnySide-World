@@ -39,27 +39,98 @@ class SoundSynthesizer {
     return !this.enabled;
   }
 
-  // 1. Footstep sound
-  public playFootstep() {
+  // 1. Footstep sound with surface awareness
+  public playFootstep(surface: 'grass' | 'dirt' | 'sand' | 'water' | 'wood' = 'grass') {
     if (!this.enabled) return;
     this.initContext();
     if (!this.ctx || !this.masterGain) return;
 
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
     const now = this.ctx.currentTime;
 
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(90 + Math.random() * 20, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.06);
+    if (surface === 'water') {
+      // Liquid squelch / soft splash
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(320 + Math.random() * 40, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
 
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (surface === 'wood') {
+      // Hollow resonant clatter
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(220 + Math.random() * 30, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.07);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } else if (surface === 'dirt' || surface === 'sand') {
+      // Granular scuff / crisp friction
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(150 + Math.random() * 30, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.06);
+
+      gain.gain.setValueAtTime(0.10, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    } else {
+      // Lush grass muffled turf swish
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(95 + Math.random() * 20, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.06);
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    }
+  }
+
+  // 1b. Plant / Bush rustle sound
+  public playRustle() {
+    if (!this.enabled) return;
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(450 + Math.random() * 60, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.09);
+
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start(now);
-    osc.stop(now + 0.06);
+    osc.stop(now + 0.09);
   }
 
   // 2. Tree Chop (wood impact with woody resonance)

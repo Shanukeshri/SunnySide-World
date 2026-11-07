@@ -45,22 +45,102 @@ export const TILE_CROPS: Record<string, CropRect> = {
   grass_textured_05: { x: 80, y: 32, w: 16, h: 16 },
   grass_textured_06: { x: 96, y: 32, w: 16, h: 16 },
 
-  // Dirt paths (row y=112)
+  // Authentic Water River, Pond & Lake Autotiling (columns 22..32, rows 7..8)
+  water_tile_01: { x: 352, y: 112, w: 16, h: 16 }, // Calm cyan water (tid 470)
+  water_pond_center_01: { x: 352, y: 112, w: 16, h: 16 },
+  water_depth_01: { x: 480, y: 128, w: 16, h: 16 }, // Water ripple variant (tid 542)
+  water_depth_02: { x: 512, y: 128, w: 16, h: 16 }, // Water bubble variant (tid 544)
+
+  // Diagonal water corner transitions (when water turns around a land corner):
+  water_diag_nw: { x: 368, y: 112, w: 16, h: 16 }, // tid 471: Land NW, Water SE
+  water_diag_ne: { x: 384, y: 112, w: 16, h: 16 }, // tid 472: Land NE, Water SW
+  water_diag_sw: { x: 416, y: 112, w: 16, h: 16 }, // tid 474: Land SW, Water NE
+  water_diag_se: { x: 352, y: 128, w: 16, h: 16 }, // tid 534: Land SE, Water NW
+
+  // River & Pond Banks (placed on LAND bordering water):
+  water_bank_n: { x: 400, y: 112, w: 16, h: 16 }, // tid 473: Land N, scallops face S into water
+  water_bank_s: { x: 416, y: 128, w: 16, h: 16 }, // tid 538: Land S, scallops face N into water
+  water_bank_w: { x: 432, y: 112, w: 16, h: 16 }, // tid 475: Land W, scallops face E into water
+  water_bank_e: { x: 384, y: 128, w: 16, h: 16 }, // tid 536: Land E, scallops face W into water
+
+  // Outer corners on LAND bordering water:
+  water_corner_nw: { x: 464, y: 112, w: 16, h: 16 }, // tid 477: Land NW, water SE
+  water_corner_ne: { x: 400, y: 128, w: 16, h: 16 }, // tid 537: Land NE, water SW
+  water_corner_sw: { x: 432, y: 128, w: 16, h: 16 }, // tid 539: Land SW, water NE
+  water_corner_se: { x: 448, y: 128, w: 16, h: 16 }, // tid 540: Land SE, water NW
+  water_inner_nw: { x: 384, y: 112, w: 16, h: 16 },
+  water_inner_ne: { x: 416, y: 112, w: 16, h: 16 },
+  water_inner_sw: { x: 464, y: 128, w: 16, h: 16 },
+  water_inner_se: { x: 368, y: 128, w: 16, h: 16 },
+
+  // Water Wave Foam animation frames (y=304)
+  water_foam_01: { x: 896, y: 304, w: 16, h: 16 },
+  water_foam_02: { x: 912, y: 304, w: 16, h: 16 },
+  water_foam_03: { x: 928, y: 304, w: 16, h: 16 },
+  water_foam_04: { x: 944, y: 304, w: 16, h: 16 },
+  water_foam_05: { x: 960, y: 304, w: 16, h: 16 },
+  water_foam_06: { x: 976, y: 304, w: 16, h: 16 },
+
+  // Authentic Dirt Path Autotiling (columns 1..11, rows 7..8)
+  path_center: { x: 16, y: 112, w: 16, h: 16 },
   path_tile_01: { x: 16, y: 112, w: 16, h: 16 },
-  path_tile_02: { x: 144, y: 112, w: 16, h: 16 },
-  path_tile_04: { x: 160, y: 112, w: 16, h: 16 },
-  path_tile_05: { x: 176, y: 112, w: 16, h: 16 },
-
-  // Ground types
   dirt_tile_01: { x: 16, y: 112, w: 16, h: 16 },
-  sand_tile_01: { x: 208, y: 48, w: 16, h: 16 },
-  stone_tile_01: { x: 80, y: 256, w: 16, h: 16 },
+  sand_tile_01: { x: 80, y: 16, w: 16, h: 16 }, // tid 69: Pure sand
+  sand_foam_h: { x: 320, y: 80, w: 16, h: 16 }, // tid 340: Sand shoreline wave foam
+  sand_foam_c1: { x: 304, y: 80, w: 16, h: 16 }, // tid 339: Sand corner foam 1
+  sand_foam_c2: { x: 304, y: 96, w: 16, h: 16 }, // tid 403: Sand corner foam 2
+  stone_tile_01: { x: 720, y: 32, w: 16, h: 16 },
 
-  // Water & Shore transition
-  water_tile_01: { x: 352, y: 112, w: 16, h: 16 },
-  shore_transition_01: { x: 368, y: 112, w: 16, h: 16 },
+  // Outer turn corners (where dirt road curves smoothly):
+  path_corner_tl: { x: 32, y: 112, w: 16, h: 16 }, // tid 450: outer NW curve (Dirt goes S & E)
+  path_corner_tr: { x: 48, y: 112, w: 16, h: 16 }, // tid 451: outer NE curve (Dirt goes S & W)
+  path_corner_bl: { x: 80, y: 112, w: 16, h: 16 }, // tid 453: outer SW curve (Dirt goes N & E)
+  path_corner_br: { x: 16, y: 128, w: 16, h: 16 }, // tid 513: outer SE curve (Dirt goes N & W)
 
-  // Wooden Fences
+  // Border fringes and dead-end caps:
+  path_top: { x: 80, y: 128, w: 16, h: 16 }, // tid 517: North border (green at y=0..2)
+  path_bottom: { x: 64, y: 112, w: 16, h: 16 }, // tid 452: South border (green at y=13..15)
+  path_left: { x: 48, y: 128, w: 16, h: 16 }, // tid 515: West border (green at x=0..2)
+  path_right: { x: 96, y: 112, w: 16, h: 16 }, // tid 454: East border (green at x=13..15)
+
+  // Inner corner notches (when dirt is on multiple sides):
+  path_notch_nw: { x: 112, y: 128, w: 16, h: 16 }, // tid 519: NW notch (green at x=0..2, y=0..1)
+  path_notch_ne: { x: 96, y: 128, w: 16, h: 16 }, // tid 518: NE notch (green at x=13..15, y=0..1)
+  path_notch_sw: { x: 64, y: 128, w: 16, h: 16 }, // tid 516: SW notch (green at x=0..2, y=14..15)
+  path_notch_se: { x: 128, y: 112, w: 16, h: 16 }, // tid 456: SE notch (green at x=13..15, y=14..15)
+  path_straight_h: { x: 48, y: 112, w: 16, h: 16 },
+  path_straight_v: { x: 32, y: 128, w: 16, h: 16 },
+
+  // Path pebble scatter variations (columns 9..11, rows 7..8)
+  path_pebble_01: { x: 144, y: 112, w: 16, h: 16 },
+  path_pebble_02: { x: 160, y: 112, w: 16, h: 16 },
+  path_pebble_03: { x: 176, y: 112, w: 16, h: 16 },
+  path_pebble_04: { x: 144, y: 128, w: 16, h: 16 },
+  path_pebble_05: { x: 160, y: 128, w: 16, h: 16 },
+
+  // Cobblestone 3x3 autotile (x: 704..736, y: 16..48)
+  cobble_tl: { x: 704, y: 16, w: 16, h: 16 },
+  cobble_t: { x: 720, y: 16, w: 16, h: 16 },
+  cobble_tr: { x: 736, y: 16, w: 16, h: 16 },
+  cobble_l: { x: 704, y: 32, w: 16, h: 16 },
+  cobble_c: { x: 720, y: 32, w: 16, h: 16 },
+  cobble_r: { x: 736, y: 32, w: 16, h: 16 },
+  cobble_bl: { x: 704, y: 48, w: 16, h: 16 },
+  cobble_b: { x: 720, y: 48, w: 16, h: 16 },
+  cobble_br: { x: 736, y: 48, w: 16, h: 16 },
+
+  // Authentic Wooden Bridges (over water)
+  bridge_wood_h: { x: 608, y: 80, w: 16, h: 16 },
+  bridge_wood_v: { x: 640, y: 80, w: 16, h: 16 },
+  bridge_deck_h: { x: 608, y: 80, w: 16, h: 16 },
+  bridge_deck_v: { x: 640, y: 80, w: 16, h: 16 },
+  bridge_wood_h_ramp_l: { x: 592, y: 80, w: 16, h: 16 },
+  bridge_wood_h_ramp_r: { x: 624, y: 80, w: 16, h: 16 },
+  bridge_wood_v_ramp_n: { x: 640, y: 64, w: 16, h: 16 },
+  bridge_wood_v_ramp_s: { x: 640, y: 96, w: 16, h: 16 },
+  bridge_wood_v_ramp_s: { x: 272, y: 224, w: 16, h: 16 },
+
+  // Wooden Fences & Bridges
   fence_wood_h: { x: 624, y: 32, w: 16, h: 16 },
   fence_wood_v: { x: 640, y: 48, w: 16, h: 16 },
   fence_wood_corner: { x: 640, y: 32, w: 16, h: 16 },
@@ -70,6 +150,17 @@ export const TILE_CROPS: Record<string, CropRect> = {
   fence_wood_corner_br: { x: 640, y: 32, w: 16, h: 16 },
   fence_wood_post: { x: 640, y: 32, w: 16, h: 16 },
   fence_wood_gate: { x: 624, y: 0, w: 16, h: 16 },
+
+  bridge_deck_h: { x: 336, y: 176, w: 16, h: 16 },
+  bridge_deck_v: { x: 272, y: 176, w: 16, h: 16 },
+  bridge_rail_top: { x: 336, y: 160, w: 16, h: 16 },
+  bridge_rail_bottom: { x: 336, y: 192, w: 16, h: 16 },
+
+  // Cliff Elevation Faces
+  cliff_top: { x: 32, y: 64, w: 16, h: 16 },
+  cliff_face: { x: 48, y: 64, w: 16, h: 16 },
+  cliff_corner_l: { x: 16, y: 64, w: 16, h: 16 },
+  cliff_corner_r: { x: 64, y: 64, w: 16, h: 16 },
 };
 
 const TREE_BUSH_CROPS: Record<string, CropRect> = {
@@ -211,6 +302,7 @@ export class SurvivalRenderer {
   private wheatImg: HTMLImageElement | null = null;
   private soilImg: HTMLImageElement | null = null;
   private spriteImages: Map<string, HTMLImageElement> = new Map();
+  private nightCanvas: HTMLCanvasElement | null = null;
 
   public lifeformRenderer: LifeformRenderer;
   public zoom = 2.2;
@@ -316,11 +408,12 @@ export class SurvivalRenderer {
     const halfWidth = canvas.width / 2;
     const halfHeight = canvas.height / 2;
 
-    // Fix 8: Use Math.round (not Math.floor) to eliminate the one-pixel tile shimmer
-    // that occurs when fractional cell sizes shift between adjacent integer values.
+    // Fix 8: Camera micro-shake impulse on impact + sub-pixel rounding
+    const shakeX = engine.screenShakeX || 0;
+    const shakeY = engine.screenShakeY || 0;
     const worldToScreen = (wx: number, wy: number) => ({
-      sx: Math.round(halfWidth + (wx - this.cameraX) * cellSize),
-      sy: Math.round(halfHeight + (wy - this.cameraY) * cellSize),
+      sx: Math.round(halfWidth + (wx - this.cameraX) * cellSize + shakeX),
+      sy: Math.round(halfHeight + (wy - this.cameraY) * cellSize + shakeY),
     });
 
     // Clear canvas with rich sunnyside grass green (prevents dark background leakage)
@@ -335,7 +428,7 @@ export class SurvivalRenderer {
     const minTileY = Math.floor(this.cameraY - visibleTilesY / 2);
     const maxTileY = Math.ceil(this.cameraY + visibleTilesY / 2);
 
-    // ── LAYER 1: GROUND TERRAIN TILES (Zero-gap pixel seamless) ──
+    // ── LAYER 1: GROUND TERRAIN TILES (Seamless Autotiling & Organic Scatter) ──
     if (this.tilesetImg && this.tilesetImg.complete) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
         for (let tx = minTileX; tx <= maxTileX; tx++) {
@@ -347,8 +440,9 @@ export class SurvivalRenderer {
 
           const tile = engine.worldManager.getTile(tx, ty);
 
-          // 1. Always draw lush grass base on every tile
-          const grassCrop = TILE_CROPS["grass_textured_01"];
+          // 1. Organic Procedural Base Grass Scatter (eliminates grid monotony)
+          const grassVariantKey = engine.worldManager.getGrassScatterVariant(tx, ty);
+          const grassCrop = TILE_CROPS[grassVariantKey] || TILE_CROPS["grass_textured_01"];
           ctx.drawImage(
             this.tilesetImg,
             grassCrop.x,
@@ -361,34 +455,103 @@ export class SurvivalRenderer {
             tileH,
           );
 
-          // 2. Draw specialized terrain overlay on top if not base grass
-          if (tile.terrain !== "grass_textured_01") {
-            const crop =
-              TILE_CROPS[tile.terrain] || TILE_CROPS["grass_textured_01"];
+          // 2. Pure Calm Cyan Water & River/Pond Autotiling with Wave Foam Overlay
+          if (tile.isWater) {
+            const shore = engine.worldManager.getWaterShoreBitmask(tx, ty);
+            const n = shore.hasWaterN;
+            const e = shore.hasWaterE;
+            const s = shore.hasWaterS;
+            const w = shore.hasWaterW;
 
-            if (tile.rotation) {
-              ctx.save();
-              ctx.translate(screen.sx + tileW / 2, screen.sy + tileH / 2);
-              ctx.rotate(tile.rotation);
-              ctx.drawImage(
-                this.tilesetImg,
-                crop.x,
-                crop.y,
-                crop.w,
-                crop.h,
-                -tileW / 2,
-                -tileH / 2,
-                tileW,
-                tileH,
-              );
-              ctx.restore();
+            // Check diagonal inner corner transitions (when water turns around a land corner):
+            let waterCrop = TILE_CROPS["water_tile_01"];
+            if (!s && !w && (n || e)) {
+              waterCrop = TILE_CROPS["water_diag_sw"]; // tid 474: Land SW, Water NE
+            } else if (!s && !e && (n || w)) {
+              waterCrop = TILE_CROPS["water_diag_se"]; // tid 534: Land SE, Water NW
+            } else if (!n && !w && (s || e)) {
+              waterCrop = TILE_CROPS["water_diag_nw"]; // tid 471: Land NW, Water SE
+            } else if (!n && !e && (s || w)) {
+              waterCrop = TILE_CROPS["water_diag_ne"]; // tid 472: Land NE, Water SW
             } else {
+              // Deep water with occasional ripple variant
+              const rippleHash = Math.abs(Math.sin(tx * 31.17 + ty * 97.53) * 43758.5453);
+              if (rippleHash > 0.88) {
+                waterCrop = TILE_CROPS["water_depth_01"];
+              } else if (rippleHash > 0.76) {
+                waterCrop = TILE_CROPS["water_depth_02"];
+              } else {
+                waterCrop = TILE_CROPS["water_tile_01"];
+              }
+            }
+
+            ctx.drawImage(
+              this.tilesetImg,
+              waterCrop.x,
+              waterCrop.y,
+              waterCrop.w,
+              waterCrop.h,
+              screen.sx,
+              screen.sy,
+              tileW,
+              tileH,
+            );
+
+            // Translucent shallow coastal water shelf
+            if (shore.isShore) {
+              ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+              ctx.fillRect(screen.sx, screen.sy, tileW, tileH);
+
+              // Animated wave foam surface ripple on shorelines
+              const foamFrame = (Math.floor(Date.now() / 160 + tx * 3 + ty * 5) % 6) + 1;
+              const foamCrop = TILE_CROPS[`water_foam_0${foamFrame}`];
+              if (foamCrop) {
+                ctx.save();
+                ctx.globalAlpha = 0.35 + Math.sin(Date.now() / 350 + tx) * 0.15;
+                ctx.drawImage(
+                  this.tilesetImg,
+                  foamCrop.x,
+                  foamCrop.y,
+                  foamCrop.w,
+                  foamCrop.h,
+                  screen.sx,
+                  screen.sy,
+                  tileW,
+                  tileH,
+                );
+                ctx.restore();
+              }
+            }
+          }
+          // 2.5 Multi-Layer Bridges (Water flows underneath, wooden deck & rails on top)
+          else if (tile.isBridge || tile.terrain === "bridge_wood") {
+            // First: render calm water underneath
+            const waterUnder = TILE_CROPS["water_tile_01"];
+            ctx.drawImage(
+              this.tilesetImg,
+              waterUnder.x,
+              waterUnder.y,
+              waterUnder.w,
+              waterUnder.h,
+              screen.sx,
+              screen.sy,
+              tileW,
+              tileH,
+            );
+
+            // Second: render wooden bridge deck based on road connectivity
+            const roadMask = engine.worldManager.getRoadBitmask(tx, ty);
+            const isVerticalBridge = (roadMask & 5) && !(roadMask & 10);
+            const bridgeCrop = isVerticalBridge
+              ? TILE_CROPS["bridge_wood_v"]
+              : TILE_CROPS["bridge_wood_h"];
+            if (bridgeCrop) {
               ctx.drawImage(
                 this.tilesetImg,
-                crop.x,
-                crop.y,
-                crop.w,
-                crop.h,
+                bridgeCrop.x,
+                bridgeCrop.y,
+                bridgeCrop.w,
+                bridgeCrop.h,
                 screen.sx,
                 screen.sy,
                 tileW,
@@ -396,11 +559,195 @@ export class SurvivalRenderer {
               );
             }
           }
+          // 3. Connected Dirt Pathways & Cobblestone Highways (Orthogonal Bitmask Autotiling)
+          else if (
+            tile.isRoad ||
+            tile.terrain.startsWith("path_") ||
+            tile.terrain.startsWith("dirt_") ||
+            tile.terrain.startsWith("stone_cobble")
+          ) {
+            const roadInfo = engine.worldManager.getRoadNeighbors(tx, ty);
+            const roadMask = roadInfo.bitmask;
+
+            if (tile.terrain.startsWith("stone_cobble")) {
+              // Cobblestone 3x3 autotile
+              let cobbleCrop = TILE_CROPS["cobble_c"];
+              if (roadMask === 3) cobbleCrop = TILE_CROPS["cobble_tr"];
+              else if (roadMask === 6) cobbleCrop = TILE_CROPS["cobble_br"];
+              else if (roadMask === 12) cobbleCrop = TILE_CROPS["cobble_bl"];
+              else if (roadMask === 9) cobbleCrop = TILE_CROPS["cobble_tl"];
+              else cobbleCrop = TILE_CROPS["cobble_c"];
+
+              ctx.drawImage(
+                this.tilesetImg,
+                cobbleCrop.x,
+                cobbleCrop.y,
+                cobbleCrop.w,
+                cobbleCrop.h,
+                screen.sx,
+                screen.sy,
+                tileW,
+                tileH,
+              );
+            } else {
+              // Primary textured dirt trail surface with deterministic pebble scatter
+              const hash = Math.abs(Math.sin(tx * 31.17 + ty * 97.53) * 43758.5453);
+              let dirtCrop = TILE_CROPS["path_center"];
+              const v = Math.floor(hash * 10);
+              if (v === 1) dirtCrop = TILE_CROPS["path_pebble_01"];
+              else if (v === 2) dirtCrop = TILE_CROPS["path_pebble_02"];
+              else if (v === 3) dirtCrop = TILE_CROPS["path_pebble_03"];
+              else if (v === 4) dirtCrop = TILE_CROPS["path_pebble_04"];
+              else if (v === 5) dirtCrop = TILE_CROPS["path_pebble_05"];
+
+              const n = roadInfo.n;
+              const s = roadInfo.s;
+              const w = roadInfo.w;
+              const e = roadInfo.e;
+              const ne = roadInfo.ne;
+              const nw = roadInfo.nw;
+              const se = roadInfo.se;
+              const sw = roadInfo.sw;
+
+              // Check outer turn corners first (including diagonal stair-step highway connections):
+              const is_corner_tl = !n && !w && (s || sw) && (e || ne);
+              const is_corner_tr = !n && !e && (s || se) && (w || nw);
+              const is_corner_bl = !s && !w && (n || nw) && (e || se);
+              const is_corner_br = !s && !e && (n || ne) && (w || sw);
+
+              if (is_corner_tl) {
+                // Dirt curves from S to E (NW outer corner)
+                const c = TILE_CROPS["path_corner_tl"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (is_corner_tr) {
+                // Dirt curves from S to W (NE outer corner)
+                const c = TILE_CROPS["path_corner_tr"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (is_corner_bl) {
+                // Dirt curves from N to E (SW outer corner)
+                const c = TILE_CROPS["path_corner_bl"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (is_corner_br) {
+                // Dirt curves from N to W (SE outer corner)
+                const c = TILE_CROPS["path_corner_br"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else {
+                // Base dirt fill for straight paths, junctions, crossroads, and dead ends
+                ctx.drawImage(
+                  this.tilesetImg,
+                  dirtCrop.x,
+                  dirtCrop.y,
+                  dirtCrop.w,
+                  dirtCrop.h,
+                  screen.sx,
+                  screen.sy,
+                  tileW,
+                  tileH,
+                );
+
+                // Overlay organic scalloped edges on closed sides
+                if (!n) {
+                  const c = TILE_CROPS["path_top"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!s) {
+                  const c = TILE_CROPS["path_bottom"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!w) {
+                  const c = TILE_CROPS["path_left"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!e) {
+                  const c = TILE_CROPS["path_right"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+
+                // Inner corner notches (when path turns around an inner corner)
+                if (n && e && !roadInfo.ne) {
+                  const c = TILE_CROPS["path_notch_ne"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (n && w && !roadInfo.nw) {
+                  const c = TILE_CROPS["path_notch_nw"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (s && e && !roadInfo.se) {
+                  const c = TILE_CROPS["path_notch_se"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (s && w && !roadInfo.sw) {
+                  const c = TILE_CROPS["path_notch_sw"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+              }
+            }
+          }
+          // 4. Sand Shorelines & Beaches
+          else if (tile.terrain === "sand_tile_01") {
+            const crop = TILE_CROPS["sand_tile_01"];
+            ctx.drawImage(
+              this.tilesetImg,
+              crop.x,
+              crop.y,
+              crop.w,
+              crop.h,
+              screen.sx,
+              screen.sy,
+              tileW,
+              tileH,
+            );
+
+            // Sand shoreline wave foam if adjacent to water
+            const shore = engine.worldManager.getWaterShoreBitmask(tx, ty);
+            if (shore.hasWaterS && shore.hasWaterE) {
+              const fc = TILE_CROPS["sand_foam_c1"];
+              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
+            } else if (shore.hasWaterS && shore.hasWaterW) {
+              const fc = TILE_CROPS["sand_foam_c2"];
+              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
+            } else if (shore.hasWaterS || shore.isShore) {
+              const fc = TILE_CROPS["sand_foam_h"];
+              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
+            }
+          }
+          // 5. Land Grassland bordering Water (Seamless River & Pond Banks)
+          else {
+            const shore = engine.worldManager.getWaterShoreBitmask(tx, ty);
+            if (shore.isShore) {
+              // Outer corners on land:
+              if (shore.hasWaterS && shore.hasWaterE) {
+                const bc = TILE_CROPS["water_corner_nw"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterS && shore.hasWaterW) {
+                const bc = TILE_CROPS["water_corner_ne"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterN && shore.hasWaterE) {
+                const bc = TILE_CROPS["water_corner_sw"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterN && shore.hasWaterW) {
+                const bc = TILE_CROPS["water_corner_se"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterS) {
+                const bc = TILE_CROPS["water_bank_n"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterN) {
+                const bc = TILE_CROPS["water_bank_s"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterE) {
+                const bc = TILE_CROPS["water_bank_w"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (shore.hasWaterW) {
+                const bc = TILE_CROPS["water_bank_e"];
+                ctx.drawImage(this.tilesetImg, bc.x, bc.y, bc.w, bc.h, screen.sx, screen.sy, tileW, tileH);
+              }
+            }
+          }
         }
       }
     }
 
-    // ── LAYER 2: VILLAGE FARMLAND SOIL ──────────────────────────
+    // ── LAYER 2: VILLAGE FARMLAND SOIL & FURROW FRAMING ─────────
     for (const village of engine.worldManager.villages) {
       for (const farm of village.data.farms) {
         for (const cell of farm.cells) {
@@ -424,11 +771,16 @@ export class SurvivalRenderer {
             this.soilImg.complete &&
             this.soilImg.naturalWidth > 0
           ) {
-            // tilled_soil.png is a 16×16 tile — draw full source into one tile cell
             ctx.drawImage(
               this.soilImg,
-              0, 0, this.soilImg.naturalWidth, this.soilImg.naturalHeight,
-              screen.sx, screen.sy, tileW, tileH
+              0,
+              0,
+              this.soilImg.naturalWidth,
+              this.soilImg.naturalHeight,
+              screen.sx,
+              screen.sy,
+              tileW,
+              tileH,
             );
           } else if (this.tilesetImg && this.tilesetImg.complete) {
             const dirtCrop = TILE_CROPS["dirt_tile_01"];
@@ -548,12 +900,73 @@ export class SurvivalRenderer {
       );
     }
 
+    // ── LAYER 5b: FOOTSTEP GROUND VFX & EXPANDING WATER RIPPLES ─
+    for (const p of engine.footstepParticles) {
+      const s = worldToScreen(p.x, p.y);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      if (p.type === "ripple") {
+        ctx.strokeStyle = p.color || "rgba(186, 230, 253, 0.75)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(
+          s.sx,
+          s.sy,
+          p.radius * (this.zoom / 2),
+          p.radius * 0.45 * (this.zoom / 2),
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = p.color || "#4ade80";
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, p.radius * (this.zoom / 2), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // ── LAYER 6: Y-SORTED DEPTH ENTITIES & STRUCTURES ───────────
     interface Renderable {
       yOrder: number;
       draw: () => void;
     }
     const depthList: Renderable[] = [];
+
+    // 6.0 Ambient Perched & Flying Birds
+    for (const bird of engine.ambientBirds) {
+      depthList.push({
+        yOrder: bird.y + (bird.isFlying ? 2.5 : 0.4),
+        draw: () => {
+          const s = worldToScreen(bird.x, bird.y);
+          ctx.save();
+          ctx.fillStyle = bird.color;
+          if (bird.isFlying) {
+            const wingY = Math.sin(Date.now() / 65) * 4;
+            ctx.beginPath();
+            ctx.ellipse(s.sx, s.sy, 4, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = bird.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(s.sx - 6, s.sy - wingY);
+            ctx.lineTo(s.sx, s.sy);
+            ctx.lineTo(s.sx + 6, s.sy - wingY);
+            ctx.stroke();
+          } else {
+            // Perched bird
+            ctx.beginPath();
+            ctx.ellipse(s.sx, s.sy - 2, 3.5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#f59e0b"; // beak
+            ctx.fillRect(s.sx + 3, s.sy - 3, 2, 2);
+          }
+          ctx.restore();
+        },
+      });
+    }
 
     // 6.1 Village Houses & Buildings (Authentic pixel crops)
     for (const village of engine.worldManager.villages) {
@@ -595,7 +1008,7 @@ export class SurvivalRenderer {
               const dy = screen.sy + footprintPixelH - dh + 4;
 
               // Soft drop shadow
-              ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+              ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
               ctx.beginPath();
               ctx.ellipse(
                 dx + dw / 2,
@@ -608,8 +1021,42 @@ export class SurvivalRenderer {
               );
               ctx.fill();
 
-              // Draw House Sprite
+              // Rotating Windmill Blade Shadow
+              if (house.id === "house_windmill_01") {
+                const bladeAngle = (Date.now() / 900) % (Math.PI * 2);
+                ctx.save();
+                ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
+                ctx.translate(dx + dw * 0.5, screen.sy + footprintPixelH * 0.82);
+                for (let b = 0; b < 4; b++) {
+                  ctx.rotate(Math.PI / 2);
+                  ctx.beginPath();
+                  ctx.ellipse(
+                    Math.cos(bladeAngle) * cellSize * 0.7,
+                    Math.sin(bladeAngle) * cellSize * 0.25,
+                    cellSize * 0.65,
+                    cellSize * 0.16,
+                    bladeAngle,
+                    0,
+                    Math.PI * 2,
+                  );
+                  ctx.fill();
+                }
+                ctx.restore();
+              }
+
+              // Roof overhang transparency when player steps inside doorway / under eaves
+              const isPlayerUnderEaves =
+                engine.player.x >= wx - 0.2 &&
+                engine.player.x <= wx + house.footprintW + 0.2 &&
+                engine.player.y >= wy - 0.3 &&
+                engine.player.y <= wy + house.footprintH - 0.2;
+
+              ctx.save();
+              if (isPlayerUnderEaves) {
+                ctx.globalAlpha = 0.72;
+              }
               ctx.drawImage(this.housesImg, cx, cy, cw, ch, dx, dy, dw, dh);
+              ctx.restore();
             }
           },
         });
@@ -776,14 +1223,19 @@ export class SurvivalRenderer {
                   : 0;
 
               if (res.type === "tree") {
-                // Ground shadow
-                ctx.fillStyle = "rgba(0,0,0,0.35)";
+                // Ground directional shadow offset by sun
+                const sunHour = engine.worldTime.hour + engine.worldTime.minute / 60;
+                const sunAngle = ((sunHour - 12) / 12) * Math.PI;
+                const shadowOffsetX = Math.sin(sunAngle) * cellSize * 0.42;
+                const shadowOffsetY = Math.abs(Math.cos(sunAngle)) * cellSize * 0.12;
+
+                ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
                 ctx.beginPath();
                 ctx.ellipse(
-                  screen.sx + cellSize,
-                  screen.sy + cellSize * 1.6,
-                  cellSize * 0.9,
-                  cellSize * 0.4,
+                  screen.sx + cellSize + shadowOffsetX,
+                  screen.sy + cellSize * 1.6 + shadowOffsetY,
+                  cellSize * 0.95,
+                  cellSize * 0.42,
                   0,
                   0,
                   Math.PI * 2,
@@ -798,21 +1250,43 @@ export class SurvivalRenderer {
                   const dx = screen.sx + (cellSize * 2 - treeW) / 2;
                   const dy = screen.sy + cellSize * 2 - treeH;
 
+                  // Periodic sinusoidal wind sway on foliage
+                  const windSway = Math.sin(Date.now() / 650 + res.x * 1.4 + res.y * 0.8) * 2.2;
+                  const rustleWobble = res.shakeTimer && res.shakeTimer > 0 ? Math.sin(res.shakeTimer * 30) * 3 : 0;
+
+                  // Dynamic canopy walk-behind transparency (sub-tile walk-behind)
+                  const isPlayerBehind =
+                    (engine.player.x >= res.x - 0.6 &&
+                     engine.player.x <= res.x + res.w + 0.6 &&
+                     engine.player.y >= res.y - 1.4 &&
+                     engine.player.y <= res.y + res.h - 0.2) ||
+                    (engine.remotePlayers && engine.remotePlayers.some((rp: any) =>
+                       rp.x >= res.x - 0.6 &&
+                       rp.x <= res.x + res.w + 0.6 &&
+                       rp.y >= res.y - 1.4 &&
+                       rp.y <= res.y + res.h - 0.2
+                    ));
+
+                  ctx.save();
+                  if (isPlayerBehind) {
+                    ctx.globalAlpha = 0.45;
+                  }
                   ctx.drawImage(
                     this.treeBushImg,
                     crop.x,
                     crop.y,
                     crop.w,
                     crop.h,
-                    dx + shakeOffset,
+                    dx + shakeOffset + windSway + rustleWobble,
                     dy,
                     treeW,
                     treeH,
                   );
+                  ctx.restore();
                 }
               } else if (res.type === "rock" || res.type === "iron_rock") {
                 // Ground shadow
-                ctx.fillStyle = "rgba(0,0,0,0.32)";
+                ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
                 ctx.beginPath();
                 ctx.ellipse(
                   screen.sx + cellSize / 2,
@@ -856,22 +1330,44 @@ export class SurvivalRenderer {
                   }
                 }
               } else if (res.type === "bush") {
+                // Ground shadow
+                ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
+                ctx.beginPath();
+                ctx.ellipse(
+                  screen.sx + cellSize / 2,
+                  screen.sy + cellSize * 0.82,
+                  cellSize * 0.46,
+                  cellSize * 0.22,
+                  0,
+                  0,
+                  Math.PI * 2,
+                );
+                ctx.fill();
+
                 if (this.treeBushImg && this.treeBushImg.complete) {
                   const crop = TREE_BUSH_CROPS.bush_01;
                   const bushW = cellSize * 1.3;
                   const aspect = crop.h / crop.w;
                   const bushH = bushW * aspect;
+                  const rustleAngle = res.shakeTimer && res.shakeTimer > 0
+                    ? Math.sin(res.shakeTimer * 32) * 0.20
+                    : 0;
+
+                  ctx.save();
+                  ctx.translate(screen.sx + cellSize / 2, screen.sy + cellSize);
+                  ctx.rotate(rustleAngle);
                   ctx.drawImage(
                     this.treeBushImg,
                     crop.x,
                     crop.y,
                     crop.w,
                     crop.h,
-                    screen.sx,
-                    screen.sy + cellSize - bushH,
+                    -bushW / 2 + shakeOffset,
+                    -bushH,
                     bushW,
                     bushH,
                   );
+                  ctx.restore();
                 }
               } else if (res.type === "crop") {
                 // Only render if we can resolve the actual crop image
@@ -1069,6 +1565,20 @@ export class SurvivalRenderer {
         yOrder: animal.position.y + 0.5,
         draw: () => {
           const screen = worldToScreen(animal.position.x, animal.position.y);
+          // Ground soft elliptical drop shadow
+          ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
+          ctx.beginPath();
+          ctx.ellipse(
+            screen.sx + cellSize / 2,
+            screen.sy + cellSize * 0.78,
+            cellSize * 0.42,
+            cellSize * 0.20,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+
           this.lifeformRenderer.renderEntity(
             ctx,
             animal,
@@ -1093,6 +1603,20 @@ export class SurvivalRenderer {
         yOrder: npc.position.y + 0.5,
         draw: () => {
           const screen = worldToScreen(npc.position.x, npc.position.y);
+          // Ground soft elliptical drop shadow
+          ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
+          ctx.beginPath();
+          ctx.ellipse(
+            screen.sx + cellSize / 2,
+            screen.sy + cellSize * 0.82,
+            cellSize * 0.36,
+            cellSize * 0.17,
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+
           this.lifeformRenderer.renderEntity(
             ctx,
             npc,
@@ -1194,7 +1718,6 @@ export class SurvivalRenderer {
         draw: () => {
           const p = engine.player;
         const screen = worldToScreen(p.x, p.y);
-        const hopY = p.hopOffset * cellSize;
         const isFacingLeft = p.facing === "LEFT";
         const activeSlot = engine.getActiveItemSlot();
         const activeItemDef = activeSlot?.item
@@ -1283,6 +1806,22 @@ export class SurvivalRenderer {
         const playerCenterX = screen.sx + cellSize / 2;
         const groundY = screen.sy + cellSize / 2;
 
+        // Ground soft elliptical drop shadow (stays pinned on ground while entity jumps)
+        const hopY = p.hopOffset || 0;
+        const shadowScale = Math.max(0.3, 1.0 - hopY * 0.45);
+        ctx.fillStyle = `rgba(15, 23, 42, ${0.35 * shadowScale})`;
+        ctx.beginPath();
+        ctx.ellipse(
+          playerCenterX,
+          groundY + cellSize * 0.35,
+          (cellSize * 0.36) * shadowScale,
+          (cellSize * 0.17) * shadowScale,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+
         // RENDER CHARACTER BODY WITH INTEGRATED TOOL ANIMATION
         const playerEntity: any = {
           position: { x: p.x, y: p.y },
@@ -1358,6 +1897,22 @@ export class SurvivalRenderer {
             const groundY = screen.sy + cellSize / 2;
             const isFacingLeft =
               rp.facing === "LEFT" || rp.direction === "LEFT";
+
+            // Ground soft elliptical drop shadow (stays pinned on ground while jumping)
+            const rpHopY = rp.hopOffset || 0;
+            const rpShadowScale = Math.max(0.3, 1.0 - rpHopY * 0.45);
+            ctx.fillStyle = `rgba(15, 23, 42, ${0.35 * rpShadowScale})`;
+            ctx.beginPath();
+            ctx.ellipse(
+              playerCenterX,
+              groundY + cellSize * 0.35,
+              (cellSize * 0.36) * rpShadowScale,
+              (cellSize * 0.17) * rpShadowScale,
+              0,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
 
             // Determine active held tool/item
             const rpItem = rp.activeHeldItem || (rp.hotbar ? rp.hotbar[rp.activeHotbarIndex || 0]?.item : null);
@@ -1576,50 +2131,117 @@ export class SurvivalRenderer {
       ctx.restore();
     }
 
-    // ── LAYER 8: DYNAMIC NIGHT LIGHTING CUTOUT ──────────────────
-    if (engine.worldTime.lightLevel < 0.95) {
+    // ── LAYER 7b: DRIFTING ATMOSPHERIC PARTICLES (Leaves, Petals, Pollen) ──
+    const nowSec = Date.now() / 1000;
+    for (let i = 0; i < 24; i++) {
+      const seed = i * 137.49;
+      const px = ((seed * 43 + nowSec * 35) % (canvas.width + 120)) - 60;
+      const py = ((seed * 67 + Math.sin(nowSec * 1.2 + seed) * 30) % (canvas.height + 120)) - 60;
+      const isLeaf = i % 3 === 0;
       ctx.save();
-      const darkness = 1.0 - engine.worldTime.lightLevel;
+      ctx.fillStyle = isLeaf ? "rgba(74, 222, 128, 0.45)" : "rgba(254, 240, 138, 0.4)";
+      ctx.beginPath();
+      ctx.arc(px, py, isLeaf ? 2.0 : 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
-      const lightCanvas = document.createElement("canvas");
-      lightCanvas.width = canvas.width;
-      lightCanvas.height = canvas.height;
-      const lctx = lightCanvas.getContext("2d");
+    // ── LAYER 7c: CINEMATIC COLOR TEMPERATURE (Golden Hour Dawn/Dusk) ──
+    const hour = engine.worldTime.hour + engine.worldTime.minute / 60;
+    let goldenHourIntensity = 0;
+    if (hour >= 5.0 && hour <= 7.5) {
+      goldenHourIntensity = 1 - Math.abs(hour - 6.25) / 1.25;
+    } else if (hour >= 17.5 && hour <= 20.0) {
+      goldenHourIntensity = 1 - Math.abs(hour - 18.75) / 1.25;
+    }
+    if (goldenHourIntensity > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(251, 146, 60, ${0.12 * goldenHourIntensity})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    // ── LAYER 8: DYNAMIC NIGHT LIGHTING CUTOUT ──────────────────
+    if (engine.worldTime.lightLevel < 0.65) {
+      ctx.save();
+      const darkness = (0.65 - engine.worldTime.lightLevel) / 0.65;
+
+      if (!this.nightCanvas) {
+        this.nightCanvas = document.createElement("canvas");
+      }
+      if (
+        this.nightCanvas.width !== canvas.width ||
+        this.nightCanvas.height !== canvas.height
+      ) {
+        this.nightCanvas.width = canvas.width;
+        this.nightCanvas.height = canvas.height;
+      }
+      const lctx = this.nightCanvas.getContext("2d");
 
       if (lctx) {
-        lctx.fillStyle = `rgba(10, 15, 28, ${Math.min(0.88, darkness)})`;
-        lctx.fillRect(0, 0, lightCanvas.width, lightCanvas.height);
+        lctx.clearRect(0, 0, this.nightCanvas.width, this.nightCanvas.height);
+        lctx.fillStyle = `rgba(10, 15, 28, ${Math.min(0.90, darkness * 0.95)})`;
+        lctx.fillRect(0, 0, this.nightCanvas.width, this.nightCanvas.height);
         lctx.globalCompositeOperation = "destination-out";
 
         // Cutout around Player
         const activeItem = engine.getActiveItemSlot()?.item;
         const isHoldingTorch = activeItem === "torch";
-      if (!this.isWorldGenMode) {
-        const playerScreen = worldToScreen(engine.player.x, engine.player.y);
-        const playerRadius = (isHoldingTorch ? 170 : 85) * (this.zoom / 2);
-        
-        const playerGlow = lctx.createRadialGradient(
-          playerScreen.sx + cellSize / 2,
-          playerScreen.sy + cellSize / 2,
-          10,
-          playerScreen.sx + cellSize / 2,
-          playerScreen.sy + cellSize / 2,
-          playerRadius,
-        );
-        playerGlow.addColorStop(0, "rgba(0,0,0,1)");
-        playerGlow.addColorStop(0.7, "rgba(0,0,0,0.8)");
-        playerGlow.addColorStop(1, "rgba(0,0,0,0)");
-        lctx.fillStyle = playerGlow;
-        lctx.beginPath();
-        lctx.arc(
-          playerScreen.sx + cellSize / 2,
-          playerScreen.sy + cellSize / 2,
-          playerRadius,
-          0,
-          Math.PI * 2,
-        );
-        lctx.fill();
-      }
+        if (!this.isWorldGenMode) {
+          const playerScreen = worldToScreen(engine.player.x, engine.player.y);
+          const playerRadius = (isHoldingTorch ? 170 : 95) * (this.zoom / 2);
+
+          const playerGlow = lctx.createRadialGradient(
+            playerScreen.sx + cellSize / 2,
+            playerScreen.sy + cellSize / 2,
+            10,
+            playerScreen.sx + cellSize / 2,
+            playerScreen.sy + cellSize / 2,
+            playerRadius,
+          );
+          playerGlow.addColorStop(0, "rgba(0,0,0,1)");
+          playerGlow.addColorStop(0.7, "rgba(0,0,0,0.8)");
+          playerGlow.addColorStop(1, "rgba(0,0,0,0)");
+          lctx.fillStyle = playerGlow;
+          lctx.beginPath();
+          lctx.arc(
+            playerScreen.sx + cellSize / 2,
+            playerScreen.sy + cellSize / 2,
+            playerRadius,
+            0,
+            Math.PI * 2,
+          );
+          lctx.fill();
+        }
+
+        // Cutouts for remote players
+        if (engine.remotePlayers) {
+          for (const [, rp] of engine.remotePlayers) {
+            const rScreen = worldToScreen(rp.x, rp.y);
+            const rRadius = 90 * (this.zoom / 2);
+            const rGlow = lctx.createRadialGradient(
+              rScreen.sx + cellSize / 2,
+              rScreen.sy + cellSize / 2,
+              10,
+              rScreen.sx + cellSize / 2,
+              rScreen.sy + cellSize / 2,
+              rRadius,
+            );
+            rGlow.addColorStop(0, "rgba(0,0,0,1)");
+            rGlow.addColorStop(0.7, "rgba(0,0,0,0.8)");
+            rGlow.addColorStop(1, "rgba(0,0,0,0)");
+            lctx.fillStyle = rGlow;
+            lctx.beginPath();
+            lctx.arc(
+              rScreen.sx + cellSize / 2,
+              rScreen.sy + cellSize / 2,
+              rRadius,
+              0,
+              Math.PI * 2,
+            );
+            lctx.fill();
+          }
+        }
 
         // Cutout around Campfires
         for (const struct of engine.placedStructures) {
@@ -1650,7 +2272,8 @@ export class SurvivalRenderer {
           }
         }
 
-        ctx.drawImage(lightCanvas, 0, 0);
+        lctx.globalCompositeOperation = "source-over";
+        ctx.drawImage(this.nightCanvas, 0, 0);
       }
       ctx.restore();
     }

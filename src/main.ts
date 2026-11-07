@@ -1746,6 +1746,8 @@ function applyMultiplayerSnapshot(snapshot: any) {
 function joinMultiplayerWorld(snapshot: any) {
   // Each client creates the same deterministic map from the server's shared seed.
   survivalEngine = new SurvivalEngine(snapshot.seed);
+  (survivalEngine as any).renderer = survivalRenderer;
+  (window as any).survivalRenderer = survivalRenderer;
   survivalEngine.sessionId = networkClient?.clientId || "";
   (window as any).survivalEngine = survivalEngine;
   (window as any).gameEngine = survivalEngine;
@@ -1767,6 +1769,8 @@ function ensureSurvivalGameLoaded() {
       networkClient?.sendAction(action);
     };
     survivalRenderer = new SurvivalRenderer();
+    (survivalEngine as any).renderer = survivalRenderer;
+    (window as any).survivalRenderer = survivalRenderer;
     initSurvivalInputs();
     initSurvivalUI();
     resizeSurvivalCanvas();
