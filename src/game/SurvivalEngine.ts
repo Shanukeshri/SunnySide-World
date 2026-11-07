@@ -804,6 +804,7 @@ export class SurvivalEngine {
     doingTimer: number;
     fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
     fishingTimer: number;
+    isBlocking: boolean;
   };
 
   // Inventory & Hotbar (20 main slots + 8 quick hotbar slots)
@@ -821,6 +822,7 @@ export class SurvivalEngine {
   public woodChips: WoodChipParticle[] = [];
   public floatingTexts: FloatingText[] = [];
   public remotePlayers: any[] = [];
+  public sessionId: string = "";
   public onWorldAction?: (action: any) => void;
 
   // Day / Night World Clock
@@ -956,6 +958,7 @@ export class SurvivalEngine {
       doingTimer: 0,
       fishingState: "NONE",
       fishingTimer: 0,
+      isBlocking: false,
     };
 
     // ── PHASE 8: Village Villager Spawning ──
@@ -1331,7 +1334,28 @@ export class SurvivalEngine {
     }
     if (this.isBlockedByStructure(footX, footY)) return false;
     if (this.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
+    if (this.isBlockedByRemotePlayer(footX, footY)) return false;
     return true;
+  }
+
+  private isBlockedByRemotePlayer(footX: number, footY: number): boolean {
+    if (!this.remotePlayers || this.remotePlayers.length === 0) return false;
+    const curFootX = this.player.x + 0.5;
+    const curFootY = this.player.y + 0.65;
+    for (const rp of this.remotePlayers) {
+      if (rp.isDead || rp.health <= 0) continue;
+      const rpFootX = rp.x + 0.5;
+      const rpFootY = rp.y + 0.65;
+      const targetDist = Math.hypot(footX - rpFootX, footY - rpFootY);
+      if (targetDist < 0.65) {
+        const curDist = Math.hypot(curFootX - rpFootX, curFootY - rpFootY);
+        // If moving closer while within collision radius, block movement
+        if (targetDist < curDist) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private isBlockedByStructure(footX: number, footY: number): boolean {
@@ -1566,9 +1590,109 @@ export class SurvivalEngine {
   // ═══════════════════════════════════════════════════════════════════
 
   /**
-   * Performs an attack/hit in a small radius in front of the player based on facing direction.
-   * Strikes any living creature (animals sprint away, enemies take damage) or harvestable resources.
+   * Universal Player Hit & PVP Damage Synchronization
    */
+  public hitPlayer(
+    targetId: string,
+    damage: number,
+    attackerX: number,
+    attackerY: number,
+    isRemote = false,
+  ): boolean {
+    const isLocal =
+      targetId === "local" ||
+      (this.sessionId && this.sessionId === targetId) ||
+      (typeof window !== "undefined" && (window as any).networkClient?.clientId === targetId);
+
+    if (isLocal) {
+      if (this.player.isDead) return false;
+      const isBlocking = Boolean(this.player.isBlocking);
+      const effectiveDmg = isBlocking ? Math.max(1, Math.round(damage * 0.15)) : damage;
+
+      if (isBlocking) {
+        GameAudio.playCraft();
+        this.emitWoodChips(this.player.x + 0.5, this.player.y + 0.65, "#38bdf8");
+        this.addFloatingText("🛡️ Blocked!", this.player.x + 0.5, this.player.y - 0.6, "#38bdf8");
+      } else {
+        GameAudio.playHurt();
+        this.player.hurtTimer = 0.45;
+        this.emitWoodChips(this.player.x + 0.5, this.player.y + 0.65, "#ef4444");
+        this.addFloatingText(`-${effectiveDmg} HP`, this.player.x + 0.5, this.player.y - 0.6, "#ef4444");
+      }
+
+      this.player.health = Math.max(0, this.player.health - effectiveDmg);
+      if (this.player.health <= 0) {
+        this.player.isDead = true;
+        this.addFloatingText("Defeated in battle!", this.player.x + 0.5, this.player.y - 1.0, "#dc2626");
+      }
+
+      // Knockback
+      const kbDist = isBlocking ? 0.15 : 0.45;
+      const angle = Math.atan2(this.player.y - attackerY, this.player.x - attackerX);
+      const kbX = this.player.x + Math.cos(angle) * kbDist;
+      const kbY = this.player.y + Math.sin(angle) * kbDist;
+      if (this.canMoveTo(kbX, kbY)) {
+        this.player.x = kbX;
+        this.player.y = kbY;
+      }
+
+      if (!isRemote && this.onWorldAction) {
+        this.onWorldAction({
+          type: "hit-player",
+          targetId,
+          damage,
+          attackerX,
+          attackerY,
+        });
+      }
+      return true;
+    }
+
+    // Remote player target
+    const rp = this.remotePlayers.find((p: any) => p.id === targetId || p.sessionId === targetId);
+    if (!rp || rp.isDead) return false;
+
+    const isBlocking = Boolean(rp.isBlocking);
+    const effectiveDmg = isBlocking ? Math.max(1, Math.round(damage * 0.15)) : damage;
+
+    if (isBlocking) {
+      GameAudio.playCraft();
+      this.emitWoodChips(rp.x + 0.5, rp.y + 0.65, "#38bdf8");
+      this.addFloatingText("🛡️ Blocked!", rp.x + 0.5, rp.y - 0.6, "#38bdf8");
+    } else {
+      GameAudio.playHurt();
+      rp.hurtTimer = 0.45;
+      this.emitWoodChips(rp.x + 0.5, rp.y + 0.65, "#ef4444");
+      this.addFloatingText(`-${effectiveDmg} HP`, rp.x + 0.5, rp.y - 0.6, "#ef4444");
+    }
+
+    if (rp.health === undefined) rp.health = 100;
+    rp.health = Math.max(0, rp.health - effectiveDmg);
+    if (rp.health <= 0) {
+      rp.isDead = true;
+      this.addFloatingText("Defeated in battle!", rp.x + 0.5, rp.y - 1.0, "#dc2626");
+    }
+
+    // Knockback for remote player visually
+    const kbDist = isBlocking ? 0.15 : 0.45;
+    const angle = Math.atan2(rp.y - attackerY, rp.x - attackerX);
+    rp.x += Math.cos(angle) * kbDist;
+    rp.y += Math.sin(angle) * kbDist;
+
+    this.useActiveToolDurability();
+
+    if (!isRemote && this.onWorldAction) {
+      this.onWorldAction({
+        type: "hit-player",
+        targetId,
+        damage,
+        attackerX,
+        attackerY,
+      });
+    }
+    return true;
+  }
+
   /**
    * Universal Animal Hit & Damage Synchronization
    */
@@ -1818,9 +1942,11 @@ export class SurvivalEngine {
     this.player.swingTimer = 0.25;
     GameAudio.playSwing();
 
+    const playerCenterX = this.player.x + 0.5;
+    const playerCenterY = this.player.y + 0.65;
     const reach = 0.95;
-    let hitX = this.player.x;
-    let hitY = this.player.y;
+    let hitX = playerCenterX;
+    let hitY = playerCenterY;
     if (this.player.direction === "UP") {
       hitY -= reach;
     } else if (this.player.direction === "DOWN") {
@@ -1834,15 +1960,37 @@ export class SurvivalEngine {
       hitX += reach;
     }
 
-    const hitRadius = 1.35;
+    const hitRadius = 1.4;
     const activeSlot = this.getActiveItemSlot();
     const activeItem = activeSlot?.item || "";
     const activeItemDef = activeSlot?.item ? ITEM_CATALOG[activeSlot.item] : null;
 
+    // 0. Check Remote Players in facing hit cone
+    for (const rp of this.remotePlayers) {
+      if (rp.isDead || (rp.health !== undefined && rp.health <= 0)) continue;
+      const rpCenterX = rp.x + 0.5;
+      const rpCenterY = rp.y + 0.65;
+      const dist = Math.hypot(hitX - rpCenterX, hitY - rpCenterY);
+      const directDist = Math.hypot(playerCenterX - rpCenterX, playerCenterY - rpCenterY);
+      const inFacingCone =
+        (this.player.facing === "RIGHT" && rpCenterX >= playerCenterX) ||
+        (this.player.facing === "LEFT" && rpCenterX <= playerCenterX) ||
+        (this.player.direction === "DOWN" && rpCenterY >= playerCenterY) ||
+        (this.player.direction === "UP" && rpCenterY <= playerCenterY);
+
+      if (dist <= hitRadius || (directDist <= 2.1 && inFacingCone)) {
+        const dmg = activeItemDef?.damage || (activeItem.includes("sword") ? 18 : activeItem.includes("axe") ? 12 : 8);
+        this.hitPlayer(rp.id || rp.sessionId, dmg, this.player.x, this.player.y, false);
+        return true;
+      }
+    }
+
     // 1. Check Living Animals in facing hit cone
     for (const animal of this.animals) {
       if (!animal.isActive || animal.behaviorState === "DEAD") continue;
-      const dist = Math.hypot(hitX - animal.position.x, hitY - animal.position.y);
+      const animCenterX = animal.position.x + 0.5;
+      const animCenterY = animal.position.y + 0.5;
+      const dist = Math.hypot(hitX - animCenterX, hitY - animCenterY);
       if (dist <= hitRadius) {
         const dmg = activeItemDef?.damage || 15;
         this.hitAnimal(animal.id, dmg, this.player.x, this.player.y, false);
@@ -1963,6 +2111,18 @@ export class SurvivalEngine {
       this.addFloatingText("Hammering 🔨", wx, wy, "#f59e0b");
       this.useActiveToolDurability();
       return;
+    }
+
+    // 0. Check if clicking on another player within interaction reach
+    for (const rp of this.remotePlayers) {
+      if (rp.isDead || (rp.health !== undefined && rp.health <= 0)) continue;
+      const dist = Math.hypot(wx - (rp.x + 0.5), wy - (rp.y + 0.65));
+      const playerDist = Math.hypot(this.player.x - rp.x, this.player.y - rp.y);
+      if (dist < 1.3 && playerDist <= 3.2) {
+        const dmg = activeItemDef?.damage || (activeItem.includes("sword") ? 18 : activeItem.includes("axe") ? 12 : 8);
+        this.hitPlayer(rp.id || rp.sessionId, dmg, this.player.x, this.player.y, false);
+        return;
+      }
     }
 
     // 1. Check if clicking on an animal within interaction reach

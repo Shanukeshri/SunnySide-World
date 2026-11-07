@@ -1291,6 +1291,7 @@ export class SurvivalRenderer {
           isActive: true,
           behaviorState: p.isDead ? "DEAD" : "WALK",
           hairstyle: "mophair",
+          hurtTimer: p.hurtTimer || 0,
           anim: {
             action,
             currentFrame: frameIndex,
@@ -1329,6 +1330,19 @@ export class SurvivalRenderer {
           1.0,
           action,
         );
+
+        if (p.isBlocking) {
+          ctx.save();
+          ctx.font = `${14 * (this.zoom / 2)}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.fillText("🛡️", playerCenterX + 14, groundY - cellSize * 0.7);
+          ctx.strokeStyle = "#38bdf8";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(playerCenterX, groundY - cellSize * 0.4, cellSize * 0.45, -Math.PI * 0.7, Math.PI * 0.7);
+          ctx.stroke();
+          ctx.restore();
+        }
         },
       });
     }
@@ -1428,6 +1442,7 @@ export class SurvivalRenderer {
               isActive: true,
               behaviorState: rp.isDead ? "DEAD" : "WALK",
               hairstyle: rp.hairstyle || "curlyhair",
+              hurtTimer: rp.hurtTimer || 0,
               anim: {
                 action,
                 currentFrame: frameIndex,
@@ -1465,6 +1480,34 @@ export class SurvivalRenderer {
               1.0,
               action,
             );
+
+            if (rp.isBlocking) {
+              ctx.save();
+              ctx.font = `${14 * (this.zoom / 2)}px sans-serif`;
+              ctx.textAlign = "center";
+              ctx.fillText("🛡️", playerCenterX + 14, groundY - cellSize * 0.7);
+              ctx.strokeStyle = "#38bdf8";
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.arc(playerCenterX, groundY - cellSize * 0.4, cellSize * 0.45, -Math.PI * 0.7, Math.PI * 0.7);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // Health bar if damaged (< 100)
+            if (rp.health !== undefined && rp.health < 100) {
+              ctx.save();
+              const hpW = 34;
+              const hpH = 4;
+              const hpX = playerCenterX - hpW / 2;
+              const hpY = groundY - cellSize * 1.5 - 7;
+              const hpPct = Math.max(0, Math.min(1, rp.health / 100));
+              ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+              ctx.fillRect(hpX - 1, hpY - 1, hpW + 2, hpH + 2);
+              ctx.fillStyle = hpPct > 0.5 ? "#22c55e" : hpPct > 0.25 ? "#eab308" : "#ef4444";
+              ctx.fillRect(hpX, hpY, hpW * hpPct, hpH);
+              ctx.restore();
+            }
 
             // Name Tag Badge
             ctx.save();

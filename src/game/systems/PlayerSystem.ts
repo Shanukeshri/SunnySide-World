@@ -92,12 +92,12 @@ export class PlayerSystem {
         const nextY = player.y + vy * baseSpeed * inputDt;
 
         // Collision detection with diagonal sliding
-        if (this.canMoveTo(nextX, nextY)) {
+        if (this.canMoveTo(nextX, nextY, player)) {
           player.x = nextX;
           player.y = nextY;
         } else {
-          const canX = this.canMoveTo(nextX, player.y);
-          const canY = this.canMoveTo(player.x, nextY);
+          const canX = this.canMoveTo(nextX, player.y, player);
+          const canY = this.canMoveTo(player.x, nextY, player);
           if (canX) player.x = nextX;
           if (canY) player.y = nextY;
         }
@@ -183,7 +183,7 @@ export class PlayerSystem {
     }
   }
 
-  public canMoveTo(x: number, y: number): boolean {
+  public canMoveTo(x: number, y: number, movingPlayer?: PlayerEntityState): boolean {
     const footX = x + 0.5;
     const footY = y + 0.65;
     const rx = 0.35;
@@ -203,7 +203,27 @@ export class PlayerSystem {
       if (this.isBlockedByStructure(footX, footY)) return false;
     }
     if (this.gameState.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
+    if (movingPlayer && this.isBlockedByOtherPlayer(footX, footY, movingPlayer)) return false;
     return true;
+  }
+
+  private isBlockedByOtherPlayer(footX: number, footY: number, movingPlayer: PlayerEntityState): boolean {
+    const curFootX = movingPlayer.x + 0.5;
+    const curFootY = movingPlayer.y + 0.65;
+    for (const other of this.gameState.players.values()) {
+      if (other.sessionId === movingPlayer.sessionId || other.isDead) continue;
+      const otherFootX = other.x + 0.5;
+      const otherFootY = other.y + 0.65;
+      const targetDist = Math.hypot(footX - otherFootX, footY - otherFootY);
+      if (targetDist < 0.65) {
+        const curDist = Math.hypot(curFootX - otherFootX, curFootY - otherFootY);
+        // If moving closer while within collision radius, block movement
+        if (targetDist < curDist) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private isBlockedByStructure(footX: number, footY: number): boolean {

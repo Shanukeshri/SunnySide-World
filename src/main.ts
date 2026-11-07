@@ -1565,11 +1565,25 @@ function handleRemotePlayerAction(action: { sessionId: string; type: string; [ke
       rp.rollTimer = 0.4;
     } else if (action.type === "interact") {
       rp.doingTimer = 0.3;
+    } else if (action.type === "block") {
+      rp.isBlocking = Boolean(action.isBlocking);
     }
   }
 
   // Universal Synchronized World Actions on Remote Machine
-  if (action.type === "hit-animal") {
+  if (action.type === "hit-player") {
+    const localId = networkClient?.clientId;
+    if (action.targetId === localId || (survivalEngine.sessionId && action.targetId === survivalEngine.sessionId)) {
+      survivalEngine.hitPlayer("local", action.damage, action.attackerX, action.attackerY, true);
+      networkClient?.sendAction({
+        type: "player-health",
+        health: survivalEngine.player.health,
+        isDead: survivalEngine.player.isDead,
+      });
+    } else {
+      survivalEngine.hitPlayer(action.targetId, action.damage, action.attackerX, action.attackerY, true);
+    }
+  } else if (action.type === "hit-animal") {
     survivalEngine.hitAnimal(action.animalId, action.damage, action.attackerX, action.attackerY, true);
   } else if (action.type === "hit-resource") {
     survivalEngine.hitResource(action.x, action.y, action.damage, action.tool, true, action.id);
@@ -1693,6 +1707,7 @@ function handleSyncEntities(entities: any) {
 function applyMultiplayerSnapshot(snapshot: any) {
   if (!survivalEngine || !networkClient) return;
   const localId = networkClient.clientId;
+  survivalEngine.sessionId = localId || "";
   const local = snapshot.players.find((player: any) => player.sessionId === localId);
   if (local) {
     networkClient.prediction.reconcile(local);
@@ -1712,6 +1727,12 @@ function applyMultiplayerSnapshot(snapshot: any) {
     if (old && old.swingTimer > 0 && (!player.swingTimer || player.swingTimer <= 0)) {
       merged.swingTimer = old.swingTimer;
     }
+    if (old && old.hurtTimer > 0 && (!player.hurtTimer || player.hurtTimer <= 0)) {
+      merged.hurtTimer = old.hurtTimer;
+    }
+    if (old && old.isBlocking !== undefined && player.isBlocking === undefined) {
+      merged.isBlocking = old.isBlocking;
+    }
     if (old && old.activeHeldItem && !player.activeHeldItem) {
       merged.activeHeldItem = old.activeHeldItem;
     }
@@ -1725,6 +1746,7 @@ function applyMultiplayerSnapshot(snapshot: any) {
 function joinMultiplayerWorld(snapshot: any) {
   // Each client creates the same deterministic map from the server's shared seed.
   survivalEngine = new SurvivalEngine(snapshot.seed);
+  survivalEngine.sessionId = networkClient?.clientId || "";
   (window as any).survivalEngine = survivalEngine;
   (window as any).gameEngine = survivalEngine;
   survivalEngine.onWorldAction = (action: any) => {
@@ -2512,6 +2534,14 @@ function initSurvivalInputs() {
       togglePauseModal();
     }
 
+    // Block / Guard Stance [Q] or [G]
+    if (key === "q" || key === "g") {
+      if (survivalEngine && !survivalEngine.player.isDead && !survivalEngine.player.isBlocking) {
+        survivalEngine.player.isBlocking = true;
+        networkClient?.sendAction({ type: "block", isBlocking: true });
+      }
+    }
+
     // Space: Jump
     if (key === " " || e.code === "Space") {
       if (survivalEngine) {
@@ -2547,6 +2577,13 @@ function initSurvivalInputs() {
     const key = e.key.toLowerCase();
     activeSurvivalKeys.delete(key);
 
+    if (key === "q" || key === "g") {
+      if (survivalEngine && survivalEngine.player.isBlocking) {
+        survivalEngine.player.isBlocking = false;
+        networkClient?.sendAction({ type: "block", isBlocking: false });
+      }
+    }
+
     if (!e.shiftKey) {
       if (survivalEngine) survivalEngine.player.isSprinting = false;
     }
@@ -2554,10 +2591,30 @@ function initSurvivalInputs() {
     updatePlayerContinuousMovement(0.025);
   });
 
+  window.addEventListener("mouseup", (e) => {
+    if (e.button === 2) {
+      if (survivalEngine && survivalEngine.player.isBlocking) {
+        survivalEngine.player.isBlocking = false;
+        networkClient?.sendAction({ type: "block", isBlocking: false });
+      }
+    }
+  });
+
   // Mouse clicks on canvas
   if (survivalCanvas) {
+    survivalCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
     survivalCanvas.addEventListener("mousedown", (e) => {
       if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
+
+      // Right-Click: Block / Guard Stance
+      if (e.button === 2) {
+        e.preventDefault();
+        if (!survivalEngine.player.isDead) {
+          survivalEngine.player.isBlocking = true;
+          networkClient?.sendAction({ type: "block", isBlocking: true });
+        }
+        return;
+      }
 
       const rect = survivalCanvas.getBoundingClientRect();
       const cellSize = survivalRenderer.baseTileSize * survivalRenderer.zoom;

@@ -87,6 +87,22 @@ io.on("connection", socket => {
       player.rollTimer = 0.4;
     } else if (action.type === "interact") {
       player.doingTimer = 0.3;
+    } else if (action.type === "block") {
+      player.isBlocking = Boolean(action.isBlocking);
+    } else if (action.type === "player-health") {
+      player.health = action.health;
+      player.isDead = Boolean(action.isDead);
+    } else if (action.type === "hit-player") {
+      const target = room.state.getPlayer(action.targetId);
+      if (target) {
+        const dmg = action.damage || 10;
+        const effectiveDmg = target.isBlocking ? Math.max(1, Math.round(dmg * 0.15)) : dmg;
+        target.health = Math.max(0, target.health - effectiveDmg);
+        if (!target.isBlocking) {
+          target.hurtTimer = 0.45;
+        }
+        if (target.health <= 0) target.isDead = true;
+      }
     }
 
     socket.to(room.code).emit("player-action", {
