@@ -20,11 +20,11 @@ import { generateCropsForFarmlands } from "../generation/CropGenerator";
 import { ResourceNode, WorldRealmVillage, ItemId } from "./GameTypes";
 
 export const CHUNK_SIZE = 16; // 16x16 tiles per chunk
-export const VILLAGE_WIDTH = 44; // tiles
-export const VILLAGE_HEIGHT = 36; // tiles
-export const VILLAGE_EQUIVALENT = 40; // 1 village equivalent ~ 40 tiles
-export const MIN_VILLAGE_GAP = 2 * VILLAGE_EQUIVALENT; // 80 tiles gap
-export const MAX_VILLAGE_GAP = 4 * VILLAGE_EQUIVALENT; // 160 tiles gap
+export const VILLAGE_WIDTH = 110; // tiles
+export const VILLAGE_HEIGHT = 88; // tiles
+export const VILLAGE_EQUIVALENT = 90; // 1 village equivalent ~ 90 tiles
+export const MIN_VILLAGE_GAP = 2 * VILLAGE_EQUIVALENT; // 180 tiles gap
+export const MAX_VILLAGE_GAP = 4 * VILLAGE_EQUIVALENT; // 360 tiles gap
 export const MAX_REALM_VILLAGES = 4;
 
 export interface WorldTile {
@@ -141,28 +141,28 @@ export class WorldManager {
    * Enforces the rule: wilderness gap between any two villages is between 2 and 4 village equivalents.
    */
   private planRealmVillages() {
-    // Village Equivalent V = 40 tiles.
-    // 2 V gap = 80 tiles.
-    // 4 V gap = 160 tiles.
+    // Village Equivalent V = 90 tiles.
+    // 2 V gap = 180 tiles.
+    // 4 V gap = 360 tiles.
     // Village 1: Oakvale (Center / Starting realm village) at [0, 0]
-    // Village 2: Riverwood (East / Northeast) gap ~ 100 tiles (2.5 village equivalents)
-    // Village 3: Sunhaven (South / Southeast) gap ~ 120 tiles (3 village equivalents)
-    // Village 4: Pinecrest (West / Northwest) gap ~ 110 tiles (2.75 village equivalents)
+    // Village 2: Riverwood (East / Northeast) gap ~ 240 tiles (2.67 village equivalents)
+    // Village 3: Sunhaven (South / Southeast) gap ~ 265 tiles (2.94 village equivalents)
+    // Village 4: Pinecrest (West / Northwest) gap ~ 255 tiles (2.83 village equivalents)
 
     const v1X = 0;
     const v1Y = 0;
 
-    // East / NE site: ~100 tiles away from Village 1
-    const v2X = v1X + 96;
-    const v2Y = v1Y - 48;
+    // East / NE site: ~240 tiles away from Village 1
+    const v2X = v1X + 220;
+    const v2Y = v1Y - 96;
 
-    // South / SE site: ~115 tiles away from Village 1, ~125 tiles from Village 2
-    const v3X = v1X + 48;
-    const v3Y = v1Y + 110;
+    // South / SE site: ~265 tiles away from Village 1
+    const v3X = v1X + 110;
+    const v3Y = v1Y + 240;
 
-    // West / NW site: ~110 tiles away from Village 1, ~130 tiles from Village 3
-    const v4X = v1X - 112;
-    const v4Y = v1Y + 24;
+    // West / NW site: ~255 tiles away from Village 1
+    const v4X = v1X - 250;
+    const v4Y = v1Y + 50;
 
     this.villagePlannedSites = [
       {
@@ -226,15 +226,15 @@ export class WorldManager {
         playerTileY - (site.targetY + VILLAGE_HEIGHT / 2),
       );
 
-      // Trigger automatic generation when player is within approaching range (90 tiles)
+      // Trigger automatic generation when player is within approaching range (180 tiles)
       // or if it's the starter village (Oakvale)
-      if (dist < 90 || (site.name === "Oakvale" && dist < 120)) {
+      if (dist < 180 || (site.name === "Oakvale" && dist < 250)) {
         this.generateVillageAtSite(site);
       }
     }
 
     // 2b. Infinite village generation (Minecraft-style): dynamically plan candidate sites across the infinite world
-    const macroStep = 120; // 3 village equivalents
+    const macroStep = 270; // 3 village equivalents
     const playerMx = Math.floor((playerTileX + macroStep / 2) / macroStep);
     const playerMy = Math.floor((playerTileY + macroStep / 2) / macroStep);
 
@@ -421,17 +421,36 @@ export class WorldManager {
       }
     }
 
-    // House collision footprint: Exterior walls are solid, but bottom-center doorway is open and walkable
+    // House collision footprint: Exterior walls are solid, but doorway and interior rooms are walkable
     for (const house of data.houses) {
-      for (let dy = 0; dy < house.footprintH; dy++) {
-        for (let dx = 0; dx < house.footprintW; dx++) {
-          const wx = startX + house.x + dx;
-          const wy = startY + house.y + dy;
-          const isDoorway =
-            dy === house.footprintH - 1 &&
-            dx === Math.floor(house.footprintW / 2);
-          if (!isDoorway) {
-            this.getTile(wx, wy).isBlocked = true;
+      if (house.metadata?.detailedHouse) {
+        const dh = house.metadata.detailedHouse;
+        for (let dy = 0; dy < house.footprintH; dy++) {
+          for (let dx = 0; dx < house.footprintW; dx++) {
+            const wx = startX + house.x + dx;
+            const wy = startY + house.y + dy;
+            const isBlocked = dh.walkableGrid?.[dy]?.[dx] === false;
+            this.getTile(wx, wy).isBlocked = isBlocked;
+          }
+        }
+        // Ensure outside doorstep landing is also fully unblocked
+        const doorW = dh.door.w || 2;
+        for (let dw = 0; dw < doorW; dw++) {
+          const doorStepWx = startX + house.x + dh.door.x + dw;
+          const doorStepWy = startY + house.y + dh.door.y + 1;
+          this.getTile(doorStepWx, doorStepWy).isBlocked = false;
+        }
+      } else {
+        for (let dy = 0; dy < house.footprintH; dy++) {
+          for (let dx = 0; dx < house.footprintW; dx++) {
+            const wx = startX + house.x + dx;
+            const wy = startY + house.y + dy;
+            const isDoorway =
+              dy === house.footprintH - 1 &&
+              dx === Math.floor(house.footprintW / 2);
+            if (!isDoorway) {
+              this.getTile(wx, wy).isBlocked = true;
+            }
           }
         }
       }
@@ -603,7 +622,7 @@ export class WorldManager {
             const ny = ty + dy;
             const nx = tx + dx;
             if (ny >= 0 && ny < CHUNK_SIZE && nx >= 0 && nx < CHUNK_SIZE) {
-              if (chunk.tiles[ny][nx].isWater) waterNeighbors++;
+              if (chunk.tiles[ny][nx].isWater || chunk.tiles[ny][nx].isBridge) waterNeighbors++;
             } else {
               // Neighbor in adjacent chunk: sample continuous lake noise
               const nLake = this.noiseWater((worldX + dx) * 0.006, (worldY + dy) * 0.006);
@@ -611,6 +630,9 @@ export class WorldManager {
             }
           }
         }
+
+        // Bridge tiles over water stay pure bridge/water
+        if (tile.isBridge) continue;
 
         // Single isolated water tile with < 3 water neighbors becomes sand
         if (tile.isWater && waterNeighbors < 3) {
@@ -718,12 +740,15 @@ export class WorldManager {
       }
     }
 
-    // 3. Highways build overpass wooden bridges over water/oceans
+    const lakeNoise = this.noiseWater(x * 0.006, y * 0.006);
+    const isNaturalWater = landElevation < -0.08 || lakeNoise > 0.32;
+
+    // 3. Highways build overpass wooden platforms/bridges directly over water/oceans (NO land underneath!)
     if (isOnHighway) {
-      if (landElevation < -0.16) {
+      if (isNaturalWater) {
         return {
           terrain: "bridge_wood",
-          isWater: false,
+          isWater: true, // Directly on water, NO land underneath!
           isRoad: true,
           isBridge: true,
           isFarm: false,
@@ -767,7 +792,6 @@ export class WorldManager {
 
     // 6. On-Land Geography: Expansive, Broad Natural Lakes
     // Lower frequency (scale 0.006) and wide threshold makes on-land lakes substantially larger, broad, and majestic
-    const lakeNoise = this.noiseWater(x * 0.006, y * 0.006);
     if (lakeNoise > 0.32) {
       return {
         terrain: "water_tile_01",
@@ -1237,14 +1261,16 @@ export class WorldManager {
    * Computes 8-neighbor water shore adjacency bitmask for water / coastline autotiling.
    */
   public getWaterShoreBitmask(wx: number, wy: number) {
-    const hasWaterN = this.getTile(wx, wy - 1).isWater;
-    const hasWaterE = this.getTile(wx + 1, wy).isWater;
-    const hasWaterS = this.getTile(wx, wy + 1).isWater;
-    const hasWaterW = this.getTile(wx - 1, wy).isWater;
-    const hasWaterNE = this.getTile(wx + 1, wy - 1).isWater;
-    const hasWaterSE = this.getTile(wx + 1, wy + 1).isWater;
-    const hasWaterSW = this.getTile(wx - 1, wy + 1).isWater;
-    const hasWaterNW = this.getTile(wx - 1, wy - 1).isWater;
+    // Wooden bridges/platforms are built directly over water; treat them as water so no sand or foam forms against them
+    const isWaterOrBridge = (t: WorldTile) => t.isWater || t.isBridge || t.terrain?.startsWith("bridge_");
+    const hasWaterN = isWaterOrBridge(this.getTile(wx, wy - 1));
+    const hasWaterE = isWaterOrBridge(this.getTile(wx + 1, wy));
+    const hasWaterS = isWaterOrBridge(this.getTile(wx, wy + 1));
+    const hasWaterW = isWaterOrBridge(this.getTile(wx - 1, wy));
+    const hasWaterNE = isWaterOrBridge(this.getTile(wx + 1, wy - 1));
+    const hasWaterSE = isWaterOrBridge(this.getTile(wx + 1, wy + 1));
+    const hasWaterSW = isWaterOrBridge(this.getTile(wx - 1, wy + 1));
+    const hasWaterNW = isWaterOrBridge(this.getTile(wx - 1, wy - 1));
     const isShore =
       !hasWaterN ||
       !hasWaterE ||

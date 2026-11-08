@@ -4,9 +4,15 @@ import { EnvironmentInfo, EnvironmentType } from './types';
 export class EnvironmentDetector {
   private settlementData: SettlementData;
   private jungleZones: Array<{ x: number; y: number; radius: number }> = [];
+  public originX: number = 0;
+  public originY: number = 0;
+  public worldManager?: any;
 
-  constructor(data: SettlementData) {
+  constructor(data: SettlementData, originX: number = 0, originY: number = 0, worldManager?: any) {
     this.settlementData = data;
+    this.originX = originX;
+    this.originY = originY;
+    this.worldManager = worldManager;
     this.detectJungleClusters();
   }
 
@@ -104,14 +110,33 @@ export class EnvironmentDetector {
       return false;
     }
 
-    // Buildings & solid structures (houses): ALL of house is solid & non-passable (including doorway)
-    if (this.settlementData.houses) {
+    // Buildings & solid structures (houses): ALL of house is strictly non-passable for animals/creatures
+    if (this.worldManager?.villages) {
+      for (const v of this.worldManager.villages) {
+        if (v.data?.houses) {
+          for (const house of v.data.houses) {
+            const hx = v.gridX + house.x;
+            const hy = v.gridY + house.y;
+            if (
+              x >= hx - 0.25 &&
+              x < hx + house.footprintW + 0.25 &&
+              y >= hy - 0.25 &&
+              y < hy + house.footprintH + 0.25
+            ) {
+              return false;
+            }
+          }
+        }
+      }
+    } else if (this.settlementData?.houses) {
       for (const house of this.settlementData.houses) {
+        const hx = this.originX + house.x;
+        const hy = this.originY + house.y;
         if (
-          x >= house.x &&
-          x < house.x + house.footprintW &&
-          y >= house.y &&
-          y < house.y + house.footprintH
+          x >= hx - 0.25 &&
+          x < hx + house.footprintW + 0.25 &&
+          y >= hy - 0.25 &&
+          y < hy + house.footprintH + 0.25
         ) {
           return false;
         }

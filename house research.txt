@@ -1,0 +1,977 @@
+================================================================================
+PROCEDURAL DETAILED INTERIOR HOUSE GENERATION ALGORITHM & ARCHITECTURAL RESEARCH
+================================================================================
+Document: house research.txt
+Date: 2026-11-08
+Project: RTSGame (Top-Down Survival & Settlement Engine)
+Target Architecture: Sunnyside World 16px Top-Down 2.5D Orthogonal/Cutaway Engine
+Scope: Replacing static opaque house sprites with procedurally generated,
+       walkable, multi-room, fully detailed houses with authentic walls,
+       doors, windows, functional furniture, cellar ladders, and attached yards
+       (crop gardens & animal pens) with guaranteed reachability.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY & COMPARATIVE ANALYSIS
+   1.1 The Current System vs. Desired Architecture
+   1.2 Reference Image Analysis (Necesse-Style Settlement Complexes)
+   1.3 Core Architectural Requirements & Design Philosophy
+
+2. SUNNYSIDE WORLD ASSET CATALOG & TILESET MAPPING
+   2.1 Wall Autotiling Systems (Stone Masonry, Timber Log, Partition Walls)
+   2.2 Flooring Materials (Hardwood, Parquet, Flagstone, Tilled Earth, Grass)
+   2.3 Architectural Openings & Trim (Doors, Windows, Thresholds, Roof Lip)
+   2.4 Interior Furniture & Props Catalog (Sizes, Anchors, Orientations, Collision)
+   2.5 Cellar / Subterranean Access System (Stone Chamber & Ladders)
+   2.6 Exterior Annex Components (Fences, Gates, Crops, Animal Pens, Campfires)
+
+3. THE PROCEDURAL HOUSE GENERATION ALGORITHM
+   3.1 Input Parameters & Dimension Normalization
+   3.2 Step 1: Footprint Decomposition & Complex Morphology (Rect, L-Shape, Yard)
+   3.3 Step 2: Semantic Space Partitioning (BSP & Room Assignment)
+   3.4 Step 3: Perimeter & Partition Wall Autotiling (2.5D Elevation Model)
+   3.5 Step 4: Circulation Spine, Exterior & Interior Doorways
+   3.6 Step 5: Floor Texturing & Area Rug Placement
+   3.7 Step 6: Semantic Anchor Identification
+   3.8 Step 7: Constraint Satisfaction Furniture Slotting
+   3.9 Step 8: Pathfinding & Reachability Verification (Flood Fill Solver)
+   3.10 Step 9: Collision Boundaries, Interaction Triggers, Lights & VFX
+
+4. CONCRETE WORKED EXAMPLES FOR STANDARD SIZES
+   4.1 Size 7x7: Compact Studio Cottage (ASCII Grid, Furniture, Collision)
+   4.2 Size 10x8: Two-Room Homestead with Stone Cellar & Ladder
+   4.3 Size 14x10: L-Shaped Estate with Attached Fenced Crop Garden & Cellar
+   4.4 Size 12x12: Stone Masonry Manor with Attached Walled Animal Pen
+
+5. COMPREHENSIVE IMPLEMENTATION PLAN FOR RTSGAME (NO CODE CHANGES YET)
+   5.1 Module Structure & Interface Contracts
+   5.2 Integration with SettlementGenerator.ts
+   5.3 Rendering Pipeline Architecture in SettlementRenderer.ts
+   5.4 Collision & Movement Engine Integration in WorldManager.ts
+   5.5 Lifeform NPC Schedules & Player Interaction Routines
+   5.6 Phased Rollout Plan, Verification Matrix & Performance Guarantees
+
+================================================================================
+1. EXECUTIVE SUMMARY & COMPARATIVE ANALYSIS
+================================================================================
+
+--------------------------------------------------------------------------------
+1.1 THE CURRENT SYSTEM VS. DESIRED ARCHITECTURE
+--------------------------------------------------------------------------------
+In the current RTSGame engine:
+- Buildings are spawned as monolithic rectangular bounding boxes (e.g. 3x3, 4x3,
+  or 4x4 tiles) defined in `SettlementGenerator.ts` (`house_cottage_01`,
+  `house_farmhouse_01`, `house_barn_01`, etc.).
+- They are drawn by `SettlementRenderer.ts` using pre-baked static exterior roof
+  sprites sliced from `houses.png`.
+- The entire bounding box is marked `blocked = true` in the world grid.
+- Consequently, buildings are opaque, impenetrable obstacles. Characters cannot
+  enter them, villagers cannot live or sleep inside them, and there is no interior
+  space, furniture, or architectural detail.
+
+The desired architecture replaces these static exterior blocks with open-interior,
+cutaway 2.5D detailed buildings inspired by games like Necesse, RimWorld, and
+Stardew Valley:
+- Cutaway Walls: Top and side walls provide physical presence and elevation framing
+  without obscuring the player's view of interior rooms.
+- Walkable Interiors: Buildings have open doorways, threshold mats, and walkable
+  floors so players and villagers can enter seamlessly without loading screens.
+- Functional Furniture: Real beds where villagers sleep at night, dining tables
+  with oriented chairs, cooking stoves, storage chests, bookcases, and baths.
+- Architectural Variety: Buildings feature multiple rooms (e.g. living quarters,
+  stone cellars with ladders leading underground) and attached exterior annexes
+  (fenced crop gardens, walled animal pens, outdoor campfire patios).
+- Procedural Flexibility: Given ANY input dimensions (W x H) requested by the
+  settlement planner, the algorithm produces a complete, aesthetically cohesive,
+  and 100% pathable building every time.
+
+--------------------------------------------------------------------------------
+1.2 REFERENCE IMAGE ANALYSIS (NECESSE-STYLE SETTLEMENT COMPLEXES)
+--------------------------------------------------------------------------------
+The three user-provided reference images demonstrate the key elements of top-tier
+procedural settlement architecture:
+
+A. Image 1 Analysis (Wood Log Homestead with Stone Cellar & Crop Plot):
+   - Wall Construction: Timber log walls with horizontal wood grain and corner joins.
+   - Internal Division: The house is divided into two distinct rooms:
+     1. Left Room: Cool grey stone flagstone floor containing a wooden ladder /
+        trapdoor leading down into the subterranean mine/cave level.
+     2. Right Room: Warm vertical wood plank flooring containing a bed flush
+        against the partition wall, an elder NPC standing by the bed, a crafting
+        shelf, a red potted flower, a wooden chair, a wooden storage chest,
+        a 3-candle candelabra on a wooden post against the North wall, and a
+        second candelabra against the partition wall.
+   - Architectural Openings: A South-facing wooden doorway leading to the outside.
+   - Attached Outdoor Yard: Directly adjacent to the left wall is a tilled soil
+     garden plot with growing crops. In front of the house is an outdoor campfire
+     with a cooking pot on the grass.
+
+B. Image 2 Analysis (L-Shaped Timber Estate with Fenced Garden & Cellar):
+   - Footprint: An L-shaped building footprint wrapping around an inner courtyard.
+   - Courtyard / Garden: The open corner of the L is enclosed by wooden post-and-rail
+     fences with an access gate. Inside is tilled soil with tall crops (corn/wheat).
+     Rows of tall sunflowers line the exterior fence.
+   - Interior Layout:
+     * Main Living Room: Long blue patterned runner carpet in the center; bed
+       along the North wall; second bed on the lower right; multiple chests;
+       candelabras; writing desk with quill and candle; potted flower.
+     * Attached Cellar Wing: Stone floor room with a centered wooden ladder going
+       down; enclosed by walls with an interior doorway connecting to the living room.
+   - Exterior Details: Outdoor campfire on gravel/dirt, cobblestone paths.
+
+C. Image 3 Analysis (Timber vs. Stone Masonry Houses side-by-side):
+   - Highlights two distinct architectural material themes:
+     1. Timber Theme (Left): Log walls, wood plank floors, attached fenced garden,
+        stone cellar room with ladder, blue runner rug, multiple beds for villagers.
+     2. Stone Brick Masonry Theme (Right): Thick grey dressed stone brick walls,
+        wood plank floors, master double bed with red quilt, single bed with green
+        blanket, iron stove / fireplace, wash basin / water tub, dresser table
+        with globe, wall-mounted torches.
+     3. Attached Animal Pen (Right): Enclosed by stone masonry walls matching the
+        house and an iron/wood gate, housing livestock (cow) on grass.
+     4. Front Yard Features: Dual tilled vegetable plots, apiary beehive boxes,
+        street lamp posts, and winding dirt paths connecting to the village road.
+
+--------------------------------------------------------------------------------
+1.3 CORE ARCHITECTURAL REQUIREMENTS & DESIGN PHILOSOPHY
+--------------------------------------------------------------------------------
+To reproduce this depth procedurally without manual hand-crafting, the algorithm
+must satisfy five non-negotiable principles:
+1. Strict 2.5D Cutaway Perspective:
+   North (back) walls have 2-tile height (roof cap + facade face) to hold windows,
+   mirrors, paintings, and headboards. South (front) walls are low-profile so they
+   never occlude characters or furniture inside.
+2. Semantic Room Hierarchy:
+   Space is partitioned logically: Main Living/Hearth -> Private Bedroom -> Stone
+   Cellar / Workshop -> Attached Yard (Garden or Pen).
+3. Constraint-Based Furniture Placement:
+   Every furniture piece has strict physical requirements: beds must touch walls;
+   stoves must align with rooflines for chimney smoke; chairs must face tables with
+   approach clearance; rugs must not block doors.
+4. Guaranteed Walkability & Reachability:
+   BFS flood-fill verification must prove that every room, bed, chair, chest, stove,
+   and ladder can be reached from the front door with at least 1 tile of clear floor.
+5. Deterministic Randomness:
+   Given the same `(W, H, seed)`, the generator must produce the exact same layout,
+   enabling reliable multiplayer replication and compact save states.
+
+================================================================================
+2. SUNNYSIDE WORLD ASSET CATALOG & TILESET MAPPING
+================================================================================
+The project has the complete `spr_tileset_sunnysideworld_16px.png` (1024x1024 px,
+64 columns x 64 rows, 16x16 px per tile) and individual Gamemaker sprite exports.
+Below is the definitive coordinate map for all house construction elements.
+
+--------------------------------------------------------------------------------
+2.1 WALL AUTOTILING SYSTEMS
+--------------------------------------------------------------------------------
+Sunnyside World contains three distinct building wall systems:
+
+A. "Building 01" - Grey Ashlar Stone Masonry:
+   - Visual Style: Heavy dressed stone blocks with slate capstones.
+   - Tileset Coordinates:
+     * North Wall Top Cap (NW Corner): [x:16, y:144, w:16, h:16]
+     * North Wall Top Cap (Mid Span):  [x:32, y:144, w:16, h:16]
+     * North Wall Top Cap (NE Corner): [x:80, y:144, w:16, h:16]
+     * North Wall Facade Face (Solid): [x:80, y:160, w:16, h:16]
+     * North Wall Facade Face (Window):[x:32, y:160, w:16, h:16]
+     * West Wall Vertical Edge:        [x:112, y:160, w:16, h:16]
+     * East Wall Vertical Edge:        [x:96, y:160, w:16, h:16]
+     * South Wall Front Base:          [x:80, y:160, w:16, h:16]
+     * South-West Corner Join:         [x:16, y:160, w:16, h:16]
+     * South-East Corner Join:         [x:48, y:160, w:16, h:16]
+
+B. "Building 02" - Rustic Timber Log & Planks:
+   - Visual Style: Vertical timber logs with dark wood trim and log corner joints.
+   - Tileset Coordinates:
+     * North Wall Top Cap (NW Corner): [x:16, y:240, w:16, h:16]
+     * North Wall Top Cap (Mid Span):  [x:32, y:240, w:16, h:16]
+     * North Wall Top Cap (NE Corner): [x:80, y:240, w:16, h:16]
+     * North Wall Facade Face (Solid): [x:80, y:256, w:16, h:16]
+     * North Wall Facade Face (Window):[x:32, y:256, w:16, h:16]
+     * West Wall Vertical Edge:        [x:112, y:256, w:16, h:16]
+     * East Wall Vertical Edge:        [x:96, y:256, w:16, h:16]
+     * South Wall Front Base:          [x:80, y:256, w:16, h:16]
+     * South-West Corner Join:         [x:16, y:256, w:16, h:16]
+     * South-East Corner Join:         [x:48, y:256, w:16, h:16]
+
+C. "Inner Walls" - 1-Tile Interior Partition Walls:
+   - Visual Style: Clean timber/plaster partition walls with top rail and base trim.
+   - Tileset Coordinates:
+     * Vertical Wall Column:           [x:64, y:160, w:16, h:16]
+     * Horizontal Wall Span:           [x:80, y:144, w:16, h:16]
+     * T-Junction (North Wall Join):   [x:48, y:144, w:16, h:16]
+     * T-Junction (South Wall Join):   [x:48, y:160, w:16, h:16]
+     * Doorway End Cap (Left post):    [x:16, y:160, w:16, h:16]
+     * Doorway End Cap (Right post):   [x:48, y:160, w:16, h:16]
+
+--------------------------------------------------------------------------------
+2.2 FLOORING MATERIALS
+--------------------------------------------------------------------------------
+Floors define the character and acoustic feel of each room:
+- Hardwood Timber Planks:
+  * Crop: [x:160, y:80, w:16, h:16]
+  * Visual: Rich vertical amber oak floorboards with plank joins.
+  * Use: Living rooms, bedrooms, halls.
+- Wood Parquet / Herringbone:
+  * Crop: [x:16, y:96, w:16, h:16]
+  * Visual: Geometric patterned light wood tiles.
+  * Use: Master bedrooms, study libraries.
+- Stone Flagstone (Dungeon & Cellar Masonry):
+  * Crop: [x:720, y:32, w:16, h:16] (or [x:160, y:48, w:16, h:16])
+  * Visual: Cool grey interlocking stone pavers.
+  * Use: Cellars, kitchens, hearth areas, exterior porches.
+- Tilled Farmland Soil:
+  * Source: `/assets/tilled_soil.png` (Crop: [x:0, y:0, w:16, h:16])
+  * Use: Attached courtyard crop garden plots.
+- Yard Meadow Grass:
+  * Crop: [x:16, y:32, w:16, h:16]
+  * Use: Attached animal pens, exterior grounds.
+- Wooden Doorway Threshold Mat:
+  * Crop: [x:272, y:272, w:16, h:16]
+  * Visual: Woven fiber welcome mat / wood threshold board.
+  * Use: Entrance door cells.
+
+--------------------------------------------------------------------------------
+2.3 ARCHITECTURAL OPENINGS & WALL TRIM
+--------------------------------------------------------------------------------
+- Windows (Integrated into North Wall Facade at row 1):
+  * Stone Window:  [x:32, y:160, w:16, h:16] (Building 01)
+  * Timber Window: [x:32, y:256, w:16, h:16] (Building 02)
+- Wall Illumination & Decorative Fixtures (Mounted at row 1 behind furniture):
+  * Brass Lit Wall Sconce:  [x:672, y:400, w:16, h:16] (Warm flame, radius 4.5 tiles)
+  * Wall Torch:             [x:96, y:256, w:16, h:16]
+  * Framed Map / Painting:  [x:432, y:32, w:16, h:16] (from `furn_picture`)
+  * Wall Vanity Mirror:     [x:576, y:176, w:16, h:16] (or [x:592, y:256])
+  * Grandfather Clock:      [x:576, y:432, w:16, h:16]
+
+--------------------------------------------------------------------------------
+2.4 INTERIOR FURNITURE & PROPS CATALOG
+--------------------------------------------------------------------------------
+All furniture items are mapped with exact tile dimensions (W x H), placement
+anchors, collision footprints, and interactive behaviors:
+
+| Category | Item Name | Footprint | Tile Crops / Sprite Path | Placement Anchor | Collision | Interaction |
+|---|---|---|---|---|---|---|
+| **Beds** | Single Bed | 1x2 tiles | Head: [x:288, y:288]<br>Foot: [x:288, y:304] | Flush North/Side wall | Head solid;<br>Foot walkable | Sleep trigger [E]<br>(Villager/Player) |
+| | Master Double Bed | 2x2 tiles | Head: [x:304..320, y:288]<br>Foot: [x:304..320, y:304] | Flush North wall | Head solid;<br>Foot walkable | Sleep trigger [E]<br>(2 characters) |
+| | Luxury Bed (Red Quilt) | 2x2 tiles | Head: [x:336..352, y:288]<br>Foot: [x:336..352, y:304] | Flush North wall | Head solid;<br>Foot walkable | Sleep trigger [E] |
+| **Storage** | Wooden Chest | 1x1 tile | [x:64, y:256, w:16, h:16] | Along wall or bedside | Solid | Open Inventory [E]<br>(16-slot storage) |
+| | Double Wardrobe / Armoire | 2x2 tiles | Top: [x:368..384, y:288]<br>Bot: [x:368..384, y:304] | Flush North or Side wall | Solid | Open Wardrobe [E]<br>(Clothing swap) |
+| | Wooden Bookcase | 1x2 tiles | Top: [x:400, y:288]<br>Bot: [x:400, y:304] | Flush wall | Solid | Read Lore [E] |
+| | Dresser / Side Drawers | 2x1 tiles | [x:416..432, y:304] | Along wall | Solid | Storage [E] |
+| **Dining** | Dining Table (Horizontal) | 2x1 tiles | [x:448..464, y:304] | Center floor / wall | Solid | Place Items |
+| | Dining Table (Square) | 2x2 tiles | [x:448..464, y:288..304] | Center floor | Solid | Place Items |
+| | Study Desk with Quill | 2x1 tiles | [x:480..496, y:304] | Along wall | Solid | Craft / Write |
+| **Seating** | Dining Chair (Facing South) | 1x1 tile | [x:640, y:272, w:16, h:16] | North of table | Walkable approach | Sit trigger |
+| | Dining Chair (Facing North) | 1x1 tile | [x:672, y:272, w:16, h:16] | South of table | Walkable approach | Sit trigger |
+| | Dining Chair (West/East) | 1x1 tile | [x:656, y:272, w:16, h:16] | Sides of table | Walkable approach | Sit trigger |
+| | Red Cushion Throne | 1x1 tile | [x:688, y:272, w:16, h:16] | Behind desk / hearth | Walkable approach | Sit trigger |
+| | Wooden Settee / Bench | 2x1 tiles | [x:512..528, y:304] | Along wall or porch | Walkable approach | Sit trigger |
+| **Hearth** | Cast Iron Cook Stove | 1x2 tiles | Top: [x:544, y:288]<br>Bot: [x:544, y:304] | Flush North wall | Solid | Cook Meal [E]<br>(Bake Bread/Stew) |
+| | Brick Fireplace | 2x2 tiles | [x:560..576, y:288..304] | Flush North wall | Solid | Warmth / Cook [E] |
+| **Hygiene** | Clawfoot Bathtub | 2x1 tiles | [x:592..608, y:304] | Flush North wall | Solid | Wash / Rest [E] |
+| | Wash Basin / Sink | 1x1 tile | [x:624, y:304, w:16, h:16] | Corner or beside tub | Solid | Drink / Wash |
+| **Crafting**| Blacksmith Anvil | 2x1 tiles | [x:576, y:5487] (spr_deco_anvil) | Cellar or workshop | Solid | Repair / Forge [E] |
+| | Storage Barrels (Closed/Open)| 1x1 tile | [x:526/588, y:5487] | Cellar corners | Solid | Cellar Storage |
+| **Rugs** | Blue Geometric Runner Rug | 1x3 tiles | [x:2397, 2461, 2525] | Center floor / hall | Non-blocking | Floor decor |
+| | Blue Rectangular Area Rug | 2x3 tiles | [x:2400..2416, y:240..272] | Center living room | Non-blocking | Floor decor |
+| | Dark Brown Fur Rug | 3x2 tiles | [x:2725..2727, y:2789..2791]| In front of fireplace | Non-blocking | Floor decor |
+| | Pink Heart Bedroom Rug | 3x2 tiles | [x:2653..2655, y:2717..2719]| Bedroom center | Non-blocking | Floor decor |
+| **Lighting**| 3-Candle Candelabra on Post| 1x1 tile | [x:672, y:432, w:16, h:16] | Wall or bedside | Solid (base) | Light emitter (r=5)|
+| | Table Candle | 1x1 tile | [x:2228, w:16, h:16] | On desk/table | Non-blocking | Light emitter (r=3)|
+| **Props** | Potted Flower (Red Blossom)| 1x1 tile | [x:1889, w:16, h:16] | Beside furniture | Solid | Aesthetic accent |
+
+--------------------------------------------------------------------------------
+2.5 CELLAR / SUBTERRANEAN ACCESS SYSTEM
+--------------------------------------------------------------------------------
+As prominently displayed in Reference Images 1, 2, and 3:
+- In Necesse and modular survival games, houses often feature a dedicated stone-paved
+  room housing a wooden ladder / trapdoor descending into the underground dungeon.
+- Specifications for the Cellar Room:
+  * Dimensions: 3x3 to 4x4 tiles.
+  * Flooring: Cool grey stone flagstone ([x:720, y:32] or [x:160, y:48]).
+  * Walls: Enclosed by perimeter walls or interior partition walls.
+  * Subterranean Ladder / Trapdoor:
+    - Footprint: 1x1 tile (or 1x2 tile with frame).
+    - Crop: Dungeon Step / Cavern Ladder ([x:640, y:288, w:16, h:16]).
+    - Interaction: Press [E] -> "Descend into Subterranean Cellar / Dungeon".
+    - Props: Stacked storage barrels (`furn_barrel_closed`, `furn_barrel_open`),
+      crates, weapons rack, and wall torch.
+
+--------------------------------------------------------------------------------
+2.6 EXTERIOR ANNEX COMPONENTS (COURTYARDS, GARDENS & ANIMAL PENS)
+--------------------------------------------------------------------------------
+A major visual breakthrough in the reference images is that houses do not sit in
+isolation on empty grass. They have organically attached outdoor yards:
+
+A. Attached Crop Garden (Reference Images 1 & 2):
+   - Location: Placed in the crook of an L-shaped building or adjacent to the side wall.
+   - Enclosure: Wooden post-and-rail fences (`fence_wood_h`, `fence_wood_v`, `fence_wood_corner`).
+   - Entrance: Wooden swinging fence gate (1 tile wide, walkable).
+   - Interior Surface: Tilled soil rows (`tilled_soil.png`).
+   - Plantings: Tall stalk crops (corn, wheat at stages 2-3), cabbage, carrots.
+   - Exterior Trim: Rows of tall sunflowers ([x:60, y:2513]) planted along the fence line.
+
+B. Attached Animal Pen / Pasture (Reference Image 3):
+   - Location: Attached to the side of the stone masonry house.
+   - Enclosure: Grey stone brick walls matching the house, or sturdy wooden fencing.
+   - Entrance: Heavy wood/iron gate (1 tile wide).
+   - Ground: Natural meadow grass with small dirt patches.
+   - Inhabitants: 1-2 livestock animals (cow, sheep, or goat) wandering within the pen.
+   - Props: Wooden water/feed trough (2x1), hay bale.
+
+C. Outdoor Hearth / Front Porch Trim:
+   - Campfire Pit (`furn_campfire`, 23x20 px) with stone ring and embers.
+   - Wooden exterior bench (`furn_bench`, 2x1) beside the front door.
+   - Cobblestone approach path connecting the doorway to the main village road.
+   - Beehive / Apiary boxes (1x1) in the front yard.
+   - Exterior Street Lantern post ([x:2102, y:2166], 1x2 tiles).
+
+===============================================================================
+3. THE PROCEDURAL HOUSE GENERATION ALGORITHM
+===============================================================================
+
+--------------------------------------------------------------------------------
+3.1 INPUT PARAMETERS & DIMENSION NORMALIZATION
+--------------------------------------------------------------------------------
+The generation function is defined as a pure, deterministic pipeline:
+```typescript
+function generateProceduralDetailedHouse(
+  targetW: number,
+  targetH: number,
+  seed: number,
+  options?: {
+    theme?: 'stone' | 'timber' | 'hybrid';
+    annexPreference?: 'none' | 'crop_garden' | 'animal_pen' | 'cellar_only';
+    forceLShaped?: boolean;
+  }
+): DetailedHouseData;
+```
+
+Parameter Constraints:
+- Minimum Dimensions: `targetW >= 6`, `targetH >= 6` (interior 4x4 minimum).
+- Standard Single-Room Cottage: `7x7` to `8x8`.
+- Medium Two-Room Homestead: `9x7` to `11x9`.
+- Large Estate / Manor with Annex: `12x10` to `16x14`.
+- PRNG: Mulberry32 seeded from `seed`. All layout choices, room splits, themes,
+  and prop selections are 100% reproducible.
+
+--------------------------------------------------------------------------------
+3.2 STEP 1: FOOTPRINT DECOMPOSITION & COMPLEX MORPHOLOGY
+--------------------------------------------------------------------------------
+Instead of forcing every building into a rigid rectangle, the algorithm chooses
+a morphological footprint based on the available size:
+
+A. Small Footprints (W <= 8 and H <= 8):
+   - Morphology: `RECTANGLE_COMPACT`.
+   - The entire bounding box is the interior house structure.
+   - Annex: Micro-exterior trim only (outdoor campfire, bench beside door).
+
+B. Medium Footprints (W = 9..11, H = 7..9):
+   - 60% probability: `RECTANGLE_EXPANDED` (Split into Main Hall + Bedroom or Cellar).
+   - 40% probability: `L_SHAPED_WITH_GARDEN`.
+     * Main Hall: Dimensions `(W - 3) x H`.
+     * Attached Wing / Cellar: Dimensions `3 x (H - 3)`.
+     * The remaining `3 x 3` corner becomes an attached fenced crop garden or patio!
+
+C. Large Footprints (W >= 12, H >= 10):
+   - 45% probability: `L_SHAPED_ESTATE` with attached fenced crop garden or animal pen.
+   - 35% probability: `COMPOUND_MANOR` (Main living block + attached stone cellar wing
+     + attached walled courtyard).
+   - 20% probability: `GREAT_HALL_RECTANGLE` (3-4 grand interior rooms).
+
+D. Theme Assignment:
+   - If not specified in `options`, select theme deterministically:
+     * `seed % 2 === 0` -> `THEME_TIMBER` (Log walls, wood plank floor, rustic farm feel).
+     * `seed % 2 === 1` -> `THEME_STONE` (Stone brick walls, wood/stone floor, sturdy manor).
+
+--------------------------------------------------------------------------------
+3.3 STEP 2: SEMANTIC SPACE PARTITIONING (BSP & ROOM ASSIGNMENT)
+--------------------------------------------------------------------------------
+For the interior space of the house hull (excluding exterior perimeter walls), let:
+`innerW = houseHullW - 2`, `innerH = houseHullH - 2`.
+
+Partitioning Rules:
+1. Single Room Threshold:
+   - If `innerW < 6` or `innerH < 5`:
+     * Assign entire space to `ROOM_STUDIO` (open-plan living, dining, and sleeping).
+2. Two-Room Split:
+   - If `innerW >= 6` and `innerH >= 5`:
+     * Evaluate split axis:
+       - If `innerW >= innerH`: Vertical split along column `splitX = floor(innerW * 0.58)`.
+       - If `innerH > innerW`: Horizontal split along row `splitY = floor(innerH * 0.55)`.
+     * Room Roles:
+       - Room 1 (Larger, contains front door): `ROOM_GREAT_HALL` (Living/Kitchen/Dining).
+       - Room 2 (Smaller, private):
+         * 50% probability: `ROOM_BEDROOM` (Master sleeping quarters).
+         * 50% probability: `ROOM_CELLAR` (Stone floor dungeon ladder & storage).
+3. Three-Room Split:
+   - If `innerW >= 10` and `innerH >= 7`:
+     * Primary split divides living space from private quarters.
+     * Secondary split in private quarters creates:
+       - `ROOM_BEDROOM` (Sleeping, wardrobe, desk).
+       - `ROOM_CELLAR` (Stone floor, ladder to dungeon, barrels).
+4. Attached Outdoor Annex Assignment:
+   - If the footprint has an open courtyard or attached yard:
+     * If Theme == Stone: Assign to `YARD_ANIMAL_PEN` (enclosed stone wall, grass, cow/sheep).
+     * If Theme == Timber: Assign to `YARD_CROP_GARDEN` (wooden fence, tilled soil, crops).
+
+--------------------------------------------------------------------------------
+3.4 STEP 3: PERIMETER & PARTITION WALL AUTOTILING (2.5D ELEVATION MODEL)
+--------------------------------------------------------------------------------
+A top-down 2.5D cutaway building must balance architectural mass with visibility.
+The algorithm implements the following elevation rules:
+
+1. North Wall (Back Wall) - 2 Tiles Tall:
+   - Row 0 (Exterior Roof Cap):
+     * Left corner: `lip_nw`
+     * Mid spans: `lip_n`
+     * Right corner: `lip_ne`
+     * Collision: `isBlocked = true`.
+     * Visual Role: Represents the top edge of the cutaway wall and roof overhang.
+   - Row 1 (Vertical Wall Facade):
+     * Left edge: `facade_w`
+     * Mid spans: `facade_solid` (or `facade_window` if aligned with open floor).
+     * Right edge: `facade_e`
+     * Collision: `isBlocked = true` (characters cannot walk through the wall base).
+     * Mounting Layer: This visible face is where headboards, windows, brass wall sconces,
+       paintings, and vanity mirrors are anchored.
+
+2. West & East Walls (Side Flanks) - 1 Tile Wide:
+   - Columns `x = 0` and `x = houseHullW - 1` from row 2 down to row `houseHullH - 2`.
+   - Tile: `wall_west` and `wall_east`.
+   - Collision: `isBlocked = true`.
+   - Casts a subtle 2-pixel inner shadow onto adjacent interior floor tiles.
+
+3. South Wall (Front Facade) - 1 Tile Tall:
+   - Row `houseHullH - 1` across all columns.
+   - Left corner: `corner_sw`
+   - Mid spans: `wall_south`
+   - Right corner: `corner_se`
+   - Collision: `isBlocked = true` except at doorway cutouts.
+   - Visual Role: Low-profile framing that does not obscure characters or furniture.
+
+4. Interior Partition Walls - 1 Tile Wide:
+   - Placed along `splitX` or `splitY` between rooms.
+   - Built using thin `Inner Walls` partition tiles (`partition_col`, `partition_row`).
+   - Automatically autotiles T-junction joins where partitions meet North or South walls.
+   - Carves a 1-tile wide doorway cutout with post end caps.
+
+--------------------------------------------------------------------------------
+3.5 STEP 4: CIRCULATION SPINE, EXTERIOR & INTERIOR DOORWAYS
+--------------------------------------------------------------------------------
+Circulation guarantees that the house is a pleasure to navigate:
+
+1. Exterior Front Doorway:
+   - Location: Placed on the South Wall (row `houseHullH - 1`).
+   - Column: `doorX = clamp(floor(houseHullW * 0.45), 2, houseHullW - 3)`.
+   - Room Alignment: Must open into `ROOM_GREAT_HALL` (never directly into a private
+     bedroom or cellar).
+   - Tile: Wooden Door Threshold Mat (`door_mat`, [x:272, y:272]).
+   - Collision: `isBlocked = false` (100% walkable).
+   - Exterior Apron: Place a 1-tile stone/cobble step directly outside `(doorX, houseHullH)`.
+
+2. Interior Partition Doorways:
+   - In every partition wall, carve an opening at least 1 tile wide.
+   - Position: Placed along the natural line of sight from the front door.
+   - Tile: Replaced with the adjoining room's floor tile or a wood threshold slat.
+   - Collision: `isBlocked = false`.
+
+3. Yard / Courtyard Access:
+   - If an attached crop garden or animal pen is present:
+     * Place a fence gate (`fence_gate`, 1 tile wide, walkable) on the perimeter fence.
+     * Optionally place a side/back door in the house wall leading directly into the yard.
+
+4. Guaranteed Circulation Spine:
+   - A 1-tile wide corridor extending from the front door, through all interior doors,
+     to the cellar ladder and yard gate is flagged as `CLEARANCE_CORRIDOR`.
+   - No solid furniture may EVER be placed in this corridor!
+
+--------------------------------------------------------------------------------
+3.6 STEP 5: FLOOR TEXTURING & AREA RUG PLACEMENT
+--------------------------------------------------------------------------------
+Floors give each room its distinct identity:
+1. Floor Assignment by Room Type:
+   - `ROOM_GREAT_HALL` / `ROOM_LIVING`: Warm Timber Planks (`floor_wood`) or Stone Flagstone.
+   - `ROOM_BEDROOM` / `ROOM_STUDY`: Wood Parquet (`floor_parquet`) or Timber Planks.
+   - `ROOM_CELLAR`: Cool Grey Flagstone / Dungeon Cobblestone (`floor_stone`).
+   - `YARD_CROP_GARDEN`: Dark Tilled Soil (`tilled_soil.png`).
+   - `YARD_ANIMAL_PEN`: Natural Meadow Grass (`grass_textured_01`).
+2. Area Rug Placement:
+   - Rugs are non-blocking floor overlays (`isBlocked = false`).
+   - Algorithm finds the largest rectangle of open floor in a room:
+     * In Living Room: Center a Blue Geometric Runner Rug (1x3) or Blue Rectangular
+       Carpet (2x3).
+     * In Bedroom: Center a Pink Heart Rug (3x2) or Woven Fiber Mat (2x2).
+     * In front of Fireplace: Center a Dark Brown Fur Rug (3x2).
+   - Constraint: Rug must be at least 1 tile away from the front door to prevent visual crowding.
+
+--------------------------------------------------------------------------------
+3.7 STEP 6: SEMANTIC ANCHOR IDENTIFICATION
+--------------------------------------------------------------------------------
+Before spawning furniture, the algorithm analyzes every cell `(x, y)` in the room
+and assigns architectural anchor tags:
+- `ANCHOR_NORTH_WALL`: Cells along row 1 (against the North wall facade).
+  * Ideal for: Bed headboards, bathtubs, cooking stoves, fireplaces, wardrobes.
+- `ANCHOR_WEST_WALL` / `ANCHOR_EAST_WALL`: Cells against side perimeter or partition walls.
+  * Ideal for: Bookcases, study desks, dressers, storage chests, candelabras.
+- `ANCHOR_CORNER`: Corners where two walls meet.
+  * Ideal for: Potted plants, storage barrels, standing candelabras, wash basins.
+- `ANCHOR_CENTER_FLOOR`: Cells with at least 1 tile of clearance in all 4 cardinal directions.
+  * Ideal for: Dining tables with chairs, cellar ladders, central area rugs.
+- `CLEARANCE_CORRIDOR`: Cells along the primary walking spines between doors.
+  * Strictly reserved for open walking floor or rugs.
+
+--------------------------------------------------------------------------------
+3.8 STEP 7: CONSTRAINT SATISFACTION FURNITURE SLOTTING
+--------------------------------------------------------------------------------
+Furniture is placed room by room using a prioritized constraint satisfaction solver.
+
+A. In `ROOM_BEDROOM` (or Studio Quarters):
+   1. Primary Bed:
+      - Select Master Double Bed (2x2) or Single Bed (1x2).
+      - Slot against `ANCHOR_NORTH_WALL` (headboard at row 1).
+      - Ensure foot of bed and at least one lateral side are free walkable floor.
+   2. Bedside Nightstand & Lighting:
+      - In the 1-tile gap between the bed and the side wall, spawn a Nightstand (1x1).
+      - Place a lit Table Candle or 3-Candle Candelabra on or beside the nightstand.
+   3. Wardrobe / Armoire (2x2):
+      - Slot flush against an unblocked section of North or side wall.
+   4. Study Desk (2x1) & Chair:
+      - Slot against side wall with red cushion chair facing the desk.
+   5. Wall Decor:
+      - Vanity Mirror or Framed Painting mounted at row 1 above the dresser or desk.
+
+B. In `ROOM_GREAT_HALL` (Living & Dining):
+   1. Hearth Station (Cook Stove or Fireplace):
+      - Slot against `ANCHOR_NORTH_WALL`.
+      - Width: 1x2 (Stove) or 2x2 (Fireplace).
+      - Alignment: Must record roofline coordinates for chimney smoke VFX.
+      - Front clearance: 1 tile in front must be clear floor for cooking interaction.
+   2. Dining Table Ensemble:
+      - Horizontal Table (2x1) or Square Table (2x2) placed at `ANCHOR_CENTER_FLOOR`.
+      - Place 1-2 Chairs North of table facing South (`chair_s`).
+      - Place 1-2 Chairs South of table facing North (`chair_n`).
+      - Ensure the tile behind each chair is walkable so characters can approach and sit.
+   3. Storage Chest & Bookcase:
+      - Place Wooden Storage Chest (1x1) along wall or in corner.
+      - Place Bookcase (1x2) flush against partition wall.
+   4. Wall Lighting:
+      - Scan North wall: every 2-3 tiles of open wall receives a Brass Lit Wall Sconce.
+
+C. In `ROOM_CELLAR`:
+   1. Subterranean Ladder / Trapdoor:
+      - Placed at center of the stone room.
+      - Footprint: 1x1 tile.
+      - All 4 surrounding neighbor tiles must be clear stone floor for easy approach.
+   2. Cellar Storage:
+      - Place Closed Barrel (`furn_barrel_closed`) in one corner.
+      - Place Open Barrel (`furn_barrel_open`) or Weapons Rack in another corner.
+      - Place Blacksmith Anvil (2x1) if cellar serves as a forge workshop.
+   3. Lighting:
+      - Mount a Wall Torch on the stone wall.
+
+D. In `YARD_CROP_GARDEN`:
+   1. Soil Tilling:
+      - Fill interior yard cells with tilled soil tiles (`tilled_soil.png`).
+   2. Plant Crops:
+      - Spawn crop stalks (corn, wheat, carrots) with growth stage 2 or 3.
+   3. Fence Trim:
+      - Enclose perimeter with wooden fences (`fence_wood_h`, `fence_wood_v`).
+      - Place swinging wooden gate on the most accessible side.
+      - Plant a row of tall sunflowers outside along the front fence.
+
+E. In `YARD_ANIMAL_PEN`:
+   1. Enclosure:
+      - Enclose with stone walls or wooden rails.
+      - Place an iron/wood gate.
+   2. Livestock:
+      - Spawn 1-2 friendly farm animals (cow, sheep) with gentle wandering AI.
+   3. Props:
+      - Wooden water trough (2x1) and hay pile.
+
+--------------------------------------------------------------------------------
+3.9 STEP 8: PATHFINDING & REACHABILITY VERIFICATION (FLOOD FILL SOLVER)
+--------------------------------------------------------------------------------
+No house is accepted unless it passes complete reachability verification:
+
+```
+Algorithm ReachabilitySolver(house):
+  1. Initialize queue Q = [ house.exteriorDoorPosition ]
+  2. Visited = Set( house.exteriorDoorPosition )
+  3. While Q is not empty:
+       current = Q.popFront()
+       For each neighbor in cardinalNeighbors(current):
+         If neighbor is inside house bounds
+            AND neighbor is not Visited
+            AND neighbor.isBlocked == false:
+              Visited.add(neighbor)
+              Q.push(neighbor)
+
+  4. Validation Assertions:
+     - Assertion 1: All rooms have Visited.count(room) >= 0.75 * totalFloor(room)
+     - Assertion 2: Bed has at least 1 Visited neighbor tile.
+     - Assertion 3: Dining Table has at least 2 Visited chair positions.
+     - Assertion 4: Stove / Fireplace has Visited front tile.
+     - Assertion 5: Cellar Ladder has at least 3 Visited neighbor tiles.
+     - Assertion 6: Yard Gate has Visited path from house exterior.
+
+  5. Auto-Correction on Failure:
+     - If any assertion fails:
+       * Identify the obstacle cell causing the blockage.
+       * Shift furniture 1 tile toward adjacent wall.
+       * If still blocked, shrink 2x2 table to 2x1 table.
+       * If still blocked, remove non-essential prop (e.g. potted plant or side chair).
+       * Repeat ReachabilitySolver until 100% valid.
+```
+
+--------------------------------------------------------------------------------
+3.10 STEP 9: COLLISION BOUNDARIES, INTERACTION TRIGGERS, LIGHTS & VFX
+--------------------------------------------------------------------------------
+The generator outputs rich metadata for the RTSGame engine:
+
+1. Collision Registration:
+   - Perimeter Walls: `isBlocked = true` (blocks player, NPC, projectiles).
+   - Exterior Door: `isBlocked = false` (allows free passage).
+   - Full Obstacles: Wardrobes, stoves, fireplaces, bookcases, barrels -> `isBlocked = true`.
+   - Sub-Tile Obstacles:
+     * Beds: Headboard (top tile) is solid; foot (bottom tile) allows sub-tile entry.
+     * Tables: Solid center; chairs are walkable when approaching.
+   - Walkable Props: Rugs, doormats, wall sconces -> `isBlocked = false`.
+
+2. Interaction Handlers:
+   - Bed: Press [E] -> Initiates player sleep (fades screen, advances time to 06:00).
+   - Stove / Hearth: Press [E] -> Opens village cooking / baking crafting menu.
+   - Storage Chest / Wardrobe: Press [E] -> Opens 16-slot inventory storage.
+   - Cellar Ladder: Press [E] -> Teleports player to underground mine/cellar dungeon.
+   - Bathtub: Press [E] -> Restores stamina / grants "Refreshed" buff.
+
+3. Dynamic Night Lighting Nodes:
+   - Brass Wall Sconce: Position `(x, y)`, Radius: 4.5 tiles, Color: `#ffaa44`, Intensity: 0.85.
+   - 3-Candle Candelabra: Position `(x, y)`, Radius: 5.0 tiles, Color: `#ffcc66`, Intensity: 0.90.
+   - Fireplace / Stove: Position `(x, y)`, Radius: 6.0 tiles, Color: `#ff7722`, Intensity: 1.0 (with gentle flicker).
+   - Cellar Wall Torch: Position `(x, y)`, Radius: 4.0 tiles, Color: `#ff9933`, Intensity: 0.80.
+
+4. Atmospheric VFX Emitters:
+   - Chimney Smoke Emitter:
+     * Position: Directly above the fireplace/stove on the roof layer.
+     * Emits soft grey smoke particles floating upward with wind drift.
+   - Night Candle Flicker:
+     * Gentle procedural sine wave luminance oscillation for lit candles.
+
+================================================================================
+4. CONCRETE WORKED EXAMPLES FOR STANDARD SIZES
+================================================================================
+
+--------------------------------------------------------------------------------
+4.1 SIZE 7x7: COMPACT STUDIO COTTAGE
+--------------------------------------------------------------------------------
+Dimensions: 7 columns x 7 rows (Interior: 5x5 tiles).
+Theme: Rustic Timber Log.
+Morphology: Single open-plan studio cottage.
+
+ASCII Layout Grid (Legend below):
+Row 0:  [ROOF]  [ROOF]  [ROOF]  [ROOF]  [ROOF]  [ROOF]  [ROOF]
+Row 1:  [WALL]  [BED_H] [WINDW] [STOVE] [SCONC] [TUB]   [WALL]
+Row 2:  [WALL]  [BED_F] [FLOOR] [STV_F] [FLOOR] [TUB_F] [WALL]
+Row 3:  [WALL]  [STAND] [RUG]   [RUG]   [CHAIR] [WALL]  [WALL]
+Row 4:  [WALL]  [FLOOR] [RUG]   [RUG]   [TABLE] [FLOOR] [WALL]
+Row 5:  [WALL]  [CHEST] [FLOOR] [FLOOR] [CHAIR] [PLANT] [WALL]
+Row 6:  [WALL]  [WALL]  [WALL]  [DOOR]  [WALL]  [BENCH] [WALL]
+
+ASCII Legend:
+- `[ROOF]`: North Wall Top Roof Cap (solid)
+- `[WALL]`: Stone or Timber Cutaway Wall (solid)
+- `[BED_H]`/`[BED_F]`: Single Bed Headboard (solid) and Foot (walkable sleep zone)
+- `[WINDW]`: North Wall Facade with Window
+- `[STOVE]`/`[STV_F]`: Iron Cook Stove (solid) and clear cooking approach
+- `[SCONC]`: Lit Brass Wall Sconce (light radius 4.5 tiles)
+- `[TUB]`/`[TUB_F]`: Clawfoot Bathtub and front approach
+- `[STAND]`: Bedside Nightstand with Candle
+- `[RUG]`: 2x2 Cozy Woven Rug (walkable)
+- `[TABLE]`/`[CHAIR]`: Dining Table with North & South chairs
+- `[CHEST]`: Wooden Storage Chest (16 slots)
+- `[PLANT]`: Potted Red Flower Accent
+- `[DOOR]`: Wooden Threshold Floor Mat (walkable entrance)
+- `[BENCH]`: Exterior Wooden Bench beside front door
+
+Pathing Analysis:
+- Doorway at `(3, 6)` connects to unobstructed center floor.
+- Bed, Stove, Table, Chest, Tub, and Bench are 100% reachable with clear 1-tile walkways.
+
+--------------------------------------------------------------------------------
+4.2 SIZE 10x8: TWO-ROOM HOMESTEAD WITH STONE CELLAR & LADDER
+--------------------------------------------------------------------------------
+Dimensions: 10 columns x 8 rows (Interior: 8x6 tiles).
+Theme: Stone Masonry Exterior with Hybrid Wood/Stone Interior.
+Subdivision: Vertical partition at `x = 5`.
+- Left Room (4x6 interior): Great Living & Dining Hall (Wood Plank floor).
+- Right Room (3x6 interior): Stone Cellar & Workshop (Flagstone floor).
+
+ASCII Layout Grid:
+Row 0:  [RF] [RF]   [RF]    [RF]    [RF]    [RF] [RF]   [RF]   [RF]   [RF]
+Row 1:  [WL] [WNDW] [STOVE] [SCONC] [WL]    [PR] [TORCH][LAD_T][BARL] [WL]
+Row 2:  [WL] [FLOR] [STV_F] [FLOR]  [WL]    [PR] [FLOR] [LAD_B][BARL] [WL]
+Row 3:  [WL] [TABL] [TABL]  [FLOR]  [CHEST] [PR] [FLOR] [FLOR] [ANVIL][WL]
+Row 4:  [WL] [CHAIR][CHAIR] [FLOR]  [FLOR]  [DR] [FLOR] [FLOR] [ANVIL][WL]
+Row 5:  [WL] [RUG]  [RUG]   [FLOR]  [PLANT] [PR] [FLOR] [FLOR] [CHEST][WL]
+Row 6:  [WL] [BED_H][BED_H] [STAND] [FLOR]  [PR] [FLOR] [FLOR] [FLOR] [WL]
+Row 7:  [WL] [BED_F][BED_F] [FLOR]  [DOOR]  [WL] [WL]   [WNDW] [WL]   [WL]
+
+ASCII Legend:
+- `[PR]`: Interior Partition Wall separating Living Hall from Cellar
+- `[DR]`: Interior Doorway connecting Living Hall to Cellar
+- `[LAD_T]`/`[LAD_B]`: Subterranean Dungeon Ladder / Trapdoor (descend trigger [E])
+- `[BARL]`: Sealed Storage Barrels in Cellar
+- `[ANVIL]`: Blacksmith Anvil for tool repair
+- `[BED_H]`/`[BED_F]`: Double Master Bed with red quilt
+- `[DOOR]`: South Exterior Entrance Doorway
+
+Features:
+- Full separation between cozy living quarters and stone underground cellar.
+- 100% reachable paths: front door directly accesses living room, bed, table, stove,
+  and cellar door leading to ladder and anvil.
+
+--------------------------------------------------------------------------------
+4.3 SIZE 14x10: L-SHAPED ESTATE WITH ATTACHED FENCED CROP GARDEN & CELLAR
+--------------------------------------------------------------------------------
+Dimensions: 14 columns x 10 rows.
+Theme: Timber Log Architecture (Directly matches Reference Image 2).
+Morphology: L-shaped building hull wrapping around an attached fenced garden.
+- Main Living Hall: Columns 0..7, Rows 0..9.
+- Cellar Wing: Columns 8..13, Rows 0..4 (Stone floor, ladder to dungeon).
+- Attached Garden: Columns 8..13, Rows 5..9 (Enclosed by wooden fence & gate).
+
+ASCII Layout Grid:
+Row 0:  [RF] [RF]   [RF]   [RF]   [RF]   [RF]   [RF]   [RF] | [RF] [RF]   [RF]   [RF]   [RF]   [RF]
+Row 1:  [WL] [BED_H][WNDW] [CHEST][SCONC][CHEST][WNDW] [WL] | [WL] [TORCH][LAD_T][FLOR] [BARL] [WL]
+Row 2:  [WL] [BED_F][FLOR] [FLOR] [FLOR] [FLOR] [FLOR] [WL] | [WL] [FLOR] [LAD_B][FLOR] [BARL] [WL]
+Row 3:  [WL] [DESK] [CHAIR][RUG]  [RUG]  [RUG]  [FLOR] [DR] | [FLOR][FLOR] [FLOR] [FLOR] [CHEST][WL]
+Row 4:  [WL] [DESK] [FLOR] [RUG]  [RUG]  [RUG]  [FLOR] [WL] | [WL] [WL]   [WL]   [WL]   [WL]   [WL]
+        ----------------------------------------------------+-----------------------------------
+Row 5:  [WL] [FLOR] [FLOR] [RUG]  [RUG]  [RUG]  [FLOR] [WL] | [FNC][CORN] [CORN] [WHEAT][FNC] [FNC]
+Row 6:  [WL] [TABL] [TABL] [FLOR] [FLOR] [FLOR] [BED_H][WL] | [FNC][CORN] [CORN] [WHEAT][GATE][PATH]
+Row 7:  [WL] [CHAIR][CHAIR][FLOR] [FLOR] [FLOR] [BED_F][WL] | [FNC][CAROT][CAROT][SOIL] [FNC] [SUNF]
+Row 8:  [WL] [FLOR] [FLOR] [FLOR] [FLOR] [PLANT][FLOR] [WL] | [FNC][CAROT][CAROT][SOIL] [FNC] [SUNF]
+Row 9:  [WL] [WL]   [DOOR] [WL]   [WL]   [BENCH][WL]   [WL] | [FNC][FNC]  [FNC]  [FNC]  [FNC] [SUNF]
+
+ASCII Legend:
+- Columns 8..13, Rows 0..4: Stone Cellar Wing with ladder and barrels.
+- Columns 8..13, Rows 5..9: Attached Outdoor Fenced Garden:
+  * `[FNC]`: Wooden Post-and-Rail Fence
+  * `[GATE]`: Walkable Wooden Fence Gate
+  * `[CORN]`/`[WHEAT]`/`[CAROT]`: Growing Crops on Tilled Soil
+  * `[SUNF]`: Rows of tall Sunflowers along the outer perimeter
+- Main Hall features:
+  * Blue 2x3 Area Rug in center
+  * Primary Bed on North wall, secondary bed on East wall
+  * Study Desk with chair and paper
+  * Dining Table with oriented chairs
+  * Front door at `(2, 9)` and interior door `[DR]` at `(7, 3)` to Cellar.
+
+--------------------------------------------------------------------------------
+4.4 SIZE 12x12: STONE MASONRY MANOR WITH ATTACHED WALLED ANIMAL PEN
+--------------------------------------------------------------------------------
+Dimensions: 12 columns x 12 rows.
+Theme: Grey Ashlar Stone Masonry (Directly matches Reference Image 3 Right).
+Morphology: Stone Manor House with attached walled livestock pasture.
+- Manor House: Columns 0..6, Rows 0..11.
+- Attached Animal Pen: Columns 7..11, Rows 0..7 (Walled stone pen with livestock).
+- Front Yard Farmstead: Columns 7..11, Rows 8..11 (Tilled soil, beehives, lamps).
+
+Layout Highlights:
+- Manor House Interior:
+  * Master Double Bed with luxury red quilt flush against North wall.
+  * Second Single Bed with green quilt on side wall.
+  * Brick Fireplace / Stove with chimney smoke alignment.
+  * Clawfoot Bathtub and Wash Basin vanity.
+  * Tall double wardrobe and storage chests.
+  * Lit brass sconces and wall torches.
+- Attached Animal Pen:
+  * Enclosed by sturdy stone brick walls.
+  * Heavy wood/iron gate opening into front courtyard.
+  * Natural pasture grass with 1-2 livestock animals (cow/sheep).
+  * Water trough and hay feeder.
+- Front Courtyard:
+  * Two separate 2x2 tilled crop plots.
+  * 2 Apiary Beehive boxes producing honey.
+  * Street lantern post beside stone approach path.
+
+================================================================================
+5. COMPREHENSIVE IMPLEMENTATION PLAN FOR RTSGAME (NO CODE CHANGES YET)
+================================================================================
+The following architecture details how this procedural generation engine will be
+constructed and integrated into RTSGame without touching existing production code
+until the research plan is approved.
+
+--------------------------------------------------------------------------------
+5.1 MODULE STRUCTURE & INTERFACE CONTRACTS
+--------------------------------------------------------------------------------
+The new system will be encapsulated in dedicated modules under `src/generation/`:
+
+1. `src/generation/HouseInteriorGenerator.ts`:
+   - Pure functional layout engine.
+   - Core interfaces:
+     ```typescript
+     export interface HouseTile {
+       relX: number;
+       relY: number;
+       layer: 'ground' | 'floor' | 'wall' | 'partition' | 'door' | 'fence';
+       crop: { x: number; y: number; w: number; h: number };
+       isBlocked: boolean;
+       isDoor?: boolean;
+       isGate?: boolean;
+     }
+
+     export interface PlacedFurniture {
+       id: string;
+       type: string;
+       name: string;
+       relX: number;
+       relY: number;
+       w: number;
+       h: number;
+       crop: { x: number; y: number; w: number; h: number };
+       isBlocked: boolean;
+       interactive?: boolean;
+       action?: 'sleep' | 'cook' | 'storage' | 'cellar_descend' | 'wash' | 'sit';
+       light?: { radius: number; color: string; intensity: number };
+     }
+
+     export interface YardAnnexData {
+       type: 'crop_garden' | 'animal_pen' | 'patio';
+       bounds: { relX: number; relY: number; w: number; h: number };
+       gate: { relX: number; relY: number };
+       crops?: Array<{ relX: number; relY: number; cropId: string; stage: number }>;
+       animals?: Array<{ species: 'cow' | 'sheep'; relX: number; relY: number }>;
+     }
+
+     export interface DetailedHouseData {
+       w: number;
+       h: number;
+       theme: 'stone' | 'timber';
+       door: { x: number; y: number };
+       tiles: HouseTile[];
+       furniture: PlacedFurniture[];
+       yard?: YardAnnexData;
+       lights: Array<{ relX: number; relY: number; radius: number; color: string; intensity: number }>;
+       chimney?: { relX: number; relY: number };
+       cellarEntrance?: { relX: number; relY: number };
+     }
+     ```
+
+--------------------------------------------------------------------------------
+5.2 INTEGRATION WITH SETTLEMENTGENERATOR.TS
+--------------------------------------------------------------------------------
+In `SettlementGenerator.ts`:
+1. Footprint Allocation:
+   - When the settlement generator places houses along roads (in `generateHouses()`),
+     replace the hardcoded 3x3 / 4x3 static sizes with procedural requests:
+     * Small cottage: `W = 7, H = 7`
+     * Family homestead: `W = 10, H = 8`
+     * Manor / Estate with yard: `W = 14, H = 10`
+2. Generator Execution:
+   - Call `const detailedHouse = generateProceduralDetailedHouse(W, H, houseSeed);`
+3. World Grid Stamping:
+   - The tiles (floors, walls, doors, fences) and furniture are stamped into the
+     world grid.
+   - The house front door position is recorded in the settlement metadata, and the
+     existing road path joiner connects the front door directly to the village road!
+   - Mark `blocked = true` ONLY on actual wall and solid furniture cells; interior
+     floor cells remain `blocked = false`!
+
+--------------------------------------------------------------------------------
+5.3 RENDERING PIPELINE ARCHITECTURE IN SETTLEMENTRENDERER.TS
+--------------------------------------------------------------------------------
+In `SettlementRenderer.ts`, replace the opaque `ctx.drawImage(housesImg, ...)` call
+with a multi-layer cutaway rendering pipeline:
+
+- Layer 1 (Base Flooring & Outdoor Ground):
+  * Renders interior hardwood planks, wood parquet, flagstone, tilled soil, and yard grass.
+  * Renders area rugs (runner rugs, heart rugs, fur rugs) directly on the floor.
+  * Renders door threshold mats.
+
+- Layer 2 (Wall Structure & Perimeter Framing):
+  * Renders North roof top cap (Row 0) and vertical facade face (Row 1) with windows.
+  * Renders West and East side walls with subtle 2px inner floor shadow.
+  * Renders South low-profile front wall with doorway cutout.
+  * Renders interior partition walls with T-junction joins.
+  * Renders yard fences and swinging gates.
+
+- Layer 3 (Y-Depth Sorted Entity Pass):
+  * Dynamic Y-depth sorted list combining:
+    1. Furniture (beds, tables, chairs, dressers, stoves, cellar ladder, barrels).
+    2. Characters (Player, Villager NPCs, Pets).
+    3. Livestock animals inside attached pens.
+  * Sorting formula: `ySort = entity.y + entity.height`.
+  * Guarantees that characters walk BEHIND tables and beds correctly and stand IN FRONT
+    of North wall headboards naturally!
+
+- Layer 4 (Atmosphere, Chimney Smoke & Night Lighting):
+  * Renders chimney smoke particles drifting from roof coordinates above the stove.
+  * In night render pass, creates warm circular light cutouts for brass wall sconces,
+    candelabras, fireplaces, and street lanterns.
+
+--------------------------------------------------------------------------------
+5.4 COLLISION & MOVEMENT ENGINE INTEGRATION IN WORLDMANAGER.TS
+--------------------------------------------------------------------------------
+In `WorldManager.ts` / `canMoveTo()`:
+1. Walkable Thresholds:
+   - Characters can step directly through the front doorway into the house.
+2. Obstacle Mask:
+   - Walls, tall wardrobes, stoves, and bookshelves block movement.
+   - Bed footboards, chairs, and rugs allow smooth sub-tile movement.
+3. Subterranean Transition:
+   - Stepping on or pressing [E] near the Cellar Ladder triggers a transition event
+     to the subterranean cave/mine map.
+
+--------------------------------------------------------------------------------
+5.5 LIFEFORM NPC SCHEDULES & PLAYER INTERACTION ROUTINES
+--------------------------------------------------------------------------------
+1. Villager Housing Ownership:
+   - During settlement generation, each villager NPC is assigned an "owned" house
+     and a specific interior bed.
+2. Villager Daily Routine:
+   - 06:00: Villager wakes up, gets out of bed, walks out the front door to work
+     (farming in the attached garden or tending animals in the pen).
+   - 12:00: Villager returns to the house, sits in a dining chair to eat lunch.
+   - 18:00: Villager sits by the hearth or studies at the desk.
+   - 21:00: Villager enters bedroom, lies down in the bed, and spawns sleeping "Zzz" VFX.
+3. Player Interaction:
+   - Sleeping in player bed restores Health and Stamina.
+   - Interacting with Stove opens Baking/Cooking UI.
+   - Interacting with Chests opens shared village storage.
+
+--------------------------------------------------------------------------------
+5.6 PHASED ROLLOUT PLAN, VERIFICATION MATRIX & PERFORMANCE GUARANTEES
+--------------------------------------------------------------------------------
+The implementation will follow a strict, non-breaking 4-phase rollout:
+
+Phase 1: Pure Procedural Generator Core & Headless Test Suite
+- Create `src/generation/HouseInteriorGenerator.ts`.
+- Develop headless test script (`scripts/test-house-generator.mjs`) testing sizes
+  from 6x6 to 16x16 with 1,000 random seeds.
+- Verify: Zero unhandled exceptions, 100% reachability pass rate, generation time
+  < 1.5ms per house.
+
+Phase 2: Visual Preview & Export Harness
+- Create a standalone browser preview (`public/house-preview.html`) allowing the
+  developer to scrub size sliders (W: 6..16, H: 6..14) and seeds with live canvas rendering.
+- Verify visual aesthetics, autotiling seams, rug alignments, and furniture spacing.
+
+Phase 3: Settlement Integration & Dynamic World Collision
+- Update `SettlementGenerator.ts` to call `generateProceduralDetailedHouse()`.
+- Connect collision grid in `WorldManager.ts`.
+- Verify villagers can pathfind through doors and navigate between rooms.
+
+Phase 4: NPC Housing Routines, Night Lighting & Polish
+- Wire NPC night sleeping schedules to interior beds.
+- Add chimney smoke particles and warm night torchlight glow.
+- Hook player [E] interaction triggers for beds, stoves, chests, and cellar ladders.
+
+================================================================================
+END OF RESEARCH DOCUMENT
+================================================================================
+

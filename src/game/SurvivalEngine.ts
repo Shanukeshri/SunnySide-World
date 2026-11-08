@@ -1748,14 +1748,18 @@ export class SurvivalEngine {
     console.log("[LIFECYCLE PHASE 1: World Generation] Generating terrain chunks, biomes, road networks, water bodies, and village layouts...");
     this.worldManager = new WorldManager(seed, maxPhase);
     this.lifeformSpawner = new LifeformSpawner(this.worldManager, seed);
-    this.worldManager.updatePlayerLocation(22, 18);
+    const spawnX = 55;
+    const spawnY = 44;
+    this.worldManager.updatePlayerLocation(spawnX, spawnY);
 
     const startVillage = this.worldManager.villages[0]?.data;
-    this.detector = new EnvironmentDetector(startVillage);
+    const startVillageX = this.worldManager.villages[0]?.gridX ?? 0;
+    const startVillageY = this.worldManager.villages[0]?.gridY ?? 0;
+    this.detector = new EnvironmentDetector(startVillage, startVillageX, startVillageY, this.worldManager);
 
     this.player = {
-      x: 22,
-      y: 18,
+      x: spawnX,
+      y: spawnY,
       vx: 0,
       vy: 0,
       direction: "DOWN",
@@ -1905,87 +1909,48 @@ export class SurvivalEngine {
     const vx = village.gridX;
     const vy = village.gridY;
 
-    // Clear any trees or bushes obstructing the village windmill site
-    const wx = vx + 16;
-    const wy = vy + 12;
-    if (village.data && village.data.trees) {
-      village.data.trees = village.data.trees.filter(t => !(t.x >= 15 && t.x <= 19 && t.y >= 11 && t.y <= 15));
+    // Find a clear 3x3 grass knoll for the village windmill that does not overlap farm crops, roads, or water
+    let wmX = vx + 16;
+    let wmY = vy + 12;
+    let foundSpot = false;
+
+    for (let r = 4; r < 45 && !foundSpot; r += 2) {
+      for (let dy = -r; dy <= r && !foundSpot; dy += 2) {
+        for (let dx = -r; dx <= r && !foundSpot; dx += 2) {
+          const candX = vx + 35 + dx;
+          const candY = vy + 30 + dy;
+          let valid = true;
+          for (let sy = 0; sy < 3; sy++) {
+            for (let sx = 0; sx < 3; sx++) {
+              const tile = this.worldManager.getTile(candX + sx, candY + sy);
+              if (tile.isWater || tile.isFarm || tile.isRoad || tile.isBlocked) {
+                valid = false;
+                break;
+              }
+            }
+            if (!valid) break;
+          }
+          if (valid) {
+            wmX = candX;
+            wmY = candY;
+            foundSpot = true;
+          }
+        }
+      }
     }
 
-    // 1. Windmill near village wheat farm
+    // 1. Windmill placed safely on grassy knoll overlooking fields
     this.placedStructures.push({
       id: "village_windmill_01",
       type: "windmill",
-      x: wx,
-      y: wy,
+      x: wmX,
+      y: wmY,
       w: 3,
       h: 3,
       health: 500,
       maxHealth: 500,
       isOperating: false,
       frameTimer: 0,
-    });
-
-    // 2. Stone Oven in village bakery square
-    this.placedStructures.push({
-      id: "village_oven_01",
-      type: "stone_oven",
-      x: vx + 12,
-      y: vy + 16,
-      w: 2,
-      h: 2,
-      health: 300,
-      maxHealth: 300,
-      isOperating: false,
-      fuelTimer: 0,
-    });
-
-    // 3. Coracle Boat docked at village pond / river shore
-    this.placedStructures.push({
-      id: "village_coracle_01",
-      type: "coracle",
-      x: vx + 8,
-      y: vy + 22,
-      w: 1,
-      h: 1,
-      health: 120,
-      maxHealth: 120,
-    });
-
-    // 4. Village House Bed
-    this.placedStructures.push({
-      id: "village_bed_01",
-      type: "bed",
-      x: vx + 6,
-      y: vy + 6,
-      w: 1,
-      h: 1,
-      health: 100,
-      maxHealth: 100,
-    });
-
-    // 5. Brewing Stand
-    this.placedStructures.push({
-      id: "village_brew_01",
-      type: "brewing_stand",
-      x: vx + 14,
-      y: vy + 6,
-      w: 1,
-      h: 1,
-      health: 150,
-      maxHealth: 150,
-    });
-
-    // 6. Chimney on house roof
-    this.placedStructures.push({
-      id: "village_chimney_01",
-      type: "chimney",
-      x: vx + 8,
-      y: vy + 4,
-      w: 1,
-      h: 1,
-      health: 200,
-      maxHealth: 200,
     });
   }
 
@@ -2634,6 +2599,32 @@ export class SurvivalEngine {
 
       animal.updateAI(dt, this.detector, this.worldTime, this.worldManager);
       animal.updateMovement(dt, this.detector);
+
+      // REQUIREMENT: Animals must NEVER be inside houses
+      if (this.worldManager.villages) {
+        for (const v of this.worldManager.villages) {
+          if (v.data?.houses) {
+            for (const h of v.data.houses) {
+              const hx = v.gridX + h.x;
+              const hy = v.gridY + h.y;
+              if (
+                animal.position.x >= hx - 0.2 &&
+                animal.position.x < hx + h.footprintW + 0.2 &&
+                animal.position.y >= hy - 0.2 &&
+                animal.position.y < hy + h.footprintH + 0.2
+              ) {
+                // Eject animal safely outside the house onto the pathway or village green
+                animal.position.x = hx + (h.door?.x ?? Math.floor(h.footprintW / 2)) + 0.5;
+                animal.position.y = hy + (h.door?.y ?? h.footprintH) + 3.0;
+                animal.movement.wanderOriginX = animal.position.x;
+                animal.movement.wanderOriginY = animal.position.y;
+                animal.clearTarget();
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
     // 2. NPCs: frozen in place on unloaded chunks, resumed when chunk re-enters 4-chunk radius
@@ -4083,8 +4074,8 @@ export class SurvivalEngine {
     this.player.hunger = this.player.maxHunger;
     this.player.stamina = this.player.maxStamina;
     this.player.isDead = false;
-    this.player.x = 22;
-    this.player.y = 18;
+    this.player.x = 55;
+    this.player.y = 44;
   }
 
   // ═══════════════════════════════════════════════════════════════════

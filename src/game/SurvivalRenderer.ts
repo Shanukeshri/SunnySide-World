@@ -18,6 +18,7 @@ import {
 } from "../lifeforms/LifeformRenderer";
 import { CHUNK_SIZE } from "./WorldManager";
 import { ResourceNode, PlacedStructure, EnemyEntity } from "./GameTypes";
+import { DetailedHouseRenderer } from "../generation/DetailedHouseRenderer";
 
 const TILESET_PATH =
   "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png";
@@ -433,6 +434,8 @@ export class SurvivalRenderer {
   private spriteImages: Map<string, HTMLImageElement> = new Map();
   private nightCanvas: HTMLCanvasElement | null = null;
 
+  private detailedHouseRenderer = new DetailedHouseRenderer(16);
+
   public lifeformRenderer: LifeformRenderer;
   public zoom = 2.2;
   public readonly baseTileSize = 16;
@@ -459,6 +462,8 @@ export class SurvivalRenderer {
     this.rockImg = this.loadImage(ROCK_PATH);
     this.wheatImg = this.loadImage(WHEAT_PATH);
     this.soilImg = this.loadImage(SOIL_PATH);
+
+    this.detailedHouseRenderer.preloadAssets();
 
     // Preload prop sprites
     for (const [key, def] of Object.entries(SPRITE_DEFS)) {
@@ -590,7 +595,7 @@ export class SurvivalRenderer {
           );
 
           // 2. Pure Calm Cyan Water & River/Pond Autotiling with Wave Foam Overlay
-          if (tile.isWater) {
+          if (tile.isWater && !tile.isBridge && !tile.terrain.startsWith("bridge_")) {
             const shore = engine.worldManager.getWaterShoreBitmask(tx, ty);
             const n = shore.hasWaterN;
             const e = shore.hasWaterE;
@@ -668,7 +673,7 @@ export class SurvivalRenderer {
               }
 
               // 2. Inner diagonal corner wave foam (cardinal sides are water, but diagonal neighbor is land):
-              const isLand = (t: any) => !t || !t.isWater;
+              const isLand = (t: any) => !t || (!t.isWater && !t.isBridge && !t.terrain?.startsWith("bridge_"));
               if (n && w && isLand(nwTile)) {
                 const c = TILE_CROPS["coast_inner_nw"];
                 ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
@@ -687,28 +692,59 @@ export class SurvivalRenderer {
               }
             }
           }
-          // 2.5 Multi-Layer Bridges (Water flows underneath, wooden deck & rails on top)
-          else if (tile.isBridge || tile.terrain === "bridge_wood") {
-            // First: render calm water underneath
-            const waterUnder = TILE_CROPS["water_tile_01"];
+          // 2.5 Multi-Layer 3D Wooden Bridges & Platforms directly over water (no land underneath, with stilts & shadows)
+          else if (tile.isBridge || tile.terrain.startsWith("bridge_")) {
+            // 1. Water underneath (flows freely under bridge)
+            let waterCrop = TILE_CROPS["water_tile_01"];
+            const rippleHash = Math.abs(Math.sin(tx * 31.17 + ty * 97.53) * 43758.5453);
+            if (rippleHash > 0.88) {
+              waterCrop = TILE_CROPS["water_depth_01"];
+            } else if (rippleHash > 0.76) {
+              waterCrop = TILE_CROPS["water_depth_02"];
+            }
             ctx.drawImage(
               this.tilesetImg,
-              waterUnder.x,
-              waterUnder.y,
-              waterUnder.w,
-              waterUnder.h,
+              waterCrop.x,
+              waterCrop.y,
+              waterCrop.w,
+              waterCrop.h,
               screen.sx,
               screen.sy,
               tileW,
               tileH,
             );
 
-            // Second: render wooden bridge deck based on road connectivity
-            const roadMask = engine.worldManager.getRoadBitmask(tx, ty);
-            const isVerticalBridge = (roadMask & 5) && !(roadMask & 10);
-            const bridgeCrop = isVerticalBridge
+            const isB = (t: any) => t && (t.isBridge || t.terrain?.startsWith("bridge_"));
+            const northTile = engine.worldManager.getTile(tx, ty - 1);
+            const southTile = engine.worldManager.getTile(tx, ty + 1);
+            const westTile = engine.worldManager.getTile(tx - 1, ty);
+            const eastTile = engine.worldManager.getTile(tx + 1, ty);
+
+            const hasBN = isB(northTile);
+            const hasBS = isB(southTile);
+            const hasBW = isB(westTile);
+            const hasBE = isB(eastTile);
+
+            // 2. Soft Drop Shadows on water directly under and extending onto adjacent water
+            ctx.fillStyle = "rgba(3, 14, 26, 0.42)";
+            ctx.fillRect(screen.sx, screen.sy, tileW, tileH);
+            if (!hasBE) {
+              ctx.fillRect(screen.sx + tileW, screen.sy + 3, 7, tileH + 3);
+            }
+            if (!hasBS) {
+              ctx.fillRect(screen.sx + 3, screen.sy + tileH - 1, tileW + 3, 7);
+            }
+            if (!hasBE && !hasBS) {
+              ctx.fillRect(screen.sx + tileW, screen.sy + tileH, 7, 7);
+            }
+
+            // 3. Elevated Wooden Plank Deck (elevated 3px up)
+            const deckOffsetY = -3;
+            const isHorizontalSpan = (hasBW || hasBE) && !hasBN && !hasBS;
+            const bridgeCrop = isHorizontalSpan
               ? TILE_CROPS["bridge_wood_v"]
               : TILE_CROPS["bridge_wood_h"];
+
             if (bridgeCrop) {
               ctx.drawImage(
                 this.tilesetImg,
@@ -717,10 +753,85 @@ export class SurvivalRenderer {
                 bridgeCrop.w,
                 bridgeCrop.h,
                 screen.sx,
-                screen.sy,
+                screen.sy + deckOffsetY,
                 tileW,
                 tileH,
               );
+            }
+
+            // 4. 3D Front Timber Fascia Rim along south edge
+            if (!hasBS) {
+              const fy = screen.sy + tileH + deckOffsetY;
+              ctx.fillStyle = "#451a03";
+              ctx.fillRect(screen.sx, fy, tileW, 4);
+              ctx.fillStyle = "#b45309";
+              ctx.fillRect(screen.sx, fy, tileW, 1);
+              ctx.fillStyle = "#1e0e02";
+              ctx.fillRect(screen.sx, fy + 3, tileW, 1);
+            }
+
+            // 5. Timber curb rails along exposed edges
+            if (!hasBW) {
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(screen.sx, screen.sy + deckOffsetY, 2, tileH);
+              ctx.fillStyle = "#b45309";
+              ctx.fillRect(screen.sx + 1, screen.sy + deckOffsetY, 1, tileH);
+            }
+            if (!hasBE) {
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(screen.sx + tileW - 2, screen.sy + deckOffsetY, 2, tileH);
+              ctx.fillStyle = "#b45309";
+              ctx.fillRect(screen.sx + tileW - 2, screen.sy + deckOffsetY, 1, tileH);
+            }
+            if (!hasBN) {
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(screen.sx, screen.sy + deckOffsetY, tileW, 2);
+              ctx.fillStyle = "#b45309";
+              ctx.fillRect(screen.sx, screen.sy + deckOffsetY, tileW, 1);
+            }
+
+            // 6. Wooden Stilts / Pilings dipping into water (drawn ON TOP of deck rim, extending down into water)
+            const stiltW = Math.max(3, Math.round(tileW * 0.18));
+            const stiltH = Math.max(8, Math.round(tileH * 0.42));
+
+            const drawStilt = (px: number, py: number) => {
+              // Shadow under post on water
+              ctx.fillStyle = "rgba(2, 10, 20, 0.55)";
+              ctx.fillRect(px + 2, py + 2, stiltW + 3, stiltH + 3);
+              // Timber post body
+              ctx.fillStyle = "#2d1204";
+              ctx.fillRect(px, py, stiltW, stiltH);
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(px + 1, py, Math.max(1, stiltW - 2), stiltH);
+              ctx.fillStyle = "#c86414";
+              ctx.fillRect(px + 1, py, 1, Math.max(1, stiltH - 2));
+              // Submerged waterline ripple ring
+              ctx.fillStyle = "rgba(186, 230, 253, 0.85)";
+              ctx.fillRect(px - 2, py + stiltH - 2, stiltW + 4, 1.5);
+              ctx.fillStyle = "rgba(2, 44, 34, 0.45)";
+              ctx.fillRect(px - 1, py + stiltH, stiltW + 2, 1);
+            };
+
+            // South edge stilts
+            if (!hasBS) {
+              if (!hasBW) {
+                drawStilt(screen.sx + 2, screen.sy + tileH - 2);
+              }
+              if (!hasBE) {
+                drawStilt(screen.sx + tileW - stiltW - 2, screen.sy + tileH - 2);
+              }
+              if (hasBW && hasBE) {
+                drawStilt(screen.sx + Math.round(tileW * 0.5 - stiltW / 2), screen.sy + tileH - 2);
+              }
+            }
+            // Interval side pilings along West and East edges
+            if ((Math.abs(tx) + Math.abs(ty)) % 2 === 1) {
+              if (!hasBW) {
+                drawStilt(screen.sx - 3, screen.sy + Math.round(tileH * 0.25));
+              }
+              if (!hasBE) {
+                drawStilt(screen.sx + tileW - 1, screen.sy + Math.round(tileH * 0.25));
+              }
             }
           }
           // 3. Connected Dirt Pathways & Cobblestone Highways (Orthogonal Bitmask Autotiling)
@@ -1158,10 +1269,95 @@ export class SurvivalRenderer {
           continue;
         }
 
+        // Detailed 2.5D cutaway house with open walkable interior
+        if (house.metadata?.detailedHouse && this.tilesetImg && this.tilesetImg.complete) {
+          const dh = house.metadata.detailedHouse;
+
+          // Layer A: Base foundation, floors, rugs, back north walls (yOrder = wy)
+          // Placed at wy, so any entity walking on the floor (y >= wy + 1, yOrder >= wy + 1.5) renders ON TOP
+          depthList.push({
+            yOrder: wy,
+            draw: () => {
+              const screen = worldToScreen(wx, wy);
+              this.detailedHouseRenderer.renderHouseBase(
+                ctx,
+                this.tilesetImg!,
+                dh,
+                {
+                  cellSize,
+                  showLights: false,
+                  pixelOrigin: { x: screen.sx, y: screen.sy },
+                }
+              );
+            },
+          });
+
+          // Layer B: Furniture items individually sorted by their world bottom Y
+          for (const furn of dh.furniture) {
+            if (furn.drawType === "rug") continue;
+            const furnWorldY = wy + furn.relY + furn.h;
+            depthList.push({
+              yOrder: furnWorldY,
+              draw: () => {
+                const screen = worldToScreen(wx, wy);
+                this.detailedHouseRenderer.renderFurnitureItem(
+                  ctx,
+                  this.tilesetImg!,
+                  furn,
+                  { x: screen.sx, y: screen.sy },
+                  cellSize
+                );
+              },
+            });
+          }
+
+          // Layer C: Front south wall facade, doorstep, yard fences, campfire, lights (yOrder = wy + house.footprintH + 0.05)
+          depthList.push({
+            yOrder: wy + house.footprintH + 0.05,
+            draw: () => {
+              const screen = worldToScreen(wx, wy);
+              this.detailedHouseRenderer.renderHouseFront(
+                ctx,
+                this.tilesetImg!,
+                dh,
+                {
+                  cellSize,
+                  showLights: true,
+                  pixelOrigin: { x: screen.sx, y: screen.sy },
+                }
+              );
+
+              // Dynamic Night Lighting Radial Bloom (Spread radius set to 15% of original)
+              if (dh.lights && dh.lights.length > 0) {
+                ctx.save();
+                for (const light of dh.lights) {
+                  const lx = screen.sx + light.relX * cellSize;
+                  const ly = screen.sy + light.relY * cellSize;
+                  // Scaled to exactly 15% of original spread radius
+                  const radius = Math.max(2, cellSize * (light.radius ?? 2.8) * 0.15);
+
+                  const grad = ctx.createRadialGradient(lx, ly, 1, lx, ly, radius);
+                  grad.addColorStop(0, "rgba(254, 240, 138, 0.45)");
+                  grad.addColorStop(0.4, "rgba(251, 191, 36, 0.18)");
+                  grad.addColorStop(1, "rgba(245, 158, 11, 0.0)");
+
+                  ctx.fillStyle = grad;
+                  ctx.beginPath();
+                  ctx.arc(lx, ly, radius, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+                ctx.restore();
+              }
+            },
+          });
+          continue;
+        }
+
         depthList.push({
           yOrder: wy + house.footprintH,
           draw: () => {
             const screen = worldToScreen(wx, wy);
+
             const crop =
               HOUSE_CROPS[house.id] || HOUSE_CROPS["house_cottage_01"];
 
@@ -1352,12 +1548,13 @@ export class SurvivalRenderer {
                 const cropImg = this.getCropImage(cell.cropId!);
                 
                 if (cropImg) {
-                  const cropW = cellSize * 0.9;
-                  const cropH = cellSize * 1.1;
+                  // Reduced crop size by ~38% so crops sit cleanly in each furrow without sticking together
+                  const cropW = cellSize * 0.58;
+                  const cropH = cellSize * 0.70;
                   ctx.drawImage(
                     cropImg,
                     screen.sx + (cellSize - cropW) / 2,
-                    screen.sy + cellSize - cropH,
+                    screen.sy + cellSize * 0.82 - cropH,
                     cropW,
                     cropH,
                   );
@@ -1399,25 +1596,7 @@ export class SurvivalRenderer {
                   : 0;
 
               if (res.type === "tree") {
-                // Ground directional shadow offset by sun
-                const sunHour = engine.worldTime.hour + engine.worldTime.minute / 60;
-                const sunAngle = ((sunHour - 12) / 12) * Math.PI;
-                const shadowOffsetX = Math.sin(sunAngle) * cellSize * 0.42;
-                const shadowOffsetY = Math.abs(Math.cos(sunAngle)) * cellSize * 0.12;
-
-                ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
-                ctx.beginPath();
-                ctx.ellipse(
-                  screen.sx + cellSize + shadowOffsetX,
-                  screen.sy + cellSize * 1.6 + shadowOffsetY,
-                  cellSize * 0.95,
-                  cellSize * 0.42,
-                  0,
-                  0,
-                  Math.PI * 2,
-                );
-                ctx.fill();
-
+                // Trees have high-detail ground shadows baked into their sprites (trees_and_bushes.png)
                 if (this.treeBushImg && this.treeBushImg.complete) {
                   const crop = TREE_BUSH_CROPS.tree_01;
                   const treeW = cellSize * 3.0;
@@ -1550,12 +1729,12 @@ export class SurvivalRenderer {
                 if (farmCropId) {
                   const cropImg = this.getCropImage(farmCropId);
                   if (cropImg) {
-                    const cropW = cellSize;
-                    const cropH = cellSize * 1.2;
+                    const cropW = cellSize * 0.58;
+                    const cropH = cellSize * 0.70;
                     ctx.drawImage(
                       cropImg,
-                      screen.sx,
-                      screen.sy - cropH * 0.2,
+                      screen.sx + (cellSize - cropW) / 2,
+                      screen.sy + cellSize * 0.82 - cropH,
                       cropW,
                       cropH,
                     );
@@ -2690,21 +2869,76 @@ export class SurvivalRenderer {
       ctx.restore();
     }
 
-    // ── LAYER 9b: MIDNIGHT INVASION ROLLING FOG ─────────────────
-    if (engine.worldTime.hour === 0 || engine.worldTime.hour === 23) {
+    // ── LAYER 9b: PERSISTENT WORLD-SPACE CLOUD OVERLAY (Always active, independent of player) ──
+    {
       ctx.save();
-      const fogSec = Date.now() / 1000;
-      for (let fi = 0; fi < 5; fi++) {
-        const fogX = ((fi * 220 + fogSec * 18) % (canvas.width + 300)) - 150;
-        const fogY = (fi * 110 + Math.sin(fogSec * 0.8 + fi) * 40) % canvas.height;
-        const fogGrad = ctx.createRadialGradient(fogX, fogY, 20, fogX, fogY, 180);
-        fogGrad.addColorStop(0, "rgba(99, 102, 241, 0.14)");
-        fogGrad.addColorStop(0.6, "rgba(59, 130, 246, 0.08)");
-        fogGrad.addColorStop(1, "rgba(30, 27, 75, 0)");
-        ctx.fillStyle = fogGrad;
-        ctx.beginPath();
-        ctx.arc(fogX, fogY, 180, 0, Math.PI * 2);
-        ctx.fill();
+      const worldSec = Date.now() / 1000;
+      // Gentle wind vector in world space: drifts west to east, slightly south
+      const windVx = 0.82;
+      const windVy = 0.26;
+      const windWorldX = worldSec * windVx;
+      const windWorldY = worldSec * windVy;
+
+      const CELL_W = 40;
+      const CELL_H = 32;
+
+      // Pure white translucent clouds across all times of day (clean atmospheric canopy, zero ground shadows)
+      const cloudCenterColor = "rgba(255, 255, 255, 0.20)";
+      const cloudMidColor = "rgba(255, 255, 255, 0.10)";
+      const cloudEdgeColor = "rgba(255, 255, 255, 0.0)";
+
+      const minGX = Math.floor((minTileX - 55 - windWorldX) / CELL_W);
+      const maxGX = Math.ceil((maxTileX + 55 - windWorldX) / CELL_W);
+      const minGY = Math.floor((minTileY - 55 - windWorldY) / CELL_H);
+      const maxGY = Math.ceil((maxTileY + 55 - windWorldY) / CELL_H);
+
+      // Cumulus puff cluster layout offsets
+      const puffs = [
+        { ox: 0, oy: 0, rMult: 1.0 },
+        { ox: -0.7, oy: 0.15, rMult: 0.72 },
+        { ox: 0.8, oy: 0.1, rMult: 0.8 },
+        { ox: -0.25, oy: -0.38, rMult: 0.68 },
+        { ox: 1.45, oy: 0.22, rMult: 0.58 },
+      ];
+
+      for (let gy = minGY; gy <= maxGY; gy++) {
+        for (let gx = minGX; gx <= maxGX; gx++) {
+          const n = Math.sin(gx * 127.1 + gy * 311.7) * 43758.5453123;
+          const rand = n - Math.floor(n);
+          if (rand < 0.42) continue; // Balanced spacing: slightly less clustered
+
+          const n2 = Math.sin(gx * 269.5 + gy * 183.3) * 43758.5453123;
+          const rand2 = n2 - Math.floor(n2);
+          const n3 = Math.sin(gx * 419.2 + gy * 371.9) * 43758.5453123;
+          const rand3 = n3 - Math.floor(n3);
+
+          const cloudWx = gx * CELL_W + windWorldX + (rand2 * 18 - 9);
+          const cloudWy = gy * CELL_H + windWorldY + (rand3 * 14 - 7);
+          const screen = worldToScreen(cloudWx, cloudWy);
+
+          // Bigger, majestic clouds (scaled up from 2.8-4.6 to 4.8-8.0)
+          const baseRadius = cellSize * (4.8 + rand * 3.2);
+
+          // Translucent Sky Cloud Body (Shadows completely removed as requested)
+          for (const puff of puffs) {
+            const px = screen.sx + puff.ox * baseRadius;
+            const py = screen.sy + puff.oy * baseRadius;
+            const pr = puff.rMult * baseRadius;
+
+            if (px + pr < -50 || px - pr > canvas.width + 50 || py + pr < -50 || py - pr > canvas.height + 50) {
+              continue;
+            }
+
+            const cGrad = ctx.createRadialGradient(px, py, pr * 0.12, px, py, pr);
+            cGrad.addColorStop(0, cloudCenterColor);
+            cGrad.addColorStop(0.68, cloudMidColor);
+            cGrad.addColorStop(1, cloudEdgeColor);
+            ctx.fillStyle = cGrad;
+            ctx.beginPath();
+            ctx.arc(px, py, pr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
       ctx.restore();
     }

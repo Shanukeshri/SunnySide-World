@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Procedural Detailed 2.5D House Generator — Visual Inspector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-color: #0c0f17;
+        color: #f1f5f9;
+        font-family: 'Outfit', sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      header {
+        background: #111827;
+        border-bottom: 1px solid #1f2937;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand h1 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #38bdf8;
+      }
+      .brand span {
+        font-size: 0.82rem;
+        color: #94a3b8;
+      }
+      .stats-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .badge {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid #334155;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .badge-pass {
+        border-color: #059669;
+        color: #34d399;
+      }
+      .main-layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      .sidebar {
+        width: 320px;
+        background: #0f172a;
+        border-right: 1px solid #1e293b;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+      }
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .control-group label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      button.btn {
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      button.btn:hover {
+        background: #334155;
+        border-color: #475569;
+      }
+      button.btn.active {
+        background: #0284c7;
+        border-color: #38bdf8;
+        color: #ffffff;
+        font-weight: 600;
+      }
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .slider-row input[type='range'] {
+        flex: 1;
+      }
+      .slider-row span {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        width: 28px;
+        text-align: right;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        cursor: pointer;
+      }
+      .canvas-viewport {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, #172554 0%, #030712 100%);
+        overflow: auto;
+        padding: 24px;
+        position: relative;
+      }
+      canvas#house-canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: #15803d; /* lush lawn background */
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <h1>🏠 Procedural 2.5D House Inspector</h1>
+        <span>Authentic Sunnyside World Cutaway Architecture</span>
+      </div>
+      <div class="stats-bar">
+        <div class="badge" id="badge-size">Size: 10x8</div>
+        <div class="badge" id="badge-rooms">Rooms: 2</div>
+        <div class="badge" id="badge-theme">Theme: Timber</div>
+        <div class="badge badge-pass" id="badge-reachability">✓ 100% Reachable</div>
+      </div>
+    </header>
+
+    <div class="main-layout">
+      <!-- SIDEBAR CONTROLS -->
+      <aside class="sidebar">
+        <!-- Quick Archetypes -->
+        <div class="control-group">
+          <label>Signature Archetypes</label>
+          <div class="btn-row">
+            <button class="btn" id="btn-arch-studio">7×7 Studio</button>
+            <button class="btn active" id="btn-arch-cellar">10×8 Cellar</button>
+            <button class="btn" id="btn-arch-garden">14×10 Garden</button>
+            <button class="btn" id="btn-arch-manor">12×12 Stone</button>
+          </div>
+        </div>
+
+        <!-- Custom Dimensions -->
+        <div class="control-group">
+          <label>Dimensions</label>
+          <div class="slider-row">
+            <label style="width: 45px;">Width:</label>
+            <input type="range" id="input-w" min="6" max="16" value="10" />
+            <span id="label-w">10</span>
+          </div>
+          <div class="slider-row">
+            <label style="width: 45px;">Height:</label>
+            <input type="range" id="input-h" min="6" max="14" value="8" />
+            <span id="label-h">8</span>
+          </div>
+        </div>
+
+        <!-- Theme Selection -->
+        <div class="control-group">
+          <label>Wall Material Theme</label>
+          <div class="btn-row">
+            <button class="btn active" id="btn-theme-timber">Timber Log</button>
+            <button class="btn" id="btn-theme-stone">Stone Brick</button>
+          </div>
+        </div>
+
+        <!-- Annex Selection -->
+        <div class="control-group">
+          <label>Attached Yard / Annex</label>
+          <div class="btn-row">
+            <button class="btn active" id="btn-annex-auto">Auto</button>
+            <button class="btn" id="btn-annex-garden">Garden</button>
+            <button class="btn" id="btn-annex-pen">Animal Pen</button>
+            <button class="btn" id="btn-annex-none">None</button>
+          </div>
+        </div>
+
+        <!-- Seed Controls -->
+        <div class="control-group">
+          <label>Seed</label>
+          <div class="btn-row" style="align-items: center;">
+            <input
+              type="number"
+              id="input-seed"
+              value="12345"
+              style="width: 100px; padding: 6px; background: #1e293b; border: 1px solid #334155; color: #fff; border-radius: 4px;"
+            />
+            <button class="btn" id="btn-rand-seed">🎲 Random</button>
+          </div>
+        </div>
+
+        <!-- Visual Debug Toggles -->
+        <div class="control-group">
+          <label>Rendering & Debug Layers</label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="check-shadows" checked />
+            <span>3D Drop Shadows & Inner AO</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="check-lights" checked />
+            <span>Warm Torch & Candle Lighting</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="check-grid" />
+            <span>Show Tile Grid (16px)</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="check-collision" />
+            <span>Show Collision Map</span>
+          </label>
+        </div>
+
+        <!-- Scale / Zoom -->
+        <div class="control-group">
+          <label>Display Zoom</label>
+          <div class="btn-row">
+            <button class="btn" id="btn-zoom-2x">2× (32px)</button>
+            <button class="btn active" id="btn-zoom-3x">3× (48px)</button>
+            <button class="btn" id="btn-zoom-4x">4× (64px)</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CANVAS VIEWPORT -->
+      <main class="canvas-viewport">
+        <canvas id="house-canvas"></canvas>
+      </main>
+    </div>
+
+    <!-- ES MODULE IMPORTS -->
+    <script type="module">
+      import { generateProceduralDetailedHouse } from '/src/generation/HouseInteriorGenerator.ts';
+      import { DetailedHouseRenderer } from '/src/generation/DetailedHouseRenderer.ts';
+
+      const canvas = document.getElementById('house-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      const renderer = new DetailedHouseRenderer(48);
+
+      // Tileset image
+      const tilesetImg = new Image();
+      tilesetImg.crossOrigin = 'anonymous';
+
+      // State
+      let currentW = 10;
+      let currentH = 8;
+      let currentSeed = 12345;
+      let currentTheme = 'timber';
+      let currentAnnex = 'none';
+      let currentIncludeCellar = true;
+      let currentCellSize = 48;
+      let optGrid = false;
+      let optCollision = false;
+      let optLights = true;
+
+      // Elements
+      const badgeSize = document.getElementById('badge-size');
+      const badgeRooms = document.getElementById('badge-rooms');
+      const badgeTheme = document.getElementById('badge-theme');
+      const inputW = document.getElementById('input-w');
+      const inputH = document.getElementById('input-h');
+      const labelW = document.getElementById('label-w');
+      const labelH = document.getElementById('label-h');
+      const inputSeed = document.getElementById('input-seed');
+
+      async function init() {
+        await Promise.all([
+          new Promise((resolve) => {
+            tilesetImg.onload = resolve;
+            tilesetImg.src = '/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Tileset/spr_tileset_sunnysideworld_16px.png';
+          }),
+          renderer.preloadAssets(),
+        ]);
+        render();
+      }
+
+      function render() {
+        const house = generateProceduralDetailedHouse(currentW, currentH, currentSeed, {
+          theme: currentTheme,
+          annex: currentAnnex,
+          includeCellar: currentIncludeCellar,
+        });
+
+        // Set canvas dimensions with 1 tile padding around building
+        const padding = 2;
+        const totalW = house.w + padding * 2;
+        const totalH = house.h + padding * 2;
+
+        canvas.width = totalW * currentCellSize;
+        canvas.height = totalH * currentCellSize;
+        ctx.imageSmoothingEnabled = false;
+
+        // Draw outdoor grass backdrop matching survival meadow
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Render the house
+        renderer.renderHouse(ctx, tilesetImg, house, padding, padding, {
+          cellSize: currentCellSize,
+          showGrid: optGrid,
+          showCollision: optCollision,
+          showLights: optLights,
+        });
+
+        // Update stats
+        badgeSize.textContent = `Size: ${house.w}×${house.h}`;
+        badgeRooms.textContent = `Rooms: ${house.rooms.length}${house.yard ? ' + Yard' : ''}`;
+        badgeTheme.textContent = `Theme: ${house.theme === 'timber' ? 'Timber' : 'Stone'}`;
+      }
+
+      // Event Listeners
+      document.getElementById('btn-arch-studio').addEventListener('click', () => {
+        currentW = 7; currentH = 7; currentAnnex = 'none'; currentIncludeCellar = false; updateInputs(); render();
+      });
+      document.getElementById('btn-arch-cellar').addEventListener('click', () => {
+        currentW = 10; currentH = 8; currentAnnex = 'none'; currentIncludeCellar = true; currentTheme = 'timber'; updateInputs(); render();
+      });
+      document.getElementById('btn-arch-garden').addEventListener('click', () => {
+        currentW = 14; currentH = 10; currentAnnex = 'crop_garden'; currentIncludeCellar = false; currentTheme = 'timber'; updateInputs(); render();
+      });
+      document.getElementById('btn-arch-manor').addEventListener('click', () => {
+        currentW = 12; currentH = 12; currentTheme = 'stone'; currentAnnex = 'animal_pen'; currentIncludeCellar = false; updateInputs(); render();
+      });
+
+      inputW.addEventListener('input', (e) => {
+        currentW = parseInt(e.target.value);
+        labelW.textContent = currentW;
+        render();
+      });
+      inputH.addEventListener('input', (e) => {
+        currentH = parseInt(e.target.value);
+        labelH.textContent = currentH;
+        render();
+      });
+
+      document.getElementById('btn-theme-timber').addEventListener('click', (e) => {
+        currentTheme = 'timber';
+        document.getElementById('btn-theme-timber').classList.add('active');
+        document.getElementById('btn-theme-stone').classList.remove('active');
+        render();
+      });
+      document.getElementById('btn-theme-stone').addEventListener('click', (e) => {
+        currentTheme = 'stone';
+        document.getElementById('btn-theme-stone').classList.add('active');
+        document.getElementById('btn-theme-timber').classList.remove('active');
+        render();
+      });
+
+      document.getElementById('btn-rand-seed').addEventListener('click', () => {
+        currentSeed = Math.floor(Math.random() * 1000000);
+        inputSeed.value = currentSeed;
+        render();
+      });
+      inputSeed.addEventListener('change', (e) => {
+        currentSeed = parseInt(e.target.value) || 12345;
+        render();
+      });
+
+      document.getElementById('check-grid').addEventListener('change', (e) => {
+        optGrid = e.target.checked; render();
+      });
+      document.getElementById('check-collision').addEventListener('change', (e) => {
+        optCollision = e.target.checked; render();
+      });
+      document.getElementById('check-lights').addEventListener('change', (e) => {
+        optLights = e.target.checked; render();
+      });
+
+      document.getElementById('btn-zoom-2x').addEventListener('click', () => {
+        currentCellSize = 32; updateZoomBtns('btn-zoom-2x'); render();
+      });
+      document.getElementById('btn-zoom-3x').addEventListener('click', () => {
+        currentCellSize = 48; updateZoomBtns('btn-zoom-3x'); render();
+      });
+      document.getElementById('btn-zoom-4x').addEventListener('click', () => {
+        currentCellSize = 64; updateZoomBtns('btn-zoom-4x'); render();
+      });
+
+      function updateZoomBtns(activeId) {
+        ['btn-zoom-2x', 'btn-zoom-3x', 'btn-zoom-4x'].forEach(id => {
+          document.getElementById(id).classList.toggle('active', id === activeId);
+        });
+      }
+
+      function updateInputs() {
+        inputW.value = currentW; labelW.textContent = currentW;
+        inputH.value = currentH; labelH.textContent = currentH;
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>
+

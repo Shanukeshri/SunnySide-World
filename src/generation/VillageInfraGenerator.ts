@@ -162,8 +162,9 @@ export class VillageInfraGenerator {
 
         if (this.houses.length > 0) {
           const house = this.houses[Math.floor(this.rng() * this.houses.length)];
-          targetX = house.x + Math.floor((this.rng() - 0.5) * 6);
-          targetY = house.y + Math.floor((this.rng() - 0.5) * 6);
+          // Place civic well along open roadside or plaza, strictly outside any house
+          targetX = house.x + Math.floor((this.rng() - 0.5) * 12);
+          targetY = house.y + Math.floor((this.rng() - 0.5) * 12);
         } else {
           targetX = Math.floor(5 + this.rng() * (this.width - 10));
           targetY = Math.floor(5 + this.rng() * (this.height - 10));
@@ -171,6 +172,13 @@ export class VillageInfraGenerator {
 
         targetX = Math.max(1, Math.min(this.width - 2, targetX));
         targetY = Math.max(1, Math.min(this.height - 2, targetY));
+
+        // REQUIREMENT: Wells must NEVER spawn inside or adjacent to any house footprint
+        const insideOrNearHouse = this.houses.some(h =>
+          targetX >= h.x - 1 && targetX < h.x + h.footprintW + 1 &&
+          targetY >= h.y - 1 && targetY < h.y + h.footprintH + 1
+        );
+        if (insideOrNearHouse) continue;
 
         const cell = this.grid[targetY][targetX];
 

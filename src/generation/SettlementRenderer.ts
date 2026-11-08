@@ -8,6 +8,7 @@ import { NPC } from '../lifeforms/NPC';
 import { Player } from '../lifeforms/Player';
 import { HeartParticle } from '../lifeforms/types';
 import { LifeformRenderer } from '../lifeforms/LifeformRenderer';
+import { DetailedHouseRenderer } from './DetailedHouseRenderer';
 
 export interface RenderOptions {
   cellSize?: number;        // default 24px
@@ -91,6 +92,11 @@ const TILESET_CROPS: Record<string, TilesetCrop> = {
   // Clean Water (pure calm cyan water & diagonal shore corner transition)
   water_tile_01:       { x: 352, y: 112, w: 16, h: 16 }, // Calm cyan water
   shore_transition_01: { x: 368, y: 112, w: 16, h: 16 }, // Unidirectional diagonal shore corner transition
+
+  // Wooden Bridges & Piers directly over water
+  bridge_wood_h:       { x: 608, y: 80,  w: 16, h: 16 }, // Horizontal wooden bridge/pier planks
+  bridge_wood_v:       { x: 640, y: 80,  w: 16, h: 16 }, // Vertical wooden bridge/pier planks
+  bridge_wood_edge_s:  { x: 608, y: 96,  w: 16, h: 16 }, // Southern timber edge with stilt post
 
   // Wooden Fences (from tileset block 0,38 to 4,42)
   fence_wood_h:         { x: 624, y: 32,  w: 16, h: 16 }, // Horizontal scaling wooden fence rail (2,39)
@@ -256,6 +262,9 @@ export async function prepareSettlementScene(
   }
   await Promise.all(spritePromises);
 
+  const detailedHouseRenderer = new DetailedHouseRenderer(cellSize);
+  await detailedHouseRenderer.preloadAssets();
+
   // ── PRE-RENDER STATIC GROUND TO OFFSCREEN CANVAS (Layers 1-5) ──
   const bgCanvas = document.createElement('canvas');
   bgCanvas.width = data.width * cellSize;
@@ -337,6 +346,133 @@ export async function prepareSettlementScene(
         const pathCrop = TILESET_CROPS[pathCropKey] || TILESET_CROPS['path_tile_01'];
 
         bgCtx.drawImage(tilesetImg, pathCrop.x, pathCrop.y, pathCrop.w, pathCrop.h, dx, dy, cellSize, cellSize);
+      }
+    }
+
+    // ── LAYER 3.5: Wooden Bridges & Piers directly over water (3D Stilts & Drop Shadow) ──
+    for (let y = 0; y < data.height; y++) {
+      for (let x = 0; x < data.width; x++) {
+        const cell = data.grid[y][x];
+        if (!cell.isBridge && cell.terrain !== 'bridge_wood') continue;
+
+        const dx = x * cellSize;
+        const dy = y * cellSize;
+
+        // 1. Water has already been drawn underneath in Layer 2!
+
+        const isB = (gx: number, gy: number) => {
+          if (gx < 0 || gx >= data.width || gy < 0 || gy >= data.height) return false;
+          const c = data.grid[gy][gx];
+          return c.isBridge || c.terrain === 'bridge_wood';
+        };
+
+        const hasBN = isB(x, y - 1);
+        const hasBS = isB(x, y + 1);
+        const hasBW = isB(x - 1, y);
+        const hasBE = isB(x + 1, y);
+
+        // 2. Soft Drop Shadows on water directly under and extending onto adjacent water
+        bgCtx.fillStyle = 'rgba(3, 14, 26, 0.42)';
+        bgCtx.fillRect(dx, dy, cellSize, cellSize);
+        if (!hasBE) {
+          bgCtx.fillRect(dx + cellSize, dy + 3, 7, cellSize + 3);
+        }
+        if (!hasBS) {
+          bgCtx.fillRect(dx + 3, dy + cellSize - 1, cellSize + 3, 7);
+        }
+        if (!hasBE && !hasBS) {
+          bgCtx.fillRect(dx + cellSize, dy + cellSize, 7, 7);
+        }
+
+        // 3. Elevated Wooden Plank Deck (elevated 3px up)
+        const deckOffsetY = -3;
+        const isHorizontalSpan = (hasBW || hasBE) && !hasBN && !hasBS;
+        const bridgeCrop = isHorizontalSpan
+          ? TILESET_CROPS['bridge_wood_v']
+          : TILESET_CROPS['bridge_wood_h'];
+
+        if (bridgeCrop) {
+          bgCtx.drawImage(
+            tilesetImg,
+            bridgeCrop.x, bridgeCrop.y, bridgeCrop.w, bridgeCrop.h,
+            dx, dy + deckOffsetY, cellSize, cellSize
+          );
+        }
+
+        // 4. 3D Front Timber Fascia Rim along south edge
+        if (!hasBS) {
+          const fy = dy + cellSize + deckOffsetY;
+          bgCtx.fillStyle = '#451a03';
+          bgCtx.fillRect(dx, fy, cellSize, 4);
+          bgCtx.fillStyle = '#b45309';
+          bgCtx.fillRect(dx, fy, cellSize, 1);
+          bgCtx.fillStyle = '#1e0e02';
+          bgCtx.fillRect(dx, fy + 3, cellSize, 1);
+        }
+
+        // 5. Timber curb rails along exposed sides
+        if (!hasBW) {
+          bgCtx.fillStyle = '#78350f';
+          bgCtx.fillRect(dx, dy + deckOffsetY, 2, cellSize);
+          bgCtx.fillStyle = '#b45309';
+          bgCtx.fillRect(dx + 1, dy + deckOffsetY, 1, cellSize);
+        }
+        if (!hasBE) {
+          bgCtx.fillStyle = '#78350f';
+          bgCtx.fillRect(dx + cellSize - 2, dy + deckOffsetY, 2, cellSize);
+          bgCtx.fillStyle = '#b45309';
+          bgCtx.fillRect(dx + cellSize - 2, dy + deckOffsetY, 1, cellSize);
+        }
+        if (!hasBN) {
+          bgCtx.fillStyle = '#78350f';
+          bgCtx.fillRect(dx, dy + deckOffsetY, cellSize, 2);
+          bgCtx.fillStyle = '#b45309';
+          bgCtx.fillRect(dx, dy + deckOffsetY, cellSize, 1);
+        }
+
+        // 6. Wooden Stilts / Pilings dipping into water (drawn ON TOP of deck rim, extending down into water)
+        const stiltW = Math.max(3, Math.round(cellSize * 0.18));
+        const stiltH = Math.max(8, Math.round(cellSize * 0.42));
+
+        const drawStilt = (px: number, py: number) => {
+          // Shadow under post on water
+          bgCtx.fillStyle = 'rgba(2, 10, 20, 0.55)';
+          bgCtx.fillRect(px + 2, py + 2, stiltW + 3, stiltH + 3);
+          // Timber post body
+          bgCtx.fillStyle = '#2d1204';
+          bgCtx.fillRect(px, py, stiltW, stiltH);
+          bgCtx.fillStyle = '#78350f';
+          bgCtx.fillRect(px + 1, py, Math.max(1, stiltW - 2), stiltH);
+          bgCtx.fillStyle = '#c86414';
+          bgCtx.fillRect(px + 1, py, 1, Math.max(1, stiltH - 2));
+          // Submerged waterline ripple ring
+          bgCtx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+          bgCtx.fillRect(px - 2, py + stiltH - 2, stiltW + 4, 1.5);
+          bgCtx.fillStyle = 'rgba(2, 44, 34, 0.45)';
+          bgCtx.fillRect(px - 1, py + stiltH, stiltW + 2, 1);
+        };
+
+        // South edge stilts
+        if (!hasBS) {
+          if (!hasBW) {
+            drawStilt(dx + 2, dy + cellSize - 2);
+          }
+          if (!hasBE) {
+            drawStilt(dx + cellSize - stiltW - 2, dy + cellSize - 2);
+          }
+          if (hasBW && hasBE) {
+            drawStilt(dx + Math.round(cellSize * 0.5 - stiltW / 2), dy + cellSize - 2);
+          }
+        }
+        // Interval side pilings along West and East edges
+        if ((Math.abs(x) + Math.abs(y)) % 2 === 1) {
+          if (!hasBW) {
+            drawStilt(dx - 3, dy + Math.round(cellSize * 0.25));
+          }
+          if (!hasBE) {
+            drawStilt(dx + cellSize - 1, dy + Math.round(cellSize * 0.25));
+          }
+        }
       }
     }
 
@@ -447,11 +583,12 @@ export async function prepareSettlementScene(
 
             const cropImg = imageCache.get(path);
             if (cropImg && cropImg.width > 0) {
-              const scale = cellSize / 16;
+              // Reduced crop scale so crops sit cleanly in their furrow mounds without sticking together
+              const scale = (cellSize / 16) * 0.60;
               const cw = Math.round(cropImg.width * scale);
               const ch = Math.round(cropImg.height * scale);
               const cx = Math.round(c.x * cellSize + (cellSize - cw) / 2);
-              const cy = Math.round((c.y + 0.88) * cellSize - ch);
+              const cy = Math.round((c.y + 0.82) * cellSize - ch);
               ctx.drawImage(cropImg, cx, cy, cw, ch);
             }
           },
@@ -551,23 +688,34 @@ export async function prepareSettlementScene(
       entities.push({
         ySort: house.y + house.footprintH,
         draw: () => {
-          const crop = HOUSE_CROPS[house.id];
-          if (crop && housesImg.width > 0) {
-            const [cx, cy, cw, ch] = crop;
-            const footprintPixelW = house.footprintW * cellSize;
-            const footprintPixelH = house.footprintH * cellSize;
-            const scale = Math.min((footprintPixelW * 1.15) / cw, (footprintPixelH * 1.35) / ch);
-            const dw = cw * scale;
-            const dh = ch * scale;
-            const dx = house.x * cellSize + (footprintPixelW - dw) / 2;
-            const dy = (house.y + house.footprintH) * cellSize - dh + 4;
+          if (house.metadata?.detailedHouse) {
+            detailedHouseRenderer.renderHouse(
+              ctx,
+              tilesetImg,
+              house.metadata.detailedHouse,
+              house.x,
+              house.y,
+              { cellSize, showLights: true }
+            );
+          } else {
+            const crop = HOUSE_CROPS[house.id];
+            if (crop && housesImg.width > 0) {
+              const [cx, cy, cw, ch] = crop;
+              const footprintPixelW = house.footprintW * cellSize;
+              const footprintPixelH = house.footprintH * cellSize;
+              const scale = Math.min((footprintPixelW * 1.15) / cw, (footprintPixelH * 1.35) / ch);
+              const dw = cw * scale;
+              const dh = ch * scale;
+              const dx = house.x * cellSize + (footprintPixelW - dw) / 2;
+              const dy = (house.y + house.footprintH) * cellSize - dh + 4;
 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-            ctx.beginPath();
-            ctx.ellipse(dx + dw / 2, (house.y + house.footprintH) * cellSize - 2, dw * 0.46, 8, 0, 0, Math.PI * 2);
-            ctx.fill();
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+              ctx.beginPath();
+              ctx.ellipse(dx + dw / 2, (house.y + house.footprintH) * cellSize - 2, dw * 0.46, 8, 0, 0, Math.PI * 2);
+              ctx.fill();
 
-            ctx.drawImage(housesImg, cx, cy, cw, ch, dx, dy, dw, dh);
+              ctx.drawImage(housesImg, cx, cy, cw, ch, dx, dy, dw, dh);
+            }
           }
         },
       });

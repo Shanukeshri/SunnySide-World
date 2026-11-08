@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // FARMLAND GENERATOR MODULE (Phase 4: Farmland zoning & fencing)
-// Creates empty tilled farmland plots, farmyard props, & perimeter fences.
+// Creates organic, non-square curved farmland plots using multi-oval
+// merging, tilled furrow soil, farmyard props, & rustic fences.
 // Crops are NOT placed here; they are handled in Phase 5 by CropGenerator.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -48,346 +49,26 @@ export class FarmlandGenerator {
   }
 
   /**
-   * Generates all farmland plots, tilling soil and installing fences + props.
+   * Generates organic, non-square curved farmland plots across the village.
    * Farm plots are created with empty cells; crops are planted later by CropGenerator.
    */
   public generate(): FarmlandResult {
     this.farms = [];
     this.farmObjects = [];
 
-    // Target: 4 to 8 farm plots
+    // Target: 4 to 8 organic farm plots
     const farmCount = 4 + Math.floor(this.rng() * 5);
 
-    // ── Primary Farmland Placement Loop ─────────────────────────────
+    // ── Primary Organic Farmland Placement Loop ─────────────────────
     for (let f = 0; f < farmCount; f++) {
-      const hasBorder = this.rng() < 0.50; // 50% chance of border fence
       const targetHouse = this.houses.length > 0 ? this.houses[f % this.houses.length] : null;
-
-      // Target farm dimensions: 9 to 13 cells wide, 5 to 7 cells tall
-      const targetW = 9 + Math.floor(this.rng() * 5);
-      const targetH = 5 + Math.floor(this.rng() * 3);
-
-      for (let attempt = 0; attempt < 350; attempt++) {
-        const curTargetW = attempt > 250 ? Math.max(6, targetW - 3) : (attempt > 150 ? Math.max(7, targetW - 2) : targetW);
-        const curTargetH = attempt > 250 ? Math.max(3, targetH - 2) : (attempt > 150 ? Math.max(3, targetH - 1) : targetH);
-        let ax: number;
-        let ay: number;
-
-        if (targetHouse && attempt < 120) {
-          const angle = this.rng() * Math.PI * 2;
-          const distFromHouse = 4 + this.rng() * 8;
-          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
-          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
-        } else if (targetHouse && attempt < 220) {
-          const angle = this.rng() * Math.PI * 2;
-          const distFromHouse = 5 + this.rng() * 13;
-          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
-          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
-        } else {
-          ax = Math.floor(2 + this.rng() * (this.width - targetW - 4));
-          ay = Math.floor(2 + this.rng() * (this.height - targetH - 6));
-        }
-
-        ax = Math.max(2, Math.min(this.width - 7, ax));
-        ay = Math.max(2, Math.min(this.height - 5, ay));
-
-        let fw = curTargetW;
-        let fh = curTargetH;
-
-        fw = Math.min(fw, this.width - ax - 2);
-        fh = Math.min(fh, this.height - ay - 2);
-        const minW = attempt > 150 ? 5 : 6;
-        const minH = 3;
-        if (fw < minW || fh < minH) continue;
-
-        // Pause width before any obstacle
-        for (let dx = 0; dx < fw; dx++) {
-          let colBlocked = false;
-          for (let dy = 0; dy < fh; dy++) {
-            const gx = ax + dx;
-            const gy = ay + dy;
-            const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
-              colBlocked = true;
-              break;
-            }
-          }
-          if (colBlocked) {
-            fw = dx;
-            break;
-          }
-        }
-        if (fw < minW) continue;
-
-        // Pause height before any obstacle
-        for (let dy = 0; dy < fh; dy++) {
-          let rowBlocked = false;
-          for (let dx = 0; dx < fw; dx++) {
-            const gx = ax + dx;
-            const gy = ay + dy;
-            const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
-              rowBlocked = true;
-              break;
-            }
-          }
-          if (rowBlocked) {
-            fh = dy;
-            break;
-          }
-        }
-        if (fw < minW || fh < minH) continue;
-
-        const minX = ax - 1;
-        const maxX = ax + fw;
-        const minY = ay - 1;
-        const maxY = ay + fh + 1;
-
-        let farmyardY = ay + fh;
-        if (farmyardY >= this.height - 1) {
-          farmyardY = ay + fh - 1;
-        }
-
-        // Till the soil across the farm plot footprint
-        for (let dy = 0; dy < fh; dy++) {
-          for (let dx = 0; dx < fw; dx++) {
-            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
-            if (isCorner && this.rng() > 0.5) continue;
-
-            const gx = ax + dx;
-            const gy = ay + dy;
-            this.grid[gy][gx].isFarm = true;
-            this.grid[gy][gx].terrain = 'dirt_tile_01'; // Tilled furrow soil
-          }
-        }
-
-        // Build cell list for rendering (used by SettlementRenderer Layer 4)
-        const tilledCells: FarmCell[] = [];
-        for (let dy = 0; dy < fh; dy++) {
-          for (let dx = 0; dx < fw; dx++) {
-            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
-            if (isCorner && this.rng() > 0.5) continue;
-            tilledCells.push({ x: ax + dx, y: ay + dy });
-          }
-        }
-
-        // Push farm plot with populated cell list (crops are placed in Phase 5)
-        this.farms.push({
-          x: ax,
-          y: ay,
-          w: fw,
-          h: fh,
-          cells: tilledCells,
-          cropBaseId: '',
-        });
-
-        // Farm items (crates, barrels, hay bales, troughs) placed along farmyard strip
-        const itemSlots: number[] = [];
-        for (let x = ax; x < ax + fw; x++) {
-          if (x < this.width && !this.grid[farmyardY][x].isRoad && !this.grid[farmyardY][x].isWater) {
-            itemSlots.push(x);
-          }
-        }
-        for (let i = itemSlots.length - 1; i > 0; i--) {
-          const j = Math.floor(this.rng() * (i + 1));
-          [itemSlots[i], itemSlots[j]] = [itemSlots[j], itemSlots[i]];
-        }
-
-        const numFarmItems = Math.min(itemSlots.length, 1 + Math.floor(this.rng() * 3));
-        for (let i = 0; i < numFarmItems; i++) {
-          const ix = itemSlots[i];
-          const iy = farmyardY;
-          if (!this.grid[iy][ix].isRoad && !this.grid[iy][ix].isWater) {
-            const objId = FARM_OBJECT_IDS[Math.floor(this.rng() * FARM_OBJECT_IDS.length)];
-            this.grid[iy][ix].blocked = true;
-
-            this.farmObjects.push({
-              id: objId,
-              name: objId,
-              type: 'farm_object',
-              x: ix,
-              y: iy,
-              footprintW: 1,
-              footprintH: 1,
-            });
-          }
-        }
-
-        // Fencing with openings
-        if (hasBorder) {
-          const openings = new Set<string>();
-          const numOpenings = 2 + Math.floor(this.rng() * 3);
-
-          const southOpenX = ax + Math.floor(fw / 2);
-          openings.add(`${southOpenX},${maxY}`);
-          const northOpenX = ax + Math.floor(fw / 2);
-          openings.add(`${northOpenX},${minY}`);
-          if (numOpenings >= 3) openings.add(`${minX},${ay + Math.floor(fh / 2)}`);
-          if (numOpenings >= 4) openings.add(`${maxX},${ay + Math.floor(fh / 2)}`);
-
-          // North edge
-          for (let x = minX; x <= maxX; x++) {
-            if (x >= 0 && x < this.width && minY >= 0 && minY < this.height) {
-              this.placeFenceCell(x, minY, minX, maxX, minY, maxY, openings);
-            }
-          }
-          // South edge
-          for (let x = minX; x <= maxX; x++) {
-            if (x >= 0 && x < this.width && maxY >= 0 && maxY < this.height) {
-              this.placeFenceCell(x, maxY, minX, maxX, minY, maxY, openings);
-            }
-          }
-          // West edge
-          for (let y = minY + 1; y < maxY; y++) {
-            if (minX >= 0 && minX < this.width && y >= 0 && y < this.height) {
-              this.placeFenceCell(minX, y, minX, maxX, minY, maxY, openings);
-            }
-          }
-          // East edge
-          for (let y = minY + 1; y < maxY; y++) {
-            if (maxX >= 0 && maxX < this.width && y >= 0 && y < this.height) {
-              this.placeFenceCell(maxX, y, minX, maxX, minY, maxY, openings);
-            }
-          }
-        }
-
-        break;
-      }
+      this.generateOrganicFarmPlot(targetHouse, f);
     }
 
-    // ── Fallback Safety Loop (guarantee at least 4 farm plots) ───────
+    // ── Fallback Safety Loop (guarantee at least 4 organic farm plots) ──────
     let safetyFarms = 0;
-    while (this.farms.length < 4 && safetyFarms++ < 15) {
-      const f = this.farms.length;
-      const hasBorder = this.rng() < 0.50;
-      const targetHouse = this.houses.length > 0 ? this.houses[f % this.houses.length] : null;
-      const targetW = 7 + Math.floor(this.rng() * 3);
-      const targetH = 4 + Math.floor(this.rng() * 2);
-
-      for (let attempt = 0; attempt < 300; attempt++) {
-        let ax: number;
-        let ay: number;
-        if (targetHouse && attempt < 180) {
-          const angle = this.rng() * Math.PI * 2;
-          const distFromHouse = 4 + this.rng() * 12;
-          ax = Math.round(targetHouse.x + Math.cos(angle) * distFromHouse);
-          ay = Math.round(targetHouse.y + Math.sin(angle) * distFromHouse);
-        } else {
-          ax = Math.floor(2 + this.rng() * (this.width - targetW - 4));
-          ay = Math.floor(2 + this.rng() * (this.height - targetH - 6));
-        }
-        ax = Math.max(2, Math.min(this.width - 6, ax));
-        ay = Math.max(2, Math.min(this.height - 4, ay));
-
-        let fw = targetW;
-        let fh = targetH;
-        fw = Math.min(fw, this.width - ax - 2);
-        fh = Math.min(fh, this.height - ay - 2);
-        if (fw < 4 || fh < 3) continue;
-
-        for (let dx = 0; dx < fw; dx++) {
-          let colBlocked = false;
-          for (let dy = 0; dy < fh; dy++) {
-            const gx = ax + dx;
-            const gy = ay + dy;
-            const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
-              colBlocked = true;
-              break;
-            }
-          }
-          if (colBlocked) { fw = dx; break; }
-        }
-        if (fw < 4) continue;
-
-        for (let dy = 0; dy < fh; dy++) {
-          let rowBlocked = false;
-          for (let dx = 0; dx < fw; dx++) {
-            const gx = ax + dx;
-            const gy = ay + dy;
-            const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
-              rowBlocked = true;
-              break;
-            }
-          }
-          if (rowBlocked) { fh = dy; break; }
-        }
-        if (fw < 4 || fh < 3) continue;
-
-        const minX = ax - 1;
-        const maxX = ax + fw;
-        const minY = ay - 1;
-        const maxY = ay + fh + 1;
-        let farmyardY = ay + fh;
-        if (farmyardY >= this.height - 1) farmyardY = ay + fh - 1;
-
-        // Till soil
-        for (let dy = 0; dy < fh; dy++) {
-          for (let dx = 0; dx < fw; dx++) {
-            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
-            if (isCorner && this.rng() > 0.5) continue;
-
-            const gx = ax + dx;
-            const gy = ay + dy;
-            this.grid[gy][gx].isFarm = true;
-            this.grid[gy][gx].terrain = 'dirt_tile_01';
-          }
-        }
-
-        // Build cell list for rendering
-        const tilledCells2: FarmCell[] = [];
-        for (let dy = 0; dy < fh; dy++) {
-          for (let dx = 0; dx < fw; dx++) {
-            const isCorner = (dx === 0 || dx === fw - 1) && (dy === 0);
-            if (isCorner && this.rng() > 0.5) continue;
-            tilledCells2.push({ x: ax + dx, y: ay + dy });
-          }
-        }
-
-        this.farms.push({ x: ax, y: ay, w: fw, h: fh, cells: tilledCells2, cropBaseId: '' });
-
-        const itemSlots: number[] = [];
-        for (let x = ax; x < ax + fw; x++) {
-          if (x < this.width && !this.grid[farmyardY][x].isRoad && !this.grid[farmyardY][x].isWater) {
-            itemSlots.push(x);
-          }
-        }
-        for (let i = itemSlots.length - 1; i > 0; i--) {
-          const j = Math.floor(this.rng() * (i + 1));
-          [itemSlots[i], itemSlots[j]] = [itemSlots[j], itemSlots[i]];
-        }
-        const numFarmItems = Math.min(itemSlots.length, 1 + Math.floor(this.rng() * 3));
-        for (let i = 0; i < numFarmItems; i++) {
-          const ix = itemSlots[i];
-          const iy = farmyardY;
-          if (!this.grid[iy][ix].isRoad && !this.grid[iy][ix].isWater) {
-            const objId = FARM_OBJECT_IDS[Math.floor(this.rng() * FARM_OBJECT_IDS.length)];
-            this.grid[iy][ix].blocked = true;
-            this.farmObjects.push({ id: objId, name: objId, type: 'farm_object', x: ix, y: iy, footprintW: 1, footprintH: 1 });
-          }
-        }
-
-        if (hasBorder) {
-          const openings = new Set<string>();
-          const numOpenings = 2 + Math.floor(this.rng() * 3);
-          openings.add(`${ax + Math.floor(fw / 2)},${maxY}`);
-          openings.add(`${ax + Math.floor(fw / 2)},${minY}`);
-          if (numOpenings >= 3) openings.add(`${minX},${ay + Math.floor(fh / 2)}`);
-          if (numOpenings >= 4) openings.add(`${maxX},${ay + Math.floor(fh / 2)}`);
-
-          for (let x = minX; x <= maxX; x++) {
-            if (x >= 0 && x < this.width && minY >= 0 && minY < this.height) this.placeFenceCell(x, minY, minX, maxX, minY, maxY, openings);
-            if (x >= 0 && x < this.width && maxY >= 0 && maxY < this.height) this.placeFenceCell(x, maxY, minX, maxX, minY, maxY, openings);
-          }
-          for (let y = minY + 1; y < maxY; y++) {
-            if (minX >= 0 && minX < this.width && y >= 0 && y < this.height) this.placeFenceCell(minX, y, minX, maxX, minY, maxY, openings);
-            if (maxX >= 0 && maxX < this.width && y >= 0 && y < this.height) this.placeFenceCell(maxX, y, minX, maxX, minY, maxY, openings);
-          }
-        }
-
-        break;
-      }
+    while (this.farms.length < 4 && safetyFarms++ < 25) {
+      this.generateOrganicFarmPlot(null, this.farms.length + safetyFarms * 11);
     }
 
     return {
@@ -397,47 +78,251 @@ export class FarmlandGenerator {
   }
 
   /**
-   * Place a single wooden fence segment unless cell is marked as an opening
+   * Generates a single organic farm plot using multi-oval/multi-lobe merging.
+   * Eliminates straight borders, rectangular boxes, and 90-degree corners.
    */
-  private placeFenceCell(
-    x: number,
-    y: number,
-    minX: number,
-    maxX: number,
-    minY: number,
-    maxY: number,
-    openings: Set<string>
-  ) {
-    if (openings.has(`${x},${y}`)) return;
+  private generateOrganicFarmPlot(targetHouse: PlacedObject | null, plotIndex: number): boolean {
+    const hasBorder = this.rng() < 0.35; // 35% chance of rustic fencing along one curved flank
+    const farmSeed = this.rng() * 10000;
 
-    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
+    // Organic farm dimensions: 18 to 28 cells wide, 10 to 16 cells tall
+    const targetW = 18 + Math.floor(this.rng() * 11);
+    const targetH = 10 + Math.floor(this.rng() * 7);
 
-    if (this.grid[y][x].isRoad || this.grid[y][x].isWater || this.grid[y][x].blocked) {
-      return;
+    for (let attempt = 0; attempt < 320; attempt++) {
+      let cx: number;
+      let cy: number;
+
+      if (targetHouse && attempt < 120) {
+        const angle = this.rng() * Math.PI * 2;
+        const dist = 9 + this.rng() * 22;
+        cx = Math.round(targetHouse.x + Math.cos(angle) * dist);
+        cy = Math.round(targetHouse.y + Math.sin(angle) * dist);
+      } else {
+        cx = Math.floor(targetW / 2 + 4 + this.rng() * (this.width - targetW - 8));
+        cy = Math.floor(targetH / 2 + 4 + this.rng() * (this.height - targetH - 8));
+      }
+
+      // Keep center safely within world bounds
+      cx = Math.max(Math.floor(targetW / 2) + 2, Math.min(this.width - Math.ceil(targetW / 2) - 3, cx));
+      cy = Math.max(Math.floor(targetH / 2) + 2, Math.min(this.height - Math.ceil(targetH / 2) - 3, cy));
+
+      // Construct 2 to 4 overlapping organic lobes to form a naturally curvy field
+      const numLobes = 2 + (this.rng() < 0.75 ? 1 : 0) + (this.rng() < 0.35 ? 1 : 0);
+      const lobes: { cx: number; cy: number; rx: number; ry: number }[] = [];
+
+      // Main central lobe
+      const baseRx = (targetW * 0.40) * (0.88 + this.rng() * 0.24);
+      const baseRy = (targetH * 0.38) * (0.88 + this.rng() * 0.24);
+      lobes.push({
+        cx: cx + (this.rng() - 0.5) * 2,
+        cy: cy + (this.rng() - 0.5) * 1.5,
+        rx: baseRx,
+        ry: baseRy,
+      });
+
+      // Secondary and tertiary offset lobes (creates soft curvature, asymmetrical bulges, and terraced contours)
+      const primaryAngle = this.rng() * Math.PI * 2;
+      for (let l = 1; l < numLobes; l++) {
+        const angle = primaryAngle + (l === 1 ? 0 : Math.PI * 0.75 + (this.rng() - 0.5) * 0.8);
+        const dist = 3 + this.rng() * 4.5;
+        const lobeRx = baseRx * (0.65 + this.rng() * 0.30);
+        const lobeRy = baseRy * (0.65 + this.rng() * 0.30);
+        lobes.push({
+          cx: cx + Math.cos(angle) * dist,
+          cy: cy + Math.sin(angle) * (dist * 0.65),
+          rx: lobeRx,
+          ry: lobeRy,
+        });
+      }
+
+      // Sample all integer grid coordinates in the bounding vicinity
+      const minX = Math.max(2, Math.floor(cx - targetW / 2 - 2));
+      const maxX = Math.min(this.width - 3, Math.ceil(cx + targetW / 2 + 2));
+      const minY = Math.max(2, Math.floor(cy - targetH / 2 - 2));
+      const maxY = Math.min(this.height - 3, Math.ceil(cy + targetH / 2 + 2));
+
+      const candidateCells: { x: number; y: number }[] = [];
+      let collisionFailed = false;
+
+      for (let gy = minY; gy <= maxY; gy++) {
+        for (let gx = minX; gx <= maxX; gx++) {
+          // Check if inside any of the organic lobes
+          let inside = false;
+          for (let li = 0; li < lobes.length; li++) {
+            const lobe = lobes[li];
+            const dx = gx - lobe.cx;
+            const dy = gy - lobe.cy;
+            const angle = Math.atan2(dy, dx);
+            // Smooth harmonic edge wobble (eliminates sterile straight-line boundaries)
+            const wobble = 1.0 + 0.16 * Math.sin(angle * 3 + farmSeed + li) + 0.08 * Math.cos(angle * 5 + 1.2);
+            const distSq = (dx * dx) / (lobe.rx * lobe.rx) + (dy * dy) / (lobe.ry * lobe.ry);
+            if (distSq <= wobble) {
+              inside = true;
+              break;
+            }
+          }
+
+          if (!inside) continue;
+
+          // Check if cell is occupied or forbidden
+          const cell = this.grid[gy][gx];
+          if (
+            cell.isRoad ||
+            cell.isRoadReserved ||
+            cell.isWater ||
+            cell.isFarm ||
+            cell.blocked ||
+            cell.terrain === 'sand_tile_01'
+          ) {
+            // If the center of the farm collides with road/water, this spot won't work
+            const centerDist = Math.hypot(gx - cx, gy - cy);
+            if (centerDist < 4) {
+              collisionFailed = true;
+              break;
+            }
+            continue; // Organic boundary adapts around natural obstacles
+          }
+
+          // 1-tile buffer clearance around roads, reserved roads, and water
+          let nearObstacle = false;
+          for (let oy = -1; oy <= 1; oy++) {
+            for (let ox = -1; ox <= 1; ox++) {
+              const nx = gx + ox;
+              const ny = gy + oy;
+              if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                const nc = this.grid[ny][nx];
+                if (nc.isRoad || nc.isRoadReserved || nc.isWater) {
+                  nearObstacle = true;
+                  break;
+                }
+              }
+            }
+            if (nearObstacle) break;
+          }
+
+          if (!nearObstacle) {
+            candidateCells.push({ x: gx, y: gy });
+          }
+        }
+        if (collisionFailed) break;
+      }
+
+      if (collisionFailed) continue;
+
+      // Filter out isolated stray single pixels (must have at least 2 adjacent neighbors in candidate set)
+      const cellSet = new Set(candidateCells.map(c => `${c.x},${c.y}`));
+      const organicCells = candidateCells.filter(c => {
+        let neighborCount = 0;
+        if (cellSet.has(`${c.x + 1},${c.y}`)) neighborCount++;
+        if (cellSet.has(`${c.x - 1},${c.y}`)) neighborCount++;
+        if (cellSet.has(`${c.x},${c.y + 1}`)) neighborCount++;
+        if (cellSet.has(`${c.x},${c.y - 1}`)) neighborCount++;
+        return neighborCount >= 2;
+      });
+
+      // Require a substantial plot size (at least 32 cells, up to ~160 cells)
+      if (organicCells.length < 32) continue;
+
+      // Till the soil across the organic curved footprint
+      for (const c of organicCells) {
+        this.grid[c.y][c.x].isFarm = true;
+        this.grid[c.y][c.x].terrain = 'dirt_tile_01';
+      }
+
+      // Compute actual bounding box of this organic plot
+      let pMinX = this.width;
+      let pMaxX = 0;
+      let pMinY = this.height;
+      let pMaxY = 0;
+      for (const c of organicCells) {
+        if (c.x < pMinX) pMinX = c.x;
+        if (c.x > pMaxX) pMaxX = c.x;
+        if (c.y < pMinY) pMinY = c.y;
+        if (c.y > pMaxY) pMaxY = c.y;
+      }
+
+      const tilledCells: FarmCell[] = organicCells.map(c => ({ x: c.x, y: c.y }));
+
+      this.farms.push({
+        x: pMinX,
+        y: pMinY,
+        w: pMaxX - pMinX + 1,
+        h: pMaxY - pMinY + 1,
+        cells: tilledCells,
+        cropBaseId: '',
+      });
+
+      // Place rustic farm props (crates, barrels, troughs, hay bales) on grass cells bordering the tilled soil
+      const borderGrassSlots: { x: number; y: number }[] = [];
+      for (const c of tilledCells) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (Math.abs(dx) + Math.abs(dy) !== 1) continue;
+            const bx = c.x + dx;
+            const by = c.y + dy;
+            if (bx >= 0 && bx < this.width && by >= 0 && by < this.height) {
+              const bgCell = this.grid[by][bx];
+              if (!bgCell.isFarm && !bgCell.isRoad && !bgCell.isWater && !bgCell.blocked) {
+                borderGrassSlots.push({ x: bx, y: by });
+              }
+            }
+          }
+        }
+      }
+
+      // Shuffle slots
+      for (let i = borderGrassSlots.length - 1; i > 0; i--) {
+        const j = Math.floor(this.rng() * (i + 1));
+        [borderGrassSlots[i], borderGrassSlots[j]] = [borderGrassSlots[j], borderGrassSlots[i]];
+      }
+
+      const numProps = Math.min(borderGrassSlots.length, 2 + Math.floor(this.rng() * 3));
+      for (let i = 0; i < numProps; i++) {
+        const slot = borderGrassSlots[i];
+        if (!this.grid[slot.y][slot.x].blocked) {
+          const objId = FARM_OBJECT_IDS[Math.floor(this.rng() * FARM_OBJECT_IDS.length)];
+          this.grid[slot.y][slot.x].blocked = true;
+          this.farmObjects.push({
+            id: objId,
+            name: objId,
+            type: 'farm_object',
+            x: slot.x,
+            y: slot.y,
+            footprintW: 1,
+            footprintH: 1,
+          });
+        }
+      }
+
+      // Rustic fencing: placed along a single curved flank (or road-facing side), NOT a rigid rectangular box!
+      if (hasBorder && borderGrassSlots.length > 0) {
+        // Pick one flank: e.g. northernmost or southernmost border grass slots
+        const flankY = this.rng() < 0.5 ? pMinY - 1 : pMaxY + 1;
+        const flankSlots = borderGrassSlots.filter(s => Math.abs(s.y - flankY) <= 1 && !this.grid[s.y][s.x].blocked);
+        const fenceCount = Math.min(flankSlots.length, 4 + Math.floor(this.rng() * 4));
+        for (let i = 0; i < fenceCount; i++) {
+          // Leave natural openings every 3-4 segments
+          if (i % 4 === 3) continue;
+          const s = flankSlots[i];
+          if (!s || this.grid[s.y][s.x].blocked || this.grid[s.y][s.x].isRoad || this.grid[s.y][s.x].isWater) continue;
+          this.grid[s.y][s.x].blocked = true;
+          this.farmObjects.push({
+            id: 'fence_wood_h',
+            name: 'fence_wood_h',
+            type: 'farm_object',
+            x: s.x,
+            y: s.y,
+            footprintW: 1,
+            footprintH: 1,
+          });
+        }
+      }
+
+      return true;
     }
 
-    const isCorner = (x === minX || x === maxX) && (y === minY || y === maxY);
-    const isHorizontal = (y === minY || y === maxY);
-
-    let fenceId: AssetId;
-    if (isCorner) {
-      fenceId = 'fence_wood_corner';
-    } else if (isHorizontal) {
-      fenceId = 'fence_wood_h';
-    } else {
-      fenceId = 'fence_wood_v';
-    }
-
-    this.grid[y][x].blocked = true;
-    this.farmObjects.push({
-      id: fenceId,
-      name: fenceId,
-      type: 'farm_object',
-      x,
-      y,
-      footprintW: 1,
-      footprintH: 1,
-    });
+    return false;
   }
 }
 

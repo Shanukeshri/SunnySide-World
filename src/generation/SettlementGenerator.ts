@@ -116,21 +116,6 @@ export interface HouseTemplate {
   weight: number;
 }
 
-export const HOUSE_CATALOG: HouseTemplate[] = [
-  { id: 'house_cottage_01',    name: 'Thatched Cottage', w: 3, h: 3, rarity: 'common',   weight: 10 },
-  { id: 'house_farmhouse_01',  name: 'Farmstead Manor',  w: 4, h: 3, rarity: 'common',   weight: 9 },
-  { id: 'house_barn_01',       name: 'Timber Barn',      w: 3, h: 3, rarity: 'common',   weight: 9 },
-  { id: 'house_workshop_01',   name: 'Smithy Workshop',  w: 4, h: 3, rarity: 'uncommon', weight: 6 },
-  { id: 'house_tavern_01',     name: 'Village Tavern',   w: 3, h: 3, rarity: 'uncommon', weight: 6 },
-  { id: 'house_shop_01',       name: 'Merchant Shop',    w: 4, h: 3, rarity: 'uncommon', weight: 5 },
-  { id: 'house_windmill_01',   name: 'Windmill',         w: 4, h: 3, rarity: 'uncommon', weight: 5 },
-  { id: 'house_mansion_01',    name: 'Noble Manor',      w: 4, h: 4, rarity: 'rare',     weight: 3 },
-  { id: 'house_cabin_01',      name: 'Woodland Cabin',   w: 4, h: 3, rarity: 'common',   weight: 8 },
-  { id: 'house_castle_01',     name: 'Castle Tower',    w: 3, h: 4, rarity: 'rare',     weight: 2 },
-];
-
-export const HOUSE_TEMPLATES = HOUSE_CATALOG;
-
 import {
   VillageInfraGenerator,
   generateVillageInfrastructure,
@@ -140,6 +125,20 @@ import {
   generateFarmlands,
   FARM_OBJECT_IDS,
 } from './FarmlandGenerator';
+import { generateProceduralDetailedHouse } from './HouseInteriorGenerator';
+
+export const HOUSE_CATALOG: HouseTemplate[] = [
+  { id: 'house_cottage_01',    name: 'Thatched Cottage', w: 7, h: 7, rarity: 'common',   weight: 10 },
+  { id: 'house_farmhouse_01',  name: 'Farmstead Manor',  w: 10, h: 8, rarity: 'common',   weight: 8 },
+  { id: 'house_barn_01',       name: 'Timber Barn',      w: 10, h: 8, rarity: 'common',   weight: 7 },
+  { id: 'house_workshop_01',   name: 'Smithy Workshop',  w: 10, h: 8, rarity: 'uncommon', weight: 6 },
+  { id: 'house_tavern_01',     name: 'Village Tavern',   w: 11, h: 8, rarity: 'uncommon', weight: 6 },
+  { id: 'house_mansion_01',    name: 'Noble Manor',      w: 12, h: 9, rarity: 'rare',     weight: 4 },
+  { id: 'house_cabin_01',      name: 'Woodland Cabin',   w: 8, h: 7, rarity: 'common',   weight: 8 },
+  { id: 'house_castle_01',     name: 'Castle Keep',      w: 12, h: 10, rarity: 'rare',     weight: 2 },
+];
+
+export const HOUSE_TEMPLATES = HOUSE_CATALOG;
 import {
   CropGenerator,
   generateCropsForFarmlands,
@@ -224,7 +223,7 @@ export class SettlementGenerator {
   private waterBodies: WaterBody[] = [];
   private roadCells: GridCoord[] = [];
 
-  constructor(seed: number, width = 48, height = 36) {
+  constructor(seed: number, width = 110, height = 88) {
     this.seed = seed;
     this.rng = createRNG(seed);
     this.width = width;
@@ -585,11 +584,20 @@ export class SettlementGenerator {
           break;
         }
 
-        if (!this.grid[cy][cx].isRoad) {
-          this.grid[cy][cx].isRoad = true;
-          this.grid[cy][cx].blocked = true;
-          this.grid[cy][cx].terrain = this.getRandomPathTile();
-          this.roadCells.push({ x: cx, y: cy });
+        // Carve with 2x2 stamp for 2x thicker paths
+        for (let oy = 0; oy <= 1; oy++) {
+          for (let ox = 0; ox <= 1; ox++) {
+            const nx = cx + ox;
+            const ny = cy + oy;
+            if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+              if (!this.grid[ny][nx].isRoad) {
+                this.grid[ny][nx].isRoad = true;
+                this.grid[ny][nx].blocked = true;
+                this.grid[ny][nx].terrain = this.getRandomPathTile();
+                this.roadCells.push({ x: nx, y: ny });
+              }
+            }
+          }
         }
       }
     }
@@ -610,22 +618,29 @@ export class SettlementGenerator {
     let currY = from.y;
     const path: GridCoord[] = [];
 
-    const addCell = (x: number, y: number) => {
-      if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-        if (!this.grid[y][x].isRoad) {
-          this.grid[y][x].isRoad = true;
-          this.grid[y][x].blocked = true;
-          this.grid[y][x].terrain = this.getRandomPathTile();
-          this.roadCells.push({ x, y });
+    // Stamp a 2x2 footprint for 2-tile thick continuous paths
+    const addStamp = (x: number, y: number) => {
+      for (let oy = 0; oy <= 1; oy++) {
+        for (let ox = 0; ox <= 1; ox++) {
+          const nx = x + ox;
+          const ny = y + oy;
+          if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+            if (!this.grid[ny][nx].isRoad) {
+              this.grid[ny][nx].isRoad = true;
+              this.grid[ny][nx].blocked = true;
+              this.grid[ny][nx].terrain = this.getRandomPathTile();
+              this.roadCells.push({ x: nx, y: ny });
+            }
+            path.push({ x: nx, y: ny });
+          }
         }
-        path.push({ x, y });
       }
     };
 
-    addCell(currX, currY);
+    addStamp(currX, currY);
 
     let safety = 0;
-    while ((currX !== to.x || currY !== to.y) && safety++ < 250) {
+    while ((currX !== to.x || currY !== to.y) && safety++ < 600) {
       const dx = to.x - currX;
       const dy = to.y - currY;
 
@@ -643,7 +658,7 @@ export class SettlementGenerator {
           currY += Math.sign(dy);
         }
       }
-      addCell(currX, currY);
+      addStamp(currX, currY);
     }
 
     return path;
@@ -691,9 +706,9 @@ export class SettlementGenerator {
       let cy = 0;
       let found = false;
 
-      for (let attempt = 0; attempt < 30; attempt++) {
-        const tx = Math.floor(8 + this.rng() * (this.width - 16));
-        const ty = Math.floor(6 + this.rng() * (this.height - 14));
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const tx = Math.floor(14 + this.rng() * (this.width - 40));
+        const ty = Math.floor(12 + this.rng() * (this.height - 38));
 
         if (!this.grid[ty][tx].isRoad && !this.grid[ty][tx].isWater) {
           cx = tx;
@@ -705,34 +720,56 @@ export class SettlementGenerator {
 
       if (!found) continue;
 
-      // Join of 2 to 4 big squares (width >= 3, height >= 3)
-      const numSquares = 2 + Math.floor(this.rng() * 3); // 2, 3, or 4 big squares
+      // Multi-Oval Merge: Curvy, organic natural water bodies with soft flowing contours
+      const numOvals = 3 + Math.floor(this.rng() * 3); // 3 to 5 overlapping rotating ovals
       const waterMask = new Set<string>();
-      const pondSquares: { x: number; y: number; w: number; h: number }[] = [];
 
       let curX = cx;
       let curY = cy;
 
-      for (let s = 0; s < numSquares; s++) {
-        const sqW = 3 + Math.floor(this.rng() * 3); // 3 to 5 cells
-        const sqH = 3 + Math.floor(this.rng() * 3); // 3 to 5 cells
+      for (let s = 0; s < numOvals; s++) {
+        // Semi-axes: rx and ry between 8 and 14 (diameter 16 to 28 cells)
+        const rx = 8 + Math.floor(this.rng() * 6);
+        const ry = 7 + Math.floor(this.rng() * 6);
+        const rotAngle = (this.rng() - 0.5) * Math.PI * 0.8;
+        const cosR = Math.cos(rotAngle);
+        const sinR = Math.sin(rotAngle);
 
-        const sx = s === 0 ? curX : curX + Math.floor((this.rng() - 0.5) * (sqW - 1));
-        const sy = s === 0 ? curY : curY + Math.floor((this.rng() - 0.5) * (sqH - 1));
+        const ox = s === 0 ? curX : Math.max(rx + 2, Math.min(this.width - rx - 2, curX));
+        const oy = s === 0 ? curY : Math.max(ry + 2, Math.min(this.height - ry - 2, curY));
 
-        pondSquares.push({ x: sx, y: sy, w: sqW, h: sqH });
-        curX = sx;
-        curY = sy;
+        const minBx = Math.max(1, Math.floor(ox - rx - 2));
+        const maxBx = Math.min(this.width - 2, Math.ceil(ox + rx + 2));
+        const minBy = Math.max(1, Math.floor(oy - ry - 2));
+        const maxBy = Math.min(this.height - 2, Math.ceil(oy + ry + 2));
 
-        for (let dy = 0; dy < sqH; dy++) {
-          for (let dx = 0; dx < sqW; dx++) {
-            const wx = sx + dx;
-            const wy = sy + dy;
-            if (wx >= 1 && wx < this.width - 1 && wy >= 1 && wy < this.height - 1) {
+        const harmonicSeed = this.rng() * 20;
+
+        for (let wy = minBy; wy <= maxBy; wy++) {
+          for (let wx = minBx; wx <= maxBx; wx++) {
+            const dx = wx - ox;
+            const dy = wy - oy;
+
+            // Rotate into oval local space
+            const lx = dx * cosR + dy * sinR;
+            const ly = -dx * sinR + dy * cosR;
+
+            const theta = Math.atan2(ly, lx);
+            // Curvy harmonic wave modulation
+            const wavyMod = 1.0 + 0.08 * Math.sin(2 * theta + harmonicSeed) + 0.06 * Math.cos(3 * theta + harmonicSeed);
+            const distSq = (lx / (rx * wavyMod)) ** 2 + (ly / (ry * wavyMod)) ** 2;
+
+            if (distSq <= 1.0) {
               waterMask.add(`${wx},${wy}`);
             }
           }
         }
+
+        // Advance to next oval center with deep overlap
+        const moveAng = this.rng() * Math.PI * 2;
+        const moveDist = 5 + this.rng() * 6;
+        curX = Math.max(rx + 3, Math.min(this.width - rx - 3, Math.round(ox + Math.cos(moveAng) * moveDist)));
+        curY = Math.max(ry + 3, Math.min(this.height - ry - 3, Math.round(oy + Math.sin(moveAng) * moveDist)));
       }
 
       if (waterMask.size === 0) continue;
@@ -743,40 +780,35 @@ export class SettlementGenerator {
 
       const pondCells: GridCoord[] = [];
 
-      // Apply tiles: where road intersects water, create a 2.5D wooden bridge over water!
+      // Inland ponds are pure natural water bodies (no bridges, no piers)
       for (const key of waterMask) {
         const [gxStr, gyStr] = key.split(',');
         const gx = parseInt(gxStr, 10);
         const gy = parseInt(gyStr, 10);
 
-        const wasRoad = this.grid[gy][gx].isRoad;
-        this.grid[gy][gx].isWater = true;
-        this.grid[gy][gx].rotation = undefined;
+        // Keep roads intact so overland paths curve naturally around water
+        if (this.grid[gy][gx].isRoad) continue;
 
-        if (wasRoad) {
-          this.grid[gy][gx].isRoad = true;
-          this.grid[gy][gx].isBridge = true;
-          this.grid[gy][gx].blocked = false;
-          this.grid[gy][gx].terrain = 'bridge_wood';
-        } else {
-          this.grid[gy][gx].blocked = true;
-          this.grid[gy][gx].isRoad = false;
-          this.grid[gy][gx].isRoadReserved = false;
-          this.grid[gy][gx].terrain = 'water_tile_01';
-          pondCells.push({ x: gx, y: gy });
-        }
+        this.grid[gy][gx].isWater = true;
+        this.grid[gy][gx].blocked = true;
+        this.grid[gy][gx].isRoad = false;
+        this.grid[gy][gx].isBridge = false;
+        this.grid[gy][gx].isRoadReserved = false;
+        this.grid[gy][gx].rotation = undefined;
+        this.grid[gy][gx].terrain = 'water_tile_01';
+        pondCells.push({ x: gx, y: gy });
       }
 
-      // Add Sandy Shore Shelf around pond perimeter (Grass -> Sand Shelf -> Shallow Water -> Deep Water)
+      // Add Sandy Shore Shelf around pond perimeter (Grass -> Sand Shelf -> Shallow Water)
       for (const p of pondCells) {
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
-            if (Math.abs(dx) + Math.abs(dy) > 1) continue; // Orthogonal shoreline shelf only (smooth rounded contours, no blocky diagonal ears)
+            if (Math.abs(dx) + Math.abs(dy) > 1) continue; // Orthogonal shoreline shelf only
             const sx = p.x + dx;
             const sy = p.y + dy;
             if (sx >= 0 && sx < this.width && sy >= 0 && sy < this.height) {
               const cell = this.grid[sy][sx];
-              if (!cell.isWater && !cell.isRoad && !cell.blocked) {
+              if (!cell.isWater && !cell.isRoad && !cell.isBridge && !cell.blocked) {
                 cell.terrain = 'sand_tile_01';
               }
             }
@@ -890,10 +922,39 @@ export class SettlementGenerator {
         }
 
         if (footprintValid) {
-          // Collision clearance: mark full footprint in generator grid so no trees/wells/objects spawn inside house
+          const houseSeed = this.seed + h * 997 + attempt * 31;
+          const theme = template.id.includes('castle') || template.id.includes('mansion') ? 'stone' : 'timber';
+          const detailedHouse = generateProceduralDetailedHouse(
+            template.w,
+            template.h,
+            houseSeed,
+            {
+              theme,
+              annex: template.w >= 10 ? 'auto' : 'none',
+            }
+          );
+
+          // Mark footprint: perimeter walls and obstacles blocked, interior walkable
           for (let dy = 0; dy < template.h; dy++) {
             for (let dx = 0; dx < template.w; dx++) {
-              this.grid[ay + dy][ax + dx].blocked = true;
+              const isBlocked = detailedHouse.walkableGrid?.[dy]?.[dx] === false;
+              this.grid[ay + dy][ax + dx].blocked = isBlocked;
+            }
+          }
+
+          const houseDoorX = ax + detailedHouse.door.x;
+          const houseDoorY = ay + detailedHouse.door.y;
+          const doorW = detailedHouse.door.w || 2;
+
+          // 2-tile wide entrance and doorstep landing are explicitly walkable
+          for (let dw = 0; dw < doorW; dw++) {
+            const dx = houseDoorX + dw;
+            if (houseDoorY < this.height && dx < this.width) {
+              this.grid[houseDoorY][dx].blocked = false;
+            }
+            const outsideY = houseDoorY + 1;
+            if (outsideY < this.height && dx < this.width) {
+              this.grid[outsideY][dx].blocked = false;
             }
           }
 
@@ -905,7 +966,8 @@ export class SettlementGenerator {
             y: ay,
             footprintW: template.w,
             footprintH: template.h,
-            door: { x: doorX, y: southEdgeY },
+            door: { x: houseDoorX, y: houseDoorY },
+            metadata: { detailedHouse },
           });
           quadrantCounts[q]++;
           placed = true;
@@ -964,12 +1026,17 @@ export class SettlementGenerator {
         }
 
         if (cy >= 0 && cy < this.height && cx >= 0 && cx < this.width) {
-          // Do not overwrite water or solid buildings
-          if (!this.grid[cy][cx].isWater && !this.grid[cy][cx].blocked) {
-            this.grid[cy][cx].terrain = this.getRandomPathTile();
-            this.grid[cy][cx].isRoad = true;
-            this.grid[cy][cx].isRoadReserved = true;
-            this.roadCells.push({ x: cx, y: cy });
+          // Do not overwrite water or solid buildings; carve 2-thick connector
+          for (let ox = 0; ox <= 1; ox++) {
+            const nx = cx + ox;
+            if (nx >= 0 && nx < this.width && cy >= 0 && cy < this.height) {
+              if (!this.grid[cy][nx].isWater && !this.grid[cy][nx].blocked) {
+                this.grid[cy][nx].terrain = this.getRandomPathTile();
+                this.grid[cy][nx].isRoad = true;
+                this.grid[cy][nx].isRoadReserved = true;
+                this.roadCells.push({ x: nx, y: cy });
+              }
+            }
           }
         }
 
@@ -1009,8 +1076,9 @@ export class SettlementGenerator {
           targetY = farm.y + Math.floor((this.rng() - 0.5) * 6);
         } else if (this.houses.length > 0) {
           const house = this.houses[Math.floor(this.rng() * this.houses.length)];
-          targetX = house.x + Math.floor((this.rng() - 0.5) * 6);
-          targetY = house.y + Math.floor((this.rng() - 0.5) * 6);
+          // Place civic well along open roadside, strictly outside any house
+          targetX = house.x + Math.floor((this.rng() - 0.5) * 12);
+          targetY = house.y + Math.floor((this.rng() - 0.5) * 12);
         } else {
           targetX = Math.floor(5 + this.rng() * (this.width - 10));
           targetY = Math.floor(5 + this.rng() * (this.height - 10));
@@ -1018,6 +1086,13 @@ export class SettlementGenerator {
 
         targetX = Math.max(1, Math.min(this.width - 2, targetX));
         targetY = Math.max(1, Math.min(this.height - 2, targetY));
+
+        // REQUIREMENT: Wells must NEVER spawn inside or adjacent to any house footprint
+        const insideOrNearHouse = this.houses.some(h =>
+          targetX >= h.x - 1 && targetX < h.x + h.footprintW + 1 &&
+          targetY >= h.y - 1 && targetY < h.y + h.footprintH + 1
+        );
+        if (insideOrNearHouse) continue;
 
         const cell = this.grid[targetY][targetX];
 
@@ -1387,12 +1462,12 @@ export class SettlementGenerator {
   }
 }
 
-export function generateSettlementWorld(seed: number, width = 48, height = 36, maxPhase = 10): SettlementData {
+export function generateSettlementWorld(seed: number, width = 110, height = 88, maxPhase = 10): SettlementData {
   const gen = new SettlementGenerator(seed, width, height);
   return gen.generate(maxPhase);
 }
 
-export function generateSettlement(seed: number, width = 48, height = 36, maxPhase = 10): SettlementData {
+export function generateSettlement(seed: number, width = 110, height = 88, maxPhase = 10): SettlementData {
   const data = generateSettlementWorld(seed, width, height, maxPhase);
   return data;
 }

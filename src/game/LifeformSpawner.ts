@@ -171,6 +171,30 @@ export class LifeformSpawner {
             if (!isAmphibious && (worldTile.isWater || worldTile.isBlocked))
               continue;
 
+            // REQUIREMENT: No animals may spawn inside or adjacent to any house
+            let inHouse = false;
+            if (this.worldManager.villages) {
+              for (const v of this.worldManager.villages) {
+                if (v.data?.houses) {
+                  for (const h of v.data.houses) {
+                    const hx = v.gridX + h.x;
+                    const hy = v.gridY + h.y;
+                    if (
+                      ax >= hx - 0.5 &&
+                      ax < hx + h.footprintW + 0.5 &&
+                      ay >= hy - 0.5 &&
+                      ay < hy + h.footprintH + 0.5
+                    ) {
+                      inHouse = true;
+                      break;
+                    }
+                  }
+                }
+                if (inHouse) break;
+              }
+            }
+            if (inHouse) continue;
+
             const animal = new Animal(
               this.nextEntityId++,
               config,
@@ -251,12 +275,11 @@ export class LifeformSpawner {
             ? house.door.y
             : house.y + (house.footprintH || 4);
 
-          // Add offset to prevent overlapping if multiple people share the same house
+          // Place villagers along the village road or green, safely offset from the 2-tile wide entrance
           const personIndex = Math.floor(i / numHouses);
-          const offsetX = (personIndex - 0.5) * 1.2; // space them out horizontally
-
-          homeX = starterVillage.gridX + hX + offsetX;
-          homeY = starterVillage.gridY + hY + 1.2; // +1.2 to put them just in front of the house
+          const sideOffset = (personIndex % 2 === 0 ? -2.4 : 3.0) + Math.floor(personIndex / 2) * 1.2;
+          homeX = starterVillage.gridX + hX + sideOffset;
+          homeY = starterVillage.gridY + hY + 2.5;
         }
 
         // Initial spawn is at their home
@@ -285,34 +308,20 @@ export class LifeformSpawner {
     ) {
       const rngDucks = createSeededRNG(this.seed + 55555);
       for (const pond of starterVillage.data.waterBodies) {
-        const duckCount = Math.max(1, Math.floor(pond.cells.length / 8));
+        // Reduced duck density to 1/4th (cells / 32)
+        const duckCount = Math.max(1, Math.floor(pond.cells.length / 32));
         for (let i = 0; i < duckCount; i++) {
           const cellIndex = Math.floor(rngDucks() * pond.cells.length);
           const cell = pond.cells[cellIndex];
 
-          // Loop for 25% chance to spawn another duck
-          let keepSpawning = true;
-          let currentX = cell.x;
-          let currentY = cell.y;
-
-          while (keepSpawning) {
-            const duckConfig = SPECIES_CONFIGS["duck"];
-            const duck = new Animal(
-              this.nextEntityId++,
-              duckConfig,
-              starterVillage.gridX + currentX + 0.5,
-              starterVillage.gridY + currentY + 0.5,
-            );
-            outAnimals.push(duck);
-
-            if (rngDucks() < 0.25) {
-              // slightly offset the new one
-              currentX += (rngDucks() - 0.5) * 1.5;
-              currentY += (rngDucks() - 0.5) * 1.5;
-            } else {
-              keepSpawning = false;
-            }
-          }
+          const duckConfig = SPECIES_CONFIGS["duck"];
+          const duck = new Animal(
+            this.nextEntityId++,
+            duckConfig,
+            starterVillage.gridX + cell.x + 0.5,
+            starterVillage.gridY + cell.y + 0.5,
+          );
+          outAnimals.push(duck);
         }
       }
     }
@@ -353,7 +362,14 @@ export class LifeformSpawner {
             const config = SPECIES_CONFIGS[speciesKey as keyof typeof SPECIES_CONFIGS];
             if (!config) continue;
 
-            // Try to find a valid spot within this block
+            // Try to find a valid spot within this block, strictly outside any house
+            const inAnyHouse = (tx: number, ty: number) => {
+              return starterVillage.data?.houses?.some((h: any) =>
+                tx >= h.x - 1 && tx < h.x + h.footprintW + 1 &&
+                ty >= h.y - 1 && ty < h.y + h.footprintH + 1
+              );
+            };
+
             let rx = bx + Math.floor(rngWild() * blockSize);
             let ry = by + Math.floor(rngWild() * blockSize);
             rx = Math.min(rx, width - 1);
@@ -361,7 +377,7 @@ export class LifeformSpawner {
 
             let cell = grid[ry] && grid[ry][rx] ? grid[ry][rx] : null;
             let attempts = 0;
-            while ((!cell || cell.isWater || cell.blocked) && attempts < 10) {
+            while ((!cell || cell.isWater || cell.blocked || inAnyHouse(rx, ry)) && attempts < 15) {
               rx = bx + Math.floor(rngWild() * blockSize);
               ry = by + Math.floor(rngWild() * blockSize);
               rx = Math.min(rx, width - 1);
@@ -370,7 +386,7 @@ export class LifeformSpawner {
               attempts++;
             }
 
-            if (!cell || cell.isWater || cell.blocked) continue;
+            if (!cell || cell.isWater || cell.blocked || inAnyHouse(rx, ry)) continue;
 
             let currentX = rx;
             let currentY = ry;
@@ -379,6 +395,10 @@ export class LifeformSpawner {
             const clusterSize = 3 + Math.floor(rngWild() * 3);
 
             for (let j = 0; j < clusterSize; j++) {
+              if (inAnyHouse(currentX, currentY)) {
+                currentX = rx;
+                currentY = ry;
+              }
               const animal = new Animal(
                 this.nextEntityId++,
                 config,
