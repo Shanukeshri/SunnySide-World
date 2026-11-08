@@ -37,6 +37,8 @@ export class GameState {
     minute: 0,
     dayNumber: 1,
     lightLevel: 0.6,
+    season: "Spring",
+    seasonDay: 1,
   };
 
   // Connected Players (keyed by sessionId / socket id)

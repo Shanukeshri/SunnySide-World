@@ -7,6 +7,17 @@ export class Player extends LivingEntity {
   public moveInputX: number = 0;
   public moveInputY: number = 0;
 
+  // Boating, Guarding & Status Buffs:
+  public isMountedBoat: boolean = false;
+  public mountedBoatId: number | null = null;
+  public isGuarding: boolean = false;
+  public buffs = {
+    staminaRegenTimer: 0,
+    infiniteStaminaTimer: 0,
+    berserkTimer: 0,
+    wellRestedTimer: 0,
+  };
+
   constructor(id: number, config: SpeciesConfig, initialX: number, initialY: number, hairstyle: string = 'spikeyhair') {
     super(id, config, initialX, initialY);
     this.hairstyle = hairstyle;
@@ -40,12 +51,20 @@ export class Player extends LivingEntity {
       }
 
       // Try full move or axis sliding with foot collision area
-      if (detector.isAreaWalkable(nx, ny, 0.18, 0.12)) {
+      const canMove = (x: number, y: number) => {
+        if (this.isMountedBoat) {
+          // In a boat, water is fully walkable!
+          return detector.isAreaWalkable(x, y, 0.22, 0.16, true, false);
+        }
+        return detector.isAreaWalkable(x, y, 0.18, 0.12);
+      };
+
+      if (canMove(nx, ny)) {
         this.position.x = nx;
         this.position.y = ny;
-      } else if (detector.isAreaWalkable(nx, this.position.y, 0.18, 0.12)) {
+      } else if (canMove(nx, this.position.y)) {
         this.position.x = nx;
-      } else if (detector.isAreaWalkable(this.position.x, ny, 0.18, 0.12)) {
+      } else if (canMove(this.position.x, ny)) {
         this.position.y = ny;
       }
 

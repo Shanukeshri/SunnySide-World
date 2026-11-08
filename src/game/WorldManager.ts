@@ -36,6 +36,8 @@ export interface WorldTile {
   isBridge?: boolean;
   rotation?: number;
   inVillageId?: number;
+  isDeepOcean?: boolean;
+  isIslandShore?: boolean;
 }
 
 export interface WorldChunk {
@@ -46,6 +48,10 @@ export interface WorldChunk {
   resources: ResourceNode[];
   isGenerated: boolean;
   spawnedWildlife?: any[];
+  isGoblinCamp?: boolean;
+  isCryptEntrance?: boolean;
+  landmarks?: { type: string; x: number; y: number; isNeutral?: boolean }[];
+  coracles?: { id: number; x: number; y: number }[];
 }
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -406,8 +412,9 @@ export class WorldManager {
         tile.isRoad = vCell.isRoad;
         tile.isFarm = vCell.isFarm;
         tile.isWater = vCell.isWater;
-        // Roads, farms, and grass are ALWAYS walkable; only water is blocked by default
-        tile.isBlocked = vCell.isWater;
+        tile.isBridge = vCell.isBridge || vCell.terrain === "bridge_wood";
+        // Bridges, roads, farms, and grass are ALWAYS walkable; only deep water is blocked
+        tile.isBlocked = vCell.isWater && !tile.isBridge;
         if (vCell.rotation !== undefined) {
           tile.rotation = vCell.rotation;
         }
@@ -580,6 +587,46 @@ export class WorldManager {
       chunk.tiles.push(row);
     }
 
+    // Lake coherence pass: remove isolated 1-tile water puddles and fill 1-tile holes
+    for (let ty = 0; ty < CHUNK_SIZE; ty++) {
+      for (let tx = 0; tx < CHUNK_SIZE; tx++) {
+        const tile = chunk.tiles[ty][tx];
+        if (tile.isRoad) continue;
+
+        const worldX = chunkX * CHUNK_SIZE + tx;
+        const worldY = chunkY * CHUNK_SIZE + ty;
+
+        let waterNeighbors = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ny = ty + dy;
+            const nx = tx + dx;
+            if (ny >= 0 && ny < CHUNK_SIZE && nx >= 0 && nx < CHUNK_SIZE) {
+              if (chunk.tiles[ny][nx].isWater) waterNeighbors++;
+            } else {
+              // Neighbor in adjacent chunk: sample continuous lake noise
+              const nLake = this.noiseWater((worldX + dx) * 0.006, (worldY + dy) * 0.006);
+              if (nLake > 0.32) waterNeighbors++;
+            }
+          }
+        }
+
+        // Single isolated water tile with < 3 water neighbors becomes sand
+        if (tile.isWater && waterNeighbors < 3) {
+          tile.isWater = false;
+          tile.isBlocked = false;
+          tile.terrain = "sand_tile_01";
+        }
+        // Sand tile mostly surrounded by water (>= 6 water neighbors) fills in as water
+        else if (tile.terrain === "sand_tile_01" && waterNeighbors >= 6) {
+          tile.isWater = true;
+          tile.isBlocked = true;
+          tile.terrain = "water_tile_01";
+        }
+      }
+    }
+
     // Populate natural resources (trees, rocks, bushes) in wilderness
     this.populateChunkResources(chunk);
 
@@ -634,16 +681,46 @@ export class WorldManager {
   /**
    * Procedurally computes the natural wilderness terrain tile at world coordinate (x, y).
    */
+  /**
+   * Procedurally computes the natural wilderness terrain tile at world coordinate (x, y).
+   * Generates a majestic archipelago of huge continental islands, satellite islands,
+   * broad ocean channels, and expansive on-land lakes.
+   */
   private generateWildernessTile(x: number, y: number): WorldTile {
-    const scale = 0.035;
-    const waterVal = this.noiseWater(x * scale, y * scale);
-    const forestVal = this.noiseForest(x * scale, y * scale);
-    const terrainVal = this.noiseTerrain(x * scale * 2, y * scale * 2);
     const isOnHighway = this.isPointOnHighway(x, y);
 
-    // 1. Organic connective highway roads & bridges between villages
+    // 1. Proximity to nearest village settlement (ensures villages are always on massive main islands)
+    let minVillageDist = 9999;
+    for (const v of this.villages) {
+      const vcx = v.gridX + v.width / 2;
+      const vcy = v.gridY + v.height / 2;
+      const dist = Math.hypot(x - vcx, y - vcy);
+      if (dist < minVillageDist) minVillageDist = dist;
+    }
+
+    // 2. Macro Oceanic Noise (creates huge continents separated by wide oceans)
+    // Scale ~140 tiles wavelength
+    const macroOcean = this.noiseTerrain(x * 0.007, y * 0.007);
+    const satelliteIsland = this.noiseForest(x * 0.025, y * 0.025);
+
+    // Villages have guaranteed large continental landmass around them (radius 42 tiles)
+    let landElevation = 1.0;
+    if (minVillageDist < 42) {
+      landElevation = 1.0; // Guaranteed village continent
+    } else if (minVillageDist < 60) {
+      const blend = (minVillageDist - 42) / 18;
+      landElevation = (1 - blend) * 1.0 + blend * macroOcean;
+    } else {
+      landElevation = macroOcean;
+      // Satellite offshore islands emerge in open ocean:
+      if (landElevation < -0.18 && satelliteIsland > 0.42) {
+        landElevation = 0.35; // Satellite island!
+      }
+    }
+
+    // 3. Highways build overpass wooden bridges over water/oceans
     if (isOnHighway) {
-      if (waterVal > 0.65) {
+      if (landElevation < -0.16) {
         return {
           terrain: "bridge_wood",
           isWater: false,
@@ -663,19 +740,46 @@ export class WorldManager {
       };
     }
 
-    // Natural large coherent lakes (only in deep water basins > 0.65)
-    if (waterVal > 0.65) {
+    // 4. Oceans & Sea Channels (Separating Islands)
+    if (landElevation < -0.18) {
+      const isDeepOcean = landElevation < -0.32;
       return {
         terrain: "water_tile_01",
         isWater: true,
         isRoad: false,
         isFarm: false,
         isBlocked: true,
+        isDeepOcean,
       };
     }
 
-    // Sand shoreline bordering lake
-    if (waterVal > 0.61) {
+    // 5. Coastal Sand Shoreline Shelf of Islands & Continents
+    if (landElevation < -0.08) {
+      return {
+        terrain: "sand_tile_01",
+        isWater: false,
+        isRoad: false,
+        isFarm: false,
+        isBlocked: false,
+        isIslandShore: true,
+      };
+    }
+
+    // 6. On-Land Geography: Expansive, Broad Natural Lakes
+    // Lower frequency (scale 0.006) and wide threshold makes on-land lakes substantially larger, broad, and majestic
+    const lakeNoise = this.noiseWater(x * 0.006, y * 0.006);
+    if (lakeNoise > 0.32) {
+      return {
+        terrain: "water_tile_01",
+        isWater: true,
+        isRoad: false,
+        isFarm: false,
+        isBlocked: true,
+        isDeepOcean: false,
+      };
+    }
+    // Sand beach rim around expansive on-land lakes
+    if (lakeNoise > 0.22) {
       return {
         terrain: "sand_tile_01",
         isWater: false,
@@ -685,7 +789,9 @@ export class WorldManager {
       };
     }
 
-    // Grassland texture variation (6 authentic grass variants)
+    // 7. Grassland texture variations across islands & mainland
+    const terrainVal = this.noiseTerrain(x * 0.07, y * 0.07);
+    const forestVal = this.noiseForest(x * 0.035, y * 0.035);
     let grassIndex = 1;
     const variantNoise = (terrainVal + 1) * 0.5;
     if (variantNoise < 0.25) grassIndex = 1;
@@ -695,7 +801,6 @@ export class WorldManager {
     else if (variantNoise < 0.92) grassIndex = 5;
     else grassIndex = 6;
 
-    // Jungle region has richer vegetation
     const isJungle = forestVal > 0.35;
     const terrain = isJungle
       ? `grass_textured_0${(grassIndex % 3) + 4}`
@@ -711,7 +816,7 @@ export class WorldManager {
   }
 
   /**
-   * Spawns trees, rocks, and bushes into a wilderness chunk based on procedural density.
+   * Spawns trees, rocks, bushes, mushrooms, goblin camps, and ancient crypts.
    */
   private populateChunkResources(chunk: WorldChunk) {
     const rng = createSeededRNG(
@@ -768,7 +873,6 @@ export class WorldManager {
             secondaryLoot: roll < 0.3 ? "apple" : "stick",
             isDepleted: false,
           });
-          // Sub-tile tree trunk collision is accurately handled by isBlockedByTreeTrunk
           continue;
         }
 
@@ -809,6 +913,86 @@ export class WorldManager {
           });
           continue;
         }
+
+        // 4. Wild Alchemical Mushrooms (Shaded forest patches)
+        if (forestNoise > 0.22 && roll < treeChance + 0.17) {
+          const isRed = rng() < 0.45;
+          chunk.resources.push({
+            id: this.getResourceId(wx, wy),
+            type: "bush",
+            subType: isRed ? "red_mushroom" : "blue_mushroom",
+            x: wx,
+            y: wy,
+            w: 1,
+            h: 1,
+            health: 5,
+            maxHealth: 5,
+            lootItem: isRed ? "red_mushroom" : "blue_mushroom",
+            isDepleted: false,
+          });
+          continue;
+        }
+      }
+    }
+
+    // Chunk Landmark Spawns (Goblin Encampments, Ancient Crypts, Shoreline Coracles)
+    const chunkHash = Math.abs(
+      Math.sin(chunk.chunkX * 12.9898 + chunk.chunkY * 78.233) * 43758.5453,
+    );
+    const chunkSeed = Math.floor(chunkHash * 10000);
+    const isNearVillage = this.isInsideAnyVillage(
+      chunk.chunkX * CHUNK_SIZE + 8,
+      chunk.chunkY * CHUNK_SIZE + 8,
+    );
+
+    // 1. Goblin Encampments in remote forest chunks
+    if (!isNearVillage && chunkSeed % 23 === 0) {
+      chunk.isGoblinCamp = true;
+      const cx = chunk.chunkX * CHUNK_SIZE + 7;
+      const cy = chunk.chunkY * CHUNK_SIZE + 7;
+      chunk.landmarks = chunk.landmarks || [];
+      chunk.landmarks.push({
+        type: "goblin_camp",
+        x: cx,
+        y: cy,
+        isNeutral: chunkSeed % 2 === 0,
+      });
+    }
+
+    // 2. Ancient Crypt Dungeon Entrances in remote wilderness
+    if (!isNearVillage && chunkSeed % 31 === 0) {
+      chunk.isCryptEntrance = true;
+      const cx = chunk.chunkX * CHUNK_SIZE + 6;
+      const cy = chunk.chunkY * CHUNK_SIZE + 6;
+      chunk.landmarks = chunk.landmarks || [];
+      chunk.landmarks.push({
+        type: "ancient_crypt",
+        x: cx,
+        y: cy,
+      });
+    }
+
+    // 3. Coracle Boats along ocean/lake beaches
+    if (chunkSeed % 11 === 0) {
+      for (let ty = 2; ty < CHUNK_SIZE - 2; ty++) {
+        for (let tx = 2; tx < CHUNK_SIZE - 2; tx++) {
+          const t = chunk.tiles[ty][tx];
+          const adjWater =
+            chunk.tiles[ty + 1]?.[tx]?.isWater ||
+            chunk.tiles[ty]?.[tx + 1]?.isWater;
+          if (t.terrain === "sand_tile_01" && adjWater) {
+            const wx = chunk.chunkX * CHUNK_SIZE + tx;
+            const wy = chunk.chunkY * CHUNK_SIZE + ty;
+            chunk.coracles = chunk.coracles || [];
+            chunk.coracles.push({
+              id: this.getResourceId(wx, wy),
+              x: wx,
+              y: wy,
+            });
+            break;
+          }
+        }
+        if (chunk.coracles && chunk.coracles.length > 0) break;
       }
     }
   }
@@ -947,13 +1131,13 @@ export class WorldManager {
           ) {
             const w = res.w || 2;
             const h = res.h || 2;
-            // Physical root base is centered horizontally at res.x + w / 2, and vertically near the root base
+            // Physical root base is centered horizontally at res.x + w / 2, and vertically at the base of the trunk
             const cx = res.x + w / 2;
-            const cy = res.y + h - 0.25;
-            // 0.40 x 0.25 sub-tile footprint hull: rx=0.20, ry=0.13
+            const cy = res.y + h - 0.35;
+            // Precise root base hull check accounting for player foot radius
             if (
-              Math.abs(footX - cx) < 0.20 &&
-              Math.abs(footY - cy) < 0.13
+              Math.abs(footX - cx) < 0.48 &&
+              Math.abs(footY - cy) < 0.28
             ) {
               return true;
             }

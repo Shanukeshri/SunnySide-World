@@ -47,6 +47,7 @@ export interface SettlementCell {
   isRoad: boolean;
   isRoadReserved: boolean;// road cell + buffer
   isWater: boolean;
+  isBridge?: boolean;     // 2.5D wooden bridge over water
   isFarm: boolean;
   blocked: boolean;       // occupied by a structure or solid object
 }
@@ -742,26 +743,46 @@ export class SettlementGenerator {
 
       const pondCells: GridCoord[] = [];
 
-      // Apply tiles: inner cells are water_tile_01, and outer corners are rotated diagonal shore transitions
+      // Apply tiles: where road intersects water, create a 2.5D wooden bridge over water!
       for (const key of waterMask) {
         const [gxStr, gyStr] = key.split(',');
         const gx = parseInt(gxStr, 10);
         const gy = parseInt(gyStr, 10);
 
-        // Water overwrites road and breaks the path
+        const wasRoad = this.grid[gy][gx].isRoad;
         this.grid[gy][gx].isWater = true;
-        this.grid[gy][gx].blocked = true;
-        this.grid[gy][gx].isRoad = false;
-        this.grid[gy][gx].isRoadReserved = false;
-        pondCells.push({ x: gx, y: gy });
-
-        // Set clean water terrain (autotiled seamlessly by the renderer)
-        this.grid[gy][gx].terrain = 'water_tile_01';
         this.grid[gy][gx].rotation = undefined;
+
+        if (wasRoad) {
+          this.grid[gy][gx].isRoad = true;
+          this.grid[gy][gx].isBridge = true;
+          this.grid[gy][gx].blocked = false;
+          this.grid[gy][gx].terrain = 'bridge_wood';
+        } else {
+          this.grid[gy][gx].blocked = true;
+          this.grid[gy][gx].isRoad = false;
+          this.grid[gy][gx].isRoadReserved = false;
+          this.grid[gy][gx].terrain = 'water_tile_01';
+          pondCells.push({ x: gx, y: gy });
+        }
       }
 
-      // Break path: completely overwrite and remove any road cells that overlap with waterMask!
-      this.roadCells = this.roadCells.filter(c => !waterMask.has(`${c.x},${c.y}`));
+      // Add Sandy Shore Shelf around pond perimeter (Grass -> Sand Shelf -> Shallow Water -> Deep Water)
+      for (const p of pondCells) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (Math.abs(dx) + Math.abs(dy) > 1) continue; // Orthogonal shoreline shelf only (smooth rounded contours, no blocky diagonal ears)
+            const sx = p.x + dx;
+            const sy = p.y + dy;
+            if (sx >= 0 && sx < this.width && sy >= 0 && sy < this.height) {
+              const cell = this.grid[sy][sx];
+              if (!cell.isWater && !cell.isRoad && !cell.blocked) {
+                cell.terrain = 'sand_tile_01';
+              }
+            }
+          }
+        }
+      }
 
       this.waterBodies.push({ cells: pondCells });
     }
@@ -832,8 +853,8 @@ export class SettlementGenerator {
         const doorX = ax + Math.floor(template.w / 2);
         const southEdgeY = ay + template.h;
 
-        // Front door cell must be within bounds and on dry, open land
-        if (southEdgeY >= this.height || this.grid[southEdgeY][doorX].isWater || this.grid[southEdgeY][doorX].blocked) {
+        // Front door cell must be within bounds and on dry, open land (not water or sand shore)
+        if (southEdgeY >= this.height || this.grid[southEdgeY][doorX].isWater || this.grid[southEdgeY][doorX].terrain === 'sand_tile_01' || this.grid[southEdgeY][doorX].blocked) {
           continue;
         }
 
@@ -860,7 +881,7 @@ export class SettlementGenerator {
             const gy = ay + dy;
             const cell = this.grid[gy][gx];
 
-            if (cell.isRoad || cell.isWater || cell.isFarm || cell.blocked) {
+            if (cell.isRoad || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
               footprintValid = false;
               break;
             }

@@ -535,6 +535,446 @@ export const ITEM_CATALOG: Record<ItemId, ItemDef> = {
     maxStack: 10,
     isPlaceable: true,
   },
+
+  // 11 Crops & Harvested Produce:
+  cabbage: {
+    id: "cabbage",
+    name: "Spring Cabbage",
+    category: "food",
+    description: "Fresh leafy cabbage harvested in spring.",
+    icon: "🥬",
+    spritePath: "/assets/crops/cabbage_05.png",
+    maxStack: 50,
+    hungerRestore: 20,
+    healthRestore: 6,
+  },
+  carrot: {
+    id: "carrot",
+    name: "Sweet Carrot",
+    category: "food",
+    description: "Crunchy sweet carrot harvested from spring soil.",
+    icon: "🥕",
+    spritePath: "/assets/crops/carrot_05.png",
+    maxStack: 50,
+    hungerRestore: 20,
+    healthRestore: 8,
+  },
+  parsnip: {
+    id: "parsnip",
+    name: "Earthy Parsnip",
+    category: "food",
+    description: "Hearty root vegetable grown in spring.",
+    icon: "🥔",
+    spritePath: "/assets/crops/parsnip_05.png",
+    maxStack: 50,
+    hungerRestore: 22,
+    healthRestore: 8,
+  },
+  radish: {
+    id: "radish",
+    name: "Red Radish",
+    category: "food",
+    description: "Crisp peppery radish from spring plots.",
+    icon: "🥗",
+    spritePath: "/assets/crops/radish_05.png",
+    maxStack: 50,
+    hungerRestore: 18,
+    healthRestore: 5,
+  },
+  sunflower: {
+    id: "sunflower",
+    name: "Summer Sunflower",
+    category: "resource",
+    description: "Tall bright sunflower blooming in summer heat.",
+    icon: "🌻",
+    spritePath: "/assets/crops/sunflower_05.png",
+    maxStack: 50,
+    hungerRestore: 15,
+  },
+  cauliflower: {
+    id: "cauliflower",
+    name: "Summer Cauliflower",
+    category: "food",
+    description: "Dense white cauliflower head grown in summer.",
+    icon: "🥦",
+    spritePath: "/assets/crops/cauliflower_05.png",
+    maxStack: 50,
+    hungerRestore: 28,
+    healthRestore: 12,
+  },
+  pumpkin: {
+    id: "pumpkin",
+    name: "Autumn Pumpkin",
+    category: "food",
+    description: "Large ripe pumpkin harvested in crisp autumn.",
+    icon: "🎃",
+    spritePath: "/assets/crops/pumpkin_05.png",
+    maxStack: 30,
+    hungerRestore: 35,
+    healthRestore: 15,
+  },
+  beetroot: {
+    id: "beetroot",
+    name: "Autumn Beetroot",
+    category: "food",
+    description: "Deep red earthy beet from autumn farms.",
+    icon: "🍠",
+    spritePath: "/assets/crops/beetroot_05.png",
+    maxStack: 50,
+    hungerRestore: 22,
+    healthRestore: 8,
+  },
+  kale: {
+    id: "kale",
+    name: "Autumn Kale",
+    category: "food",
+    description: "Hearty dark green kale resistant to frost.",
+    icon: "🥬",
+    spritePath: "/assets/crops/kale_05.png",
+    maxStack: 50,
+    hungerRestore: 20,
+    healthRestore: 8,
+  },
+  potato: {
+    id: "potato",
+    name: "Starchy Potato",
+    category: "food",
+    description: "Filling starchy potato harvested in autumn.",
+    icon: "🥔",
+    spritePath: "/assets/crops/potato_05.png",
+    maxStack: 50,
+    hungerRestore: 25,
+    healthRestore: 10,
+  },
+
+  // Bakery, Flour & Economy:
+  flour: {
+    id: "flour",
+    name: "Bag of Flour",
+    category: "resource",
+    description: "Finely ground wheat flour from the village windmill.",
+    icon: "🌾",
+    spritePath: "/assets/crops/soil_00.png",
+    maxStack: 50,
+  },
+  fresh_bread: {
+    id: "fresh_bread",
+    name: "Warm Oven Bread",
+    category: "food",
+    description: "Golden crust bread fresh from the stone oven. Restores 50 hunger and grants Stamina Surge buff.",
+    icon: "🍞",
+    spritePath: "/assets/crops/soil_01.png",
+    maxStack: 30,
+    hungerRestore: 50,
+    healthRestore: 25,
+  },
+
+  // Animal Products & Tools:
+  milk: {
+    id: "milk",
+    name: "Fresh Milk",
+    category: "food",
+    description: "Cool creamy milk fresh from dairy cows.",
+    icon: "🥛",
+    spritePath: "/assets/crops/milk.png",
+    maxStack: 20,
+    hungerRestore: 30,
+    healthRestore: 20,
+  },
+  egg: {
+    id: "egg",
+    name: "Farm Egg",
+    category: "food",
+    description: "Farm fresh egg laid by village chickens.",
+    icon: "🥚",
+    spritePath: "/assets/crops/egg.png",
+    maxStack: 40,
+    hungerRestore: 15,
+    healthRestore: 5,
+  },
+  wool: {
+    id: "wool",
+    name: "Soft Sheep Wool",
+    category: "resource",
+    description: "Warm sheared wool for weaving cloth and beds.",
+    icon: "🧶",
+    spritePath: "/assets/crops/soil_00.png",
+    maxStack: 50,
+  },
+  shears: {
+    id: "shears",
+    name: "Iron Shears",
+    category: "tool",
+    description: "Used to gently shear wool from adult sheep.",
+    icon: "✂️",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/axe.png",
+    maxStack: 1,
+    durability: 50,
+    maxDurability: 50,
+  },
+  bucket: {
+    id: "bucket",
+    name: "Empty Bucket",
+    category: "tool",
+    description: "Used to milk cows or fetch river water.",
+    icon: "🪣",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png",
+    maxStack: 5,
+  },
+  water_bucket: {
+    id: "water_bucket",
+    name: "Water Bucket",
+    category: "tool",
+    description: "Clean water bucket for dough mixing and hydration.",
+    icon: "🚰",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/water.png",
+    maxStack: 5,
+  },
+
+  // Farming & Shipping:
+  fertilizer: {
+    id: "fertilizer",
+    name: "Organic Fertilizer",
+    category: "survival",
+    description: "Made from wood ash and fish bones. Advances crops by 2 growth stages.",
+    icon: "✨",
+    spritePath: "/assets/crops/soil_04.png",
+    maxStack: 50,
+  },
+  wood_ash: {
+    id: "wood_ash",
+    name: "Wood Ash",
+    category: "resource",
+    description: "Combustion byproduct from ovens and campfires.",
+    icon: "🌫️",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 99,
+  },
+  fish_bones: {
+    id: "fish_bones",
+    name: "Fish Bones",
+    category: "resource",
+    description: "Calcium-rich bones left after enjoying fresh fish.",
+    icon: "🦴",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/fish.png",
+    maxStack: 99,
+  },
+  crate_wood: {
+    id: "crate_wood",
+    name: "Empty Wooden Crate",
+    category: "building",
+    description: "Sturdy crate crafted to pack bulk crops for village export.",
+    icon: "📦",
+    spritePath: "/assets/crops/crate_base.png",
+    maxStack: 20,
+    isPlaceable: true,
+  },
+  crate_bulk_crops: {
+    id: "crate_bulk_crops",
+    name: "Packed Crop Crate",
+    category: "resource",
+    description: "Packed crate with 10x harvest produce. Sells to village merchants for gold coins.",
+    icon: "🎁",
+    spritePath: "/assets/crops/crate_top.png",
+    maxStack: 10,
+  },
+
+  // Alchemy & Foraging:
+  blue_mushroom: {
+    id: "blue_mushroom",
+    name: "Mystic Blue Mushroom",
+    category: "resource",
+    description: "Glows with celestial blue light in shaded forest groves.",
+    icon: "🍄",
+    spritePath: "/public/assets/plants/spr_deco_mushroom_blue_01_strip4.png",
+    maxStack: 50,
+  },
+  red_mushroom: {
+    id: "red_mushroom",
+    name: "Crimson Red Mushroom",
+    category: "resource",
+    description: "Vibrant red mushroom with potent alchemical enzymes.",
+    icon: "🍄",
+    spritePath: "/public/assets/plants/spr_deco_mushroom_red_01_strip4.png",
+    maxStack: 50,
+  },
+  blue_potion: {
+    id: "blue_potion",
+    name: "Astral Stamina Elixir",
+    category: "survival",
+    description: "Brewed from blue mushrooms. Grants Infinite Stamina and Night Vision for 3 minutes.",
+    icon: "🧪",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png",
+    maxStack: 10,
+  },
+  potion_stamina: {
+    id: "potion_stamina",
+    name: "Astral Stamina Elixir",
+    category: "survival",
+    description: "Brewed from blue mushrooms. Grants Infinite Stamina and Night Vision for 3 minutes.",
+    icon: "🧪",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png",
+    maxStack: 10,
+  },
+  red_potion: {
+    id: "red_potion",
+    name: "Berserker Tonic",
+    category: "survival",
+    description: "Brewed from red mushrooms. Grants +15 Attack Damage and Rapid Health Regeneration for 2 minutes.",
+    icon: "🧪",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 10,
+  },
+  potion_berserker: {
+    id: "potion_berserker",
+    name: "Berserker Tonic",
+    category: "survival",
+    description: "Brewed from red mushrooms. Grants +15 Attack Damage and Rapid Health Regeneration for 2 minutes.",
+    icon: "🧪",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 10,
+  },
+  mushroom_blue: {
+    id: "mushroom_blue",
+    name: "Blue Forest Mushroom",
+    category: "resource",
+    description: "Luminescent glowing mushroom found in shaded old-growth forests. Used for stamina alchemy.",
+    icon: "🍄",
+    spritePath: "/public/assets/plants/spr_deco_mushroom_blue_01_strip4.png",
+    maxStack: 20,
+  },
+  mushroom_red: {
+    id: "mushroom_red",
+    name: "Crimson Forest Mushroom",
+    category: "resource",
+    description: "Potent crimson mushroom found in dense canopy forests. Used for berserker combat alchemy.",
+    icon: "🍄",
+    spritePath: "/public/assets/plants/spr_deco_mushroom_red_01_strip4.png",
+    maxStack: 20,
+  },
+  coracle: {
+    id: "coracle",
+    name: "Coracle Boat",
+    category: "station",
+    description: "Lightweight woven boat to cross deep oceans, reach offshore islands, and fish.",
+    icon: "🛶",
+    spritePath: "/public/assets/other/spr_deco_coracle_land.png",
+    maxStack: 2,
+    isPlaceable: true,
+  },
+
+  // Boating & Navigation:
+  coracle_boat: {
+    id: "coracle_boat",
+    name: "Coracle Boat",
+    category: "station",
+    description: "Lightweight woven boat to cross deep oceans, reach offshore islands, and fish.",
+    icon: "🛶",
+    spritePath: "/public/assets/other/spr_deco_coracle_land.png",
+    maxStack: 2,
+    isPlaceable: true,
+  },
+
+  // Advanced Building & Economy:
+  stone_oven: {
+    id: "stone_oven",
+    name: "Stone Baking Oven",
+    category: "station",
+    description: "Combines flour, water, and fire to bake wholesome bread.",
+    icon: "🏛️",
+    spritePath: "/assets/crops/rock.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  windmill_kit: {
+    id: "windmill_kit",
+    name: "Windmill Kit",
+    category: "station",
+    description: "Large mechanical windmill to grind grain into flour.",
+    icon: "🌬️",
+    spritePath: "/public/assets/other/spr_deco_windmill_strip9.png",
+    maxStack: 2,
+    isPlaceable: true,
+  },
+  brewing_stand: {
+    id: "brewing_stand",
+    name: "Alchemy Brewing Stand",
+    category: "station",
+    description: "Brews powerful potions from forest mushrooms.",
+    icon: "⚗️",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  chimney: {
+    id: "chimney",
+    name: "Stone Chimney",
+    category: "building",
+    description: "Rooftop chimney emitting realistic drifting hearth smoke.",
+    icon: "🏭",
+    spritePath: "/assets/crops/rock.png",
+    maxStack: 10,
+    isPlaceable: true,
+  },
+  wall_window: {
+    id: "wall_window",
+    name: "Windowed Wall",
+    category: "building",
+    description: "Timber wall segment with sunlit glass window.",
+    icon: "🪟",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  stone_wall: {
+    id: "stone_wall",
+    name: "Masonry Stone Wall",
+    category: "building",
+    description: "Heavy fortified stone wall providing superior defense.",
+    icon: "🧱",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  stone_floor: {
+    id: "stone_floor",
+    name: "Flagstone Floor",
+    category: "building",
+    description: "Smooth stone paved floor for sturdy interiors.",
+    icon: "🪨",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  roof_wood: {
+    id: "roof_wood",
+    name: "Sloped Wooden Roof",
+    category: "building",
+    description: "Sloped rooftop overhang completing house enclosures.",
+    icon: "🏠",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  bed: {
+    id: "bed",
+    name: "Comfortable Wool Bed",
+    category: "building",
+    description: "Soft bed to rest and sleep through the dark night until 06:00.",
+    icon: "🛏️",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  gold_coin: {
+    id: "gold_coin",
+    name: "Realm Gold Coin",
+    category: "resource",
+    description: "Standard currency accepted across all village settlements and traders.",
+    icon: "🪙",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 999,
+  },
 };
 
 // Crafting Recipes Catalog
@@ -747,6 +1187,187 @@ export const CRAFTING_RECIPES: Recipe[] = [
     category: "building",
   },
   {
+    id: "fertilizer",
+    name: "Organic Fertilizer",
+    result: "fertilizer",
+    count: 2,
+    ingredients: [
+      { item: "wood_ash", count: 1 },
+      { item: "fish_bones", count: 1 },
+    ],
+    category: "survival",
+  },
+  {
+    id: "crate_wood",
+    name: "Empty Wooden Crate",
+    result: "crate_wood",
+    count: 1,
+    ingredients: [{ item: "wood", count: 4 }],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "coracle_boat",
+    name: "Coracle Boat",
+    result: "coracle_boat",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 8 },
+      { item: "fiber", count: 6 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "stone_oven",
+    name: "Stone Baking Oven",
+    result: "stone_oven",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 12 },
+      { item: "coal", count: 4 },
+      { item: "iron_ingot", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "windmill_kit",
+    name: "Windmill Kit",
+    result: "windmill_kit",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 20 },
+      { item: "stone", count: 10 },
+      { item: "wool", count: 4 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "brewing_stand",
+    name: "Alchemy Brewing Stand",
+    result: "brewing_stand",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 6 },
+      { item: "iron_ingot", count: 2 },
+      { item: "wood", count: 2 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "bed",
+    name: "Woolen Bed",
+    result: "bed",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 6 },
+      { item: "wool", count: 3 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "shears",
+    name: "Iron Shears",
+    result: "shears",
+    count: 1,
+    ingredients: [{ item: "iron_ingot", count: 2 }],
+    requiresStation: "workbench",
+    category: "tools",
+  },
+  {
+    id: "bucket",
+    name: "Iron Bucket",
+    result: "bucket",
+    count: 1,
+    ingredients: [{ item: "iron_ingot", count: 3 }],
+    requiresStation: "workbench",
+    category: "tools",
+  },
+  {
+    id: "chimney",
+    name: "Stone Chimney",
+    result: "chimney",
+    count: 1,
+    ingredients: [{ item: "stone", count: 6 }],
+    category: "building",
+  },
+  {
+    id: "wall_window",
+    name: "Windowed Wall",
+    result: "wall_window",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 3 },
+      { item: "stick", count: 2 },
+    ],
+    category: "building",
+  },
+  {
+    id: "stone_wall",
+    name: "Masonry Stone Wall",
+    result: "stone_wall",
+    count: 2,
+    ingredients: [{ item: "stone", count: 4 }],
+    category: "building",
+  },
+  {
+    id: "stone_floor",
+    name: "Flagstone Floor (x2)",
+    result: "stone_floor",
+    count: 2,
+    ingredients: [{ item: "stone", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "roof_wood",
+    name: "Sloped Wooden Roof",
+    result: "roof_wood",
+    count: 1,
+    ingredients: [{ item: "wood", count: 3 }],
+    category: "building",
+  },
+  {
+    id: "fresh_bread",
+    name: "Warm Oven Bread",
+    result: "fresh_bread",
+    count: 2,
+    ingredients: [
+      { item: "flour", count: 2 },
+      { item: "water_bucket", count: 1 },
+      { item: "wood", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "blue_potion",
+    name: "Astral Stamina Elixir",
+    result: "blue_potion",
+    count: 1,
+    ingredients: [
+      { item: "blue_mushroom", count: 1 },
+      { item: "water_bucket", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "red_potion",
+    name: "Berserker Tonic",
+    result: "red_potion",
+    count: 1,
+    ingredients: [
+      { item: "red_mushroom", count: 1 },
+      { item: "water_bucket", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
     id: "wood_wall",
     name: "Wooden Wall (x2)",
     result: "wood_wall",
@@ -773,6 +1394,187 @@ export const CRAFTING_RECIPES: Recipe[] = [
     ],
     requiresStation: "workbench",
     category: "building",
+  },
+  {
+    id: "fertilizer",
+    name: "Organic Fertilizer",
+    result: "fertilizer",
+    count: 2,
+    ingredients: [
+      { item: "wood_ash", count: 1 },
+      { item: "fish_bones", count: 1 },
+    ],
+    category: "survival",
+  },
+  {
+    id: "crate_wood",
+    name: "Empty Wooden Crate",
+    result: "crate_wood",
+    count: 1,
+    ingredients: [{ item: "wood", count: 4 }],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "coracle_boat",
+    name: "Coracle Boat",
+    result: "coracle_boat",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 8 },
+      { item: "fiber", count: 6 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "stone_oven",
+    name: "Stone Baking Oven",
+    result: "stone_oven",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 12 },
+      { item: "coal", count: 4 },
+      { item: "iron_ingot", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "windmill_kit",
+    name: "Windmill Kit",
+    result: "windmill_kit",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 20 },
+      { item: "stone", count: 10 },
+      { item: "wool", count: 4 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "brewing_stand",
+    name: "Alchemy Brewing Stand",
+    result: "brewing_stand",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 6 },
+      { item: "iron_ingot", count: 2 },
+      { item: "wood", count: 2 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "bed",
+    name: "Woolen Bed",
+    result: "bed",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 6 },
+      { item: "wool", count: 3 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "shears",
+    name: "Iron Shears",
+    result: "shears",
+    count: 1,
+    ingredients: [{ item: "iron_ingot", count: 2 }],
+    requiresStation: "workbench",
+    category: "tools",
+  },
+  {
+    id: "bucket",
+    name: "Iron Bucket",
+    result: "bucket",
+    count: 1,
+    ingredients: [{ item: "iron_ingot", count: 3 }],
+    requiresStation: "workbench",
+    category: "tools",
+  },
+  {
+    id: "chimney",
+    name: "Stone Chimney",
+    result: "chimney",
+    count: 1,
+    ingredients: [{ item: "stone", count: 6 }],
+    category: "building",
+  },
+  {
+    id: "wall_window",
+    name: "Windowed Wall",
+    result: "wall_window",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 3 },
+      { item: "stick", count: 2 },
+    ],
+    category: "building",
+  },
+  {
+    id: "stone_wall",
+    name: "Masonry Stone Wall",
+    result: "stone_wall",
+    count: 2,
+    ingredients: [{ item: "stone", count: 4 }],
+    category: "building",
+  },
+  {
+    id: "stone_floor",
+    name: "Flagstone Floor (x2)",
+    result: "stone_floor",
+    count: 2,
+    ingredients: [{ item: "stone", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "roof_wood",
+    name: "Sloped Wooden Roof",
+    result: "roof_wood",
+    count: 1,
+    ingredients: [{ item: "wood", count: 3 }],
+    category: "building",
+  },
+  {
+    id: "fresh_bread",
+    name: "Warm Oven Bread",
+    result: "fresh_bread",
+    count: 2,
+    ingredients: [
+      { item: "flour", count: 2 },
+      { item: "water_bucket", count: 1 },
+      { item: "wood", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "blue_potion",
+    name: "Astral Stamina Elixir",
+    result: "blue_potion",
+    count: 1,
+    ingredients: [
+      { item: "blue_mushroom", count: 1 },
+      { item: "water_bucket", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
+  },
+  {
+    id: "red_potion",
+    name: "Berserker Tonic",
+    result: "red_potion",
+    count: 1,
+    ingredients: [
+      { item: "red_mushroom", count: 1 },
+      { item: "water_bucket", count: 1 },
+    ],
+    requiresStation: "workbench",
+    category: "survival",
   },
 ];
 
@@ -807,6 +1609,8 @@ export class SurvivalEngine {
     fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
     fishingTimer: number;
     isBlocking: boolean;
+    isMountedBoat?: boolean;
+    mountedBoatId?: string | number;
   };
 
   // Inventory & Hotbar (20 main slots + 8 quick hotbar slots)
@@ -845,7 +1649,12 @@ export class SurvivalEngine {
     minute: 30,
     dayNumber: 1,
     lightLevel: 1.0,
+    season: "Spring",
+    seasonDay: 1,
   };
+  public showJournal: boolean = false;
+  public activeJournalTab: "ALMANAC" | "ANGLER" | "QUESTS" = "ALMANAC";
+  public midnightInvasionSpawnedDay: number = -1;
 
   // Quests / Milestones
   public quests: Quest[] = [
@@ -971,6 +1780,7 @@ export class SurvivalEngine {
       fishingState: "NONE",
       fishingTimer: 0,
       isBlocking: false,
+      isMountedBoat: false,
     };
 
     // ── PHASE 8: Village Villager Spawning ──
@@ -1066,8 +1876,117 @@ export class SurvivalEngine {
       newNpcs
     );
 
+    const village = this.worldManager.villages[0];
+    if (village) {
+      newNpcs.forEach((npc, idx) => {
+        npc.happiness = 95;
+        npc.scheduleState = "WORK";
+        npc.workstation = {
+          x: village.gridX + 16 + (idx % 2) * 2,
+          y: village.gridY + 12 + Math.floor(idx / 2) * 2,
+          type: idx === 0 ? "windmill" : idx === 1 ? "oven" : "farm",
+        };
+        npc.bedLocation = {
+          x: village.gridX + 6 + (idx % 3),
+          y: village.gridY + 6 + Math.floor(idx / 3),
+        };
+      });
+    }
+
     this.npcs.push(...newNpcs);
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
+    this.spawnInitialVillageStructures();
+  }
+
+  private spawnInitialVillageStructures() {
+    const village = this.worldManager.villages[0];
+    if (!village) return;
+
+    const vx = village.gridX;
+    const vy = village.gridY;
+
+    // Clear any trees or bushes obstructing the village windmill site
+    const wx = vx + 16;
+    const wy = vy + 12;
+    if (village.data && village.data.trees) {
+      village.data.trees = village.data.trees.filter(t => !(t.x >= 15 && t.x <= 19 && t.y >= 11 && t.y <= 15));
+    }
+
+    // 1. Windmill near village wheat farm
+    this.placedStructures.push({
+      id: "village_windmill_01",
+      type: "windmill",
+      x: wx,
+      y: wy,
+      w: 3,
+      h: 3,
+      health: 500,
+      maxHealth: 500,
+      isOperating: false,
+      frameTimer: 0,
+    });
+
+    // 2. Stone Oven in village bakery square
+    this.placedStructures.push({
+      id: "village_oven_01",
+      type: "stone_oven",
+      x: vx + 12,
+      y: vy + 16,
+      w: 2,
+      h: 2,
+      health: 300,
+      maxHealth: 300,
+      isOperating: false,
+      fuelTimer: 0,
+    });
+
+    // 3. Coracle Boat docked at village pond / river shore
+    this.placedStructures.push({
+      id: "village_coracle_01",
+      type: "coracle",
+      x: vx + 8,
+      y: vy + 22,
+      w: 1,
+      h: 1,
+      health: 120,
+      maxHealth: 120,
+    });
+
+    // 4. Village House Bed
+    this.placedStructures.push({
+      id: "village_bed_01",
+      type: "bed",
+      x: vx + 6,
+      y: vy + 6,
+      w: 1,
+      h: 1,
+      health: 100,
+      maxHealth: 100,
+    });
+
+    // 5. Brewing Stand
+    this.placedStructures.push({
+      id: "village_brew_01",
+      type: "brewing_stand",
+      x: vx + 14,
+      y: vy + 6,
+      w: 1,
+      h: 1,
+      health: 150,
+      maxHealth: 150,
+    });
+
+    // 6. Chimney on house roof
+    this.placedStructures.push({
+      id: "village_chimney_01",
+      type: "chimney",
+      x: vx + 8,
+      y: vy + 4,
+      w: 1,
+      h: 1,
+      health: 200,
+      maxHealth: 200,
+    });
   }
 
   private spawnInitialWildlife() {
@@ -1178,8 +2097,144 @@ export class SurvivalEngine {
       this.animals.length,
       periodicAnimals
     );
-    // this.animals.push(...periodicAnimals);
     this.nextEntityId = this.lifeformSpawner.getNextEntityId();
+
+    // 10. Placed Structure Economy (Windmills & Stone Ovens)
+    this.updateStructureEconomy(dt);
+
+    // 11. Animal Husbandry & Breeding
+    this.updateAnimalHusbandry(dt);
+
+    // 12. Villager Daily Schedules & Expressions
+    this.updateVillagerSchedules(dt);
+  }
+
+  private updateStructureEconomy(dt: number) {
+    for (const struct of this.placedStructures) {
+      if (struct.type === "windmill") {
+        if (struct.isOperating) {
+          struct.productionTimer = (struct.productionTimer || 4.0) - dt;
+          if (struct.productionTimer <= 0) {
+            struct.isOperating = false;
+            this.spawnDroppedItem("flour", 2, struct.x + 1.5, struct.y + struct.h + 0.5);
+            this.addFloatingText("+2 Bags of Flour!", struct.x + 1.5, struct.y, "#22c55e");
+            this.updateQuestProgress("deliver_wheat", 1);
+            GameAudio.playPickup();
+          }
+        }
+      } else if (struct.type === "stone_oven") {
+        if (struct.isOperating) {
+          struct.productionTimer = (struct.productionTimer || 5.0) - dt;
+          if (struct.productionTimer <= 0) {
+            struct.isOperating = false;
+            this.spawnDroppedItem("fresh_bread", 2, struct.x + 1, struct.y + struct.h + 0.5);
+            this.addFloatingText("+2 Loaves of Fresh Bread!", struct.x + 1, struct.y, "#22c55e");
+            this.updateQuestProgress("bake_bread", 2);
+            GameAudio.playPickup();
+          }
+        }
+      }
+    }
+  }
+
+  private updateAnimalHusbandry(dt: number) {
+    // 1. Decay timers
+    for (const animal of this.animals) {
+      if ((animal as any).loveTimer && (animal as any).loveTimer > 0) {
+        (animal as any).loveTimer = Math.max(0, (animal as any).loveTimer - dt);
+      }
+      if ((animal as any).isBaby && (animal as any).growthTimer) {
+        (animal as any).growthTimer -= dt;
+        if ((animal as any).growthTimer <= 0) {
+          (animal as any).isBaby = false;
+          this.addFloatingText("Baby grew into mature adult!", animal.position.x, animal.position.y - 0.8, "#10b981");
+        }
+      }
+    }
+
+    // 2. Pairwise breeding
+    for (let i = 0; i < this.animals.length; i++) {
+      const a1 = this.animals[i];
+      if ((a1 as any).isBaby || !((a1 as any).loveTimer > 0)) continue;
+
+      for (let j = i + 1; j < this.animals.length; j++) {
+        const a2 = this.animals[j];
+        if ((a2 as any).isBaby || !((a2 as any).loveTimer > 0)) continue;
+        if (a1.config.name !== a2.config.name) continue;
+
+        const dist = Math.hypot(a1.position.x - a2.position.x, a1.position.y - a2.position.y);
+        if (dist < 2.5) {
+          (a1 as any).loveTimer = 0;
+          (a2 as any).loveTimer = 0;
+          const babyX = (a1.position.x + a2.position.x) / 2;
+          const babyY = (a1.position.y + a2.position.y) / 2;
+
+          this.lifeformSpawner.setNextEntityId(this.nextEntityId);
+          const baby = new Animal(this.nextEntityId++, (a1 as any).config, babyX, babyY);
+          (baby as any).isBaby = true;
+          (baby as any).growthTimer = 80;
+          this.animals.push(baby);
+
+          this.emitHeart(babyX, babyY - 0.5);
+          this.addFloatingText("Baby Animal Born! ♥", babyX, babyY - 0.8, "#f43f5e");
+          GameAudio.playHeartChime();
+          break;
+        }
+      }
+    }
+  }
+
+  private updateVillagerSchedules(_dt: number) {
+    const hr = this.worldTime.hour;
+    let targetSchedule: "SLEEP" | "WORK" | "STROLL" = "WORK";
+    if (hr >= 21 || hr < 6) {
+      targetSchedule = "SLEEP";
+    } else if (hr >= 6 && hr < 18) {
+      targetSchedule = "WORK";
+    } else {
+      targetSchedule = "STROLL";
+    }
+
+    for (const npc of this.npcs) {
+      (npc as any).scheduleState = targetSchedule;
+      if (targetSchedule === "SLEEP") {
+        (npc as any).currentExpression = undefined;
+      } else {
+        if (Math.random() < 0.003) {
+          (npc as any).currentExpression = "chat";
+        }
+      }
+    }
+  }
+
+  private spawnMidnightSkeletonInvasion() {
+    this.addFloatingText("Midnight Fog creeps in... Skeletons Awaken!", this.player.x, this.player.y - 1.5, "#9333ea");
+    GameAudio.playHurt();
+
+    const angles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+    angles.forEach((ang, idx) => {
+      const ex = this.player.x + Math.cos(ang) * 14;
+      const ey = this.player.y + Math.sin(ang) * 14;
+      this.enemies.push({
+        id: `skeleton_raid_${this.worldTime.dayNumber}_${idx}`,
+        type: "skeleton",
+        subType: "NIGHT_RAID",
+        x: ex,
+        y: ey,
+        health: 40,
+        maxHealth: 40,
+        attackPower: 12,
+        speed: 1.8,
+        state: "CHASE",
+        stateTimer: 10,
+        direction: "DOWN",
+        facing: "DOWN",
+      } as any);
+    });
+  }
+
+  public toggleJournalModal() {
+    this.showJournal = !this.showJournal;
   }
 
   /**
@@ -1196,6 +2251,16 @@ export class SurvivalEngine {
     this.worldTime.minute = Math.floor((totalHours % 1) * 60);
     this.worldTime.dayNumber =
       Math.floor(this.worldTime.totalSeconds / cycleLength) + 1;
+
+    // 4-Season Cycle (7 in-game days per season)
+    const seasonIdx = Math.floor((this.worldTime.dayNumber - 1) / 7) % 4;
+    (this.worldTime as any).season = ["Spring", "Summer", "Autumn", "Winter"][seasonIdx];
+
+    // Midnight Skeleton Invasion trigger
+    if (this.worldTime.hour === 0 && this.worldTime.minute < 5 && this.midnightInvasionSpawnedDay !== this.worldTime.dayNumber) {
+      this.midnightInvasionSpawnedDay = this.worldTime.dayNumber;
+      this.spawnMidnightSkeletonInvasion();
+    }
 
     // Time of day & Light Level
     if (this.worldTime.hour >= 5 && this.worldTime.hour < 8) {
@@ -1828,27 +2893,38 @@ export class SurvivalEngine {
             const rx = res.x + res.w / 2;
             const ry = res.y + res.h / 2;
 
+            let isNearAny = false;
             for (const pos of testPositions) {
               if (Math.hypot(pos.x - rx, pos.y - ry) < 0.75) {
-                if (!res.shakeTimer || res.shakeTimer <= 0) {
-                  res.shakeTimer = 0.35;
-                  GameAudio.playRustle();
-                  for (let k = 0; k < 2; k++) {
-                    this.footstepParticles.push({
-                      id: this.nextParticleId++,
-                      x: rx + (Math.random() - 0.5) * 0.4,
-                      y: ry + (Math.random() - 0.5) * 0.4,
-                      type: "turf",
-                      radius: 2,
-                      maxRadius: 3,
-                      alpha: 0.9,
-                      vx: (Math.random() - 0.5) * 1.5,
-                      vy: -1.2 - Math.random() * 1.2,
-                      color: "#4ade80",
-                    });
-                  }
+                isNearAny = true;
+                break;
+              }
+            }
+
+            // Brush reaction triggers only once upon entering/brushing the flora
+            if (isNearAny) {
+              if (!(res as any).isBrushed) {
+                (res as any).isBrushed = true;
+                res.shakeTimer = 0.35;
+                GameAudio.playRustle();
+                for (let k = 0; k < 2; k++) {
+                  this.footstepParticles.push({
+                    id: this.nextParticleId++,
+                    x: rx + (Math.random() - 0.5) * 0.4,
+                    y: ry + (Math.random() - 0.5) * 0.4,
+                    type: "turf",
+                    radius: 2,
+                    maxRadius: 3,
+                    alpha: 0.9,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: -1.2 - Math.random() * 1.2,
+                    color: "#4ade80",
+                  });
                 }
               }
+            } else {
+              // Reset brushed state once all entities have walked away
+              (res as any).isBrushed = false;
             }
           }
           if (res.shakeTimer && res.shakeTimer > 0) {
@@ -2133,7 +3209,7 @@ export class SurvivalEngine {
    * Universal Hostile Enemy Hit Synchronization
    */
   public hitEnemy(
-    enemyId: number,
+    enemyId: number | string,
     damage: number,
     attackerX: number,
     attackerY: number,
@@ -2584,10 +3660,149 @@ export class SurvivalEngine {
   }
 
   /**
-   * Interacts with nearby entities: pets animals or talks to village NPCs [E].
+   * Interacts with nearby entities: structures, boats, animals, NPCs [E].
    */
   public handleInteractKey() {
-    // 1. Check for nearby NPC to talk to
+    // 0. Coracle Boat Mount / Dismount
+    if (this.player.isMountedBoat) {
+      this.player.isMountedBoat = false;
+      this.player.mountedBoatId = undefined;
+      this.placedStructures.push({
+        id: `boat_${Date.now()}`,
+        type: "coracle",
+        x: Math.round(this.player.x),
+        y: Math.round(this.player.y),
+        w: 1,
+        h: 1,
+      });
+      this.addFloatingText("Dismounted Boat", this.player.x, this.player.y - 1, "#38bdf8");
+      GameAudio.playPickup();
+      return;
+    }
+
+    // Check for nearby coracle boat to mount
+    for (let i = 0; i < this.placedStructures.length; i++) {
+      const s = this.placedStructures[i];
+      if (s.type === "coracle") {
+        const dist = Math.hypot(this.player.x - (s.x + 0.5), this.player.y - (s.y + 0.5));
+        if (dist < 2.0) {
+          this.player.isMountedBoat = true;
+          this.player.mountedBoatId = s.id;
+          this.placedStructures.splice(i, 1);
+          this.addFloatingText("Mounted Coracle Boat! [Traverse Water]", this.player.x, this.player.y - 1, "#38bdf8");
+          GameAudio.playPickup();
+          return;
+        }
+      }
+    }
+
+    // 1. Placed Structures Interaction (Windmill, Stone Oven, Bed, Brewing Stand)
+    for (const struct of this.placedStructures) {
+      const dist = Math.hypot(
+        this.player.x - (struct.x + struct.w / 2),
+        this.player.y - (struct.y + struct.h / 2),
+      );
+      if (dist < (struct.type === "windmill" ? 3.0 : 2.4)) {
+        if (struct.type === "windmill") {
+          if (this.hasItem("wheat", 1)) {
+            this.removeItem("wheat", 1);
+            struct.isOperating = true;
+            struct.productionTimer = 4.0;
+            this.addFloatingText("Milling Wheat -> Flour...", struct.x + 1.5, struct.y, "#fef08a");
+            GameAudio.playCraft();
+            return;
+          } else {
+            this.addFloatingText("Need Wheat to Mill!", struct.x + 1.5, struct.y, "#f59e0b");
+            return;
+          }
+        } else if (struct.type === "stone_oven") {
+          if (this.hasItem("flour", 1)) {
+            this.removeItem("flour", 1);
+            struct.isOperating = true;
+            struct.productionTimer = 5.0;
+            struct.fuelTimer = 15.0;
+            this.addFloatingText("Baking Warm Bread...", struct.x + 1, struct.y, "#fbbf24");
+            GameAudio.playCraft();
+            return;
+          } else {
+            this.addFloatingText("Need Flour to Bake Bread!", struct.x + 1, struct.y, "#f59e0b");
+            return;
+          }
+        } else if (struct.type === "bed") {
+          // Sleep until 06:00 dawn
+          this.worldTime.hour = 6;
+          this.worldTime.minute = 0;
+          this.player.health = this.player.maxHealth;
+          this.player.hunger = Math.min(100, this.player.hunger + 30);
+          this.addFloatingText("Slept peacefully until morning! [Well Rested]", this.player.x, this.player.y - 1, "#38bdf8");
+          GameAudio.playHeartChime();
+          return;
+        } else if (struct.type === "brewing_stand") {
+          if (this.hasItem("mushroom_blue", 1)) {
+            this.removeItem("mushroom_blue", 1);
+            this.addItemToInventory("potion_stamina", 1);
+            this.addFloatingText("Brewed Astral Stamina Potion!", struct.x + 0.5, struct.y, "#c084fc");
+            GameAudio.playCraft();
+            return;
+          } else if (this.hasItem("mushroom_red", 1)) {
+            this.removeItem("mushroom_red", 1);
+            this.addItemToInventory("potion_berserker", 1);
+            this.addFloatingText("Brewed Berserker Tonic!", struct.x + 0.5, struct.y, "#ef4444");
+            GameAudio.playCraft();
+            return;
+          } else {
+            this.addFloatingText("Need Blue or Red Mushroom to Brew!", struct.x + 0.5, struct.y, "#c084fc");
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Check for neutral Goblin Trader
+    for (const enemy of this.enemies) {
+      if (enemy.subType === "TRADER") {
+        const dist = Math.hypot(this.player.x - enemy.x, this.player.y - enemy.y);
+        if (dist < 2.4) {
+          if (this.hasItem("berries", 5)) {
+            this.removeItem("berries", 5);
+            this.addItemToInventory("mushroom_blue", 2);
+            this.addItemToInventory("gold_coin", 15);
+            this.addFloatingText("Traded 5 Berries -> 2 Blue Mushrooms + 15 Coins!", enemy.x, enemy.y - 1, "#22c55e");
+            GameAudio.playHeartChime();
+            return;
+          } else {
+            this.addFloatingText("Goblin Trader: 'Bring 5 Berries for Rare Mushrooms!'", enemy.x, enemy.y - 1, "#38bdf8");
+            return;
+          }
+        }
+      }
+    }
+
+    // 3. Animal Milking (Bucket + Cow) & Shearing (Shears + Sheep)
+    const activeItem = this.getActiveItemSlot()?.item;
+    for (const animal of this.animals) {
+      const dist = Math.hypot(
+        this.player.x - animal.position.x,
+        this.player.y - animal.position.y,
+      );
+      if (dist < 2.2) {
+        if (activeItem === "bucket" && animal.config.name.toLowerCase().includes("cow")) {
+          this.removeItem("bucket", 1);
+          this.addItemToInventory("milk", 1);
+          this.addFloatingText("Milked Cow -> Fresh Milk!", animal.position.x, animal.position.y - 0.8, "#f8fafc");
+          GameAudio.playPickup();
+          return;
+        }
+        if (activeItem === "shears" && animal.config.name.toLowerCase().includes("sheep")) {
+          this.addItemToInventory("wool", 2);
+          this.addFloatingText("Sheared Sheep -> 2 Wool!", animal.position.x, animal.position.y - 0.8, "#f8fafc");
+          GameAudio.playPickup();
+          return;
+        }
+      }
+    }
+
+    // 4. Check for nearby NPC to talk to
     for (const npc of this.npcs) {
       const dist = Math.hypot(
         this.player.x - npc.position.x,
@@ -2595,12 +3810,14 @@ export class SurvivalEngine {
       );
       if (dist < 2.4) {
         this.activeDialogueNPC = npc;
+        (npc as any).happiness = Math.min(100, ((npc as any).happiness || 90) + 5);
+        (npc as any).currentExpression = "chat";
         GameAudio.playHeartChime();
         return;
       }
     }
 
-    // 2. Check for nearby animal to pet
+    // 5. Check for nearby animal to pet
     for (const animal of this.animals) {
       const dist = Math.hypot(
         this.player.x - animal.position.x,
@@ -2608,7 +3825,7 @@ export class SurvivalEngine {
       );
       if (dist < 2.2) {
         if (animal.pet()) {
-          this.player.hopTimer = 0.35; // Player hops! (Section 24)
+          this.player.hopTimer = 0.35;
           GameAudio.playHeartChime();
           this.emitHeart(animal.position.x, animal.position.y - 0.5);
           this.addFloatingText(
@@ -2640,10 +3857,11 @@ export class SurvivalEngine {
           if (this.hasItem(food, 1)) {
             this.removeItem(food, 1);
             animal.feed();
+            (animal as any).loveTimer = 30.0;
             GameAudio.playHeartChime();
             this.emitHeart(animal.position.x, animal.position.y - 0.5);
             this.addFloatingText(
-              "Fed +♥",
+              "Fed +♥ Ready to Breed!",
               animal.position.x,
               animal.position.y - 0.8,
               "#10b981",

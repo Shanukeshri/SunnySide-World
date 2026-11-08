@@ -1749,6 +1749,7 @@ function joinMultiplayerWorld(snapshot: any) {
   (survivalEngine as any).renderer = survivalRenderer;
   (window as any).survivalRenderer = survivalRenderer;
   survivalEngine.sessionId = networkClient?.clientId || "";
+  (survivalEngine as any).roomCode = snapshot.roomCode;
   (window as any).survivalEngine = survivalEngine;
   (window as any).gameEngine = survivalEngine;
   survivalEngine.onWorldAction = (action: any) => {
@@ -2517,6 +2518,11 @@ function initSurvivalInputs() {
       toggleInventoryModal();
     }
 
+    // Journal & Quests [J]
+    if (key === "j") {
+      survivalEngine?.toggleJournalModal();
+    }
+
     // Build mode [B]
     if (key === "b") {
       if (survivalEngine) {
@@ -2533,9 +2539,13 @@ function initSurvivalInputs() {
       }
     }
 
-    // Pause [ESC]
+    // Pause / Close Modal [ESC]
     if (key === "escape") {
-      togglePauseModal();
+      if (survivalEngine && survivalEngine.showJournal) {
+        survivalEngine.showJournal = false;
+      } else {
+        togglePauseModal();
+      }
     }
 
     // Block / Guard Stance [Q] or [G]

@@ -32,7 +32,7 @@ export abstract class LivingEntity implements ILivingEntity {
   public deathTimer?: number = 0;
   public hurtTimer?: number = 0;
 
-  protected config: SpeciesConfig;
+  public readonly config: SpeciesConfig;
 
   constructor(id: number, config: SpeciesConfig, initialX: number, initialY: number) {
     this.id = id;

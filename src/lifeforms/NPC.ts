@@ -135,6 +135,16 @@ export class NPC extends LivingEntity {
   public homeX: number;
   public homeY: number;
 
+  // Dynamic 24-Hour Schedule, Emotions & Workstations
+  public scheduleState: "SLEEP" | "STROLL" | "WORK" | "TAVERN" = "WORK";
+  public workstation?: { x: number; y: number; type: string };
+  public bedLocation?: { x: number; y: number };
+  public happiness: number = 85; // 0 to 100
+  public currentExpression?: {
+    type: "love" | "chat" | "working" | "stress" | "alerted";
+    timer: number;
+  };
+
   constructor(
     id: number,
     config: SpeciesConfig,

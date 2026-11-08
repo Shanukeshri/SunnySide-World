@@ -107,7 +107,7 @@ export class FarmlandGenerator {
             const gx = ax + dx;
             const gy = ay + dy;
             const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
               colBlocked = true;
               break;
             }
@@ -126,7 +126,7 @@ export class FarmlandGenerator {
             const gx = ax + dx;
             const gy = ay + dy;
             const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
               rowBlocked = true;
               break;
             }
@@ -291,7 +291,7 @@ export class FarmlandGenerator {
             const gx = ax + dx;
             const gy = ay + dy;
             const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
               colBlocked = true;
               break;
             }
@@ -306,7 +306,7 @@ export class FarmlandGenerator {
             const gx = ax + dx;
             const gy = ay + dy;
             const cell = this.grid[gy][gx];
-            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked) {
+            if (cell.isRoad || cell.isRoadReserved || cell.isWater || cell.isFarm || cell.blocked || cell.terrain === 'sand_tile_01') {
               rowBlocked = true;
               break;
             }

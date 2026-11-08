@@ -12,6 +12,16 @@ export class Animal extends LivingEntity {
   private stateTimer: number = 0;
   private aiDecisionCount: number = 0;
 
+  // Husbandry, Breeding & Production:
+  public isBaby: boolean = false;
+  public growthTimer: number = 0;
+  public loveTimer: number = 0;
+  public gestationTimer: number = 0;
+  public hasMilk: boolean = true;
+  public hasWool: boolean = true;
+  public eggTimer: number = 0;
+  public parentId?: number;
+
   constructor(id: number, config: SpeciesConfig, initialX: number, initialY: number) {
     super(id, config, initialX, initialY);
   }

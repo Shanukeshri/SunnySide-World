@@ -20,6 +20,8 @@ export type ItemId =
   | "cooked_meat"
   | "wheat"
   | "bread"
+  | "fresh_bread"
+  | "flour"
   | "seeds"
   | "slime_gel"
   | "wooden_axe"
@@ -46,7 +48,54 @@ export type ItemId =
   | "chest"
   | "wood_wall"
   | "wood_floor"
-  | "wood_door";
+  | "wood_door"
+  // 11 Crops & Harvested Produce:
+  | "cabbage"
+  | "carrot"
+  | "parsnip"
+  | "radish"
+  | "sunflower"
+  | "cauliflower"
+  | "pumpkin"
+  | "beetroot"
+  | "kale"
+  | "potato"
+  // Animal Husbandry & Products:
+  | "milk"
+  | "egg"
+  | "wool"
+  | "shears"
+  | "bucket"
+  | "water_bucket"
+  // Farming & Shipping:
+  | "fertilizer"
+  | "wood_ash"
+  | "fish_bones"
+  | "crate_wood"
+  | "crate_bulk_crops"
+  // Alchemy & Foraging:
+  | "blue_mushroom"
+  | "red_mushroom"
+  | "blue_potion"
+  | "red_potion"
+  | "mushroom_blue"
+  | "mushroom_red"
+  | "potion_stamina"
+  | "potion_berserker"
+  | "coracle"
+  // Boating & Navigation:
+  | "coracle_boat"
+  // Advanced Building & Economy:
+  | "stone_oven"
+  | "windmill_kit"
+  | "brewing_stand"
+  | "chimney"
+  | "wall_window"
+  | "stone_wall"
+  | "stone_floor"
+  | "roof_wood"
+  | "bed"
+  | "gold_coin";
 
 export type ItemCategory = "resource" | "tool" | "weapon" | "food" | "building" | "station" | "survival";
 
@@ -112,8 +161,24 @@ export interface ResourceNode {
 }
 
 export interface PlacedStructure {
-  id: number;
-  type: "wood_wall" | "wood_floor" | "wood_door" | "campfire" | "workbench" | "chest";
+  id: number | string;
+  type:
+    | "wood_wall"
+    | "wood_floor"
+    | "wood_door"
+    | "campfire"
+    | "workbench"
+    | "chest"
+    | "windmill"
+    | "stone_oven"
+    | "brewing_stand"
+    | "chimney"
+    | "wall_window"
+    | "stone_wall"
+    | "stone_floor"
+    | "roof_wood"
+    | "bed"
+    | "coracle";
   x: number;
   y: number;
   w: number;
@@ -123,10 +188,34 @@ export interface PlacedStructure {
   shakeTimer?: number;
   chestStorage?: InventorySlot[];
   isOpen?: boolean;
+  // Dynamic Structure Economy & Production State:
+  rotation?: number;
+  frameTimer?: number;
+  frameIndex?: number;
+  isOperating?: boolean;
+  productionTimer?: number;
+  inputItem?: ItemId | null;
+  inputCount?: number;
+  outputItem?: ItemId | null;
+  outputCount?: number;
+  fuelTimer?: number;
+}
+
+export interface CoracleEntity {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  isMounted: boolean;
+  passengerId: string | null;
+  bobTimer: number;
+  heading: number;
+  speed: number;
 }
 
 export interface EnemyEntity {
-  id: number;
+  id: number | string;
   type: "slime" | "goblin" | "wolf" | "skeleton";
   name: string;
   x: number;
@@ -147,6 +236,16 @@ export interface EnemyEntity {
   hurtTimer: number;
   deathTimer: number;
   isAlive: boolean;
+  // Special Enemy Variants:
+  subType?: "neutral_trader" | "hostile_raider" | "night_invasion" | "crypt_guardian" | "TRADER" | "NIGHT_RAID";
+  tradeOffer?: {
+    wantItem: ItemId;
+    wantCount: number;
+    giveItem: ItemId;
+    giveCount: number;
+  };
+  raidTarget?: { x: number; y: number; type: "tree" | "chest" | "crop" };
+  slashTimer?: number;
 }
 
 export interface FloatingText {
@@ -203,6 +302,8 @@ export interface Quest {
   completed: boolean;
   progress: number;
   goal: number;
+  rewardCoins?: number;
+  rewardItem?: ItemId;
 }
 
 export interface WorldRealmVillage {
@@ -216,6 +317,8 @@ export interface WorldRealmVillage {
   discovered: boolean;
 }
 
+export type WorldSeason = "Spring" | "Summer" | "Autumn" | "Winter";
+
 export interface WorldTime {
   totalSeconds: number;
   timeOfDay: "Morning" | "Day" | "Sunset" | "Night";
@@ -223,4 +326,13 @@ export interface WorldTime {
   minute: number;
   dayNumber: number;
   lightLevel: number; // 0.0 (pitch black night) to 1.0 (bright midday)
+  season: WorldSeason;
+  seasonDay: number;
+}
+
+export interface JournalRecord {
+  discoveredCrops: Record<string, boolean>;
+  harvestedCrops: Record<string, number>;
+  caughtFish: Record<string, { count: number; maxWeight: number }>;
+  questsCompleted: number;
 }

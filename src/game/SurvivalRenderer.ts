@@ -91,6 +91,20 @@ export const TILE_CROPS: Record<string, CropRect> = {
   sand_foam_c2: { x: 304, y: 96, w: 16, h: 16 }, // tid 403: Sand corner foam 2
   stone_tile_01: { x: 720, y: 32, w: 16, h: 16 },
 
+  // Authentic Native Dual-Grid Water <-> Sand Coastlines (zero rotation distortion)
+  coast_sand_n: { x: 96, y: 512, w: 16, h: 16 }, // Sand North, Water South
+  coast_sand_s: { x: 96, y: 448, w: 16, h: 16 }, // Sand South, Water North
+  coast_sand_w: { x: 128, y: 480, w: 16, h: 16 }, // Sand West, Water East
+  coast_sand_e: { x: 64, y: 480, w: 16, h: 16 }, // Sand East, Water West
+  coast_corner_nw: { x: 112, y: 496, w: 16, h: 16 }, // Sand N & W, Water S & E
+  coast_corner_ne: { x: 80, y: 496, w: 16, h: 16 }, // Sand N & E, Water S & W
+  coast_corner_sw: { x: 112, y: 464, w: 16, h: 16 }, // Sand S & W, Water N & E
+  coast_corner_se: { x: 80, y: 464, w: 16, h: 16 }, // Sand S & E, Water N & W
+  coast_inner_nw: { x: 112, y: 512, w: 16, h: 16 }, // Land at NW diagonal
+  coast_inner_ne: { x: 80, y: 512, w: 16, h: 16 }, // Land at NE diagonal
+  coast_inner_sw: { x: 112, y: 448, w: 16, h: 16 }, // Land at SW diagonal
+  coast_inner_se: { x: 80, y: 448, w: 16, h: 16 }, // Land at SE diagonal
+
   // Outer turn corners (where dirt road curves smoothly):
   path_corner_tl: { x: 32, y: 112, w: 16, h: 16 }, // tid 450: outer NW curve (Dirt goes S & E)
   path_corner_tr: { x: 48, y: 112, w: 16, h: 16 }, // tid 451: outer NE curve (Dirt goes S & W)
@@ -138,7 +152,6 @@ export const TILE_CROPS: Record<string, CropRect> = {
   bridge_wood_h_ramp_r: { x: 624, y: 80, w: 16, h: 16 },
   bridge_wood_v_ramp_n: { x: 640, y: 64, w: 16, h: 16 },
   bridge_wood_v_ramp_s: { x: 640, y: 96, w: 16, h: 16 },
-  bridge_wood_v_ramp_s: { x: 272, y: 224, w: 16, h: 16 },
 
   // Wooden Fences & Bridges
   fence_wood_h: { x: 624, y: 32, w: 16, h: 16 },
@@ -151,8 +164,6 @@ export const TILE_CROPS: Record<string, CropRect> = {
   fence_wood_post: { x: 640, y: 32, w: 16, h: 16 },
   fence_wood_gate: { x: 624, y: 0, w: 16, h: 16 },
 
-  bridge_deck_h: { x: 336, y: 176, w: 16, h: 16 },
-  bridge_deck_v: { x: 272, y: 176, w: 16, h: 16 },
   bridge_rail_top: { x: 336, y: 160, w: 16, h: 16 },
   bridge_rail_bottom: { x: 336, y: 192, w: 16, h: 16 },
 
@@ -281,17 +292,135 @@ const SPRITE_DEFS: Record<string, { path: string; w: number; h: number }> = {
     w: 16,
     h: 16,
   },
+  ui_expression_working: {
+    path: "/assets/ui/expression_working.png",
+    w: 16,
+    h: 16,
+  },
+  ui_expression_stress: {
+    path: "/assets/ui/expression_stress.png",
+    w: 16,
+    h: 16,
+  },
+  ui_happiness_01: {
+    path: "/assets/ui/happiness_01.png",
+    w: 16,
+    h: 16,
+  },
+  ui_happiness_02: {
+    path: "/assets/ui/happiness_02.png",
+    w: 16,
+    h: 16,
+  },
+  ui_happiness_03: {
+    path: "/assets/ui/happiness_03.png",
+    w: 16,
+    h: 16,
+  },
+  ui_happiness_04: {
+    path: "/assets/ui/happiness_04.png",
+    w: 16,
+    h: 16,
+  },
+  windmill: {
+    path: "/assets/other/spr_deco_windmill_strip9.png",
+    w: 112,
+    h: 112,
+  },
+  windmill_shadow: {
+    path: "/assets/other/spr_deco_windmillshadow_strip9.png",
+    w: 112,
+    h: 112,
+  },
+  coracle: {
+    path: "/assets/other/spr_deco_coracle_strip4.png",
+    w: 48,
+    h: 37,
+  },
+  coracle_land: {
+    path: "/assets/other/spr_deco_coracle_land.png",
+    w: 48,
+    h: 37,
+  },
+  fire_vfx: {
+    path: "/assets/vfx/spr_deco_fire_01_strip4.png",
+    w: 5,
+    h: 10,
+  },
+  chimney_smoke: {
+    path: "/assets/vfx/chimneysmoke_01_strip30.png",
+    w: 15,
+    h: 37,
+  },
+  mushroom_blue_strip: {
+    path: "/assets/plants/spr_deco_mushroom_blue_01_strip4.png",
+    w: 16,
+    h: 16,
+  },
+  mushroom_red_strip: {
+    path: "/assets/plants/spr_deco_mushroom_red_01_strip4.png",
+    w: 16,
+    h: 16,
+  },
+  goblin_idle: {
+    path: "/assets/characters/goblin/spr_idle_strip9.png",
+    w: 96,
+    h: 64,
+  },
+  goblin_walk: {
+    path: "/assets/characters/goblin/spr_walk_strip8.png",
+    w: 96,
+    h: 64,
+  },
+  goblin_axe: {
+    path: "/assets/characters/goblin/spr_axe_strip10.png",
+    w: 96,
+    h: 64,
+  },
+  goblin_attack: {
+    path: "/assets/characters/goblin/spr_attack_strip10.png",
+    w: 96,
+    h: 64,
+  },
+  skeleton_idle: {
+    path: "/assets/characters/skeleton/skeleton_idle_strip6.png",
+    w: 96,
+    h: 64,
+  },
+  skeleton_walk: {
+    path: "/assets/characters/skeleton/skeleton_walk_strip8.png",
+    w: 96,
+    h: 64,
+  },
+  skeleton_attack: {
+    path: "/assets/characters/skeleton/skeleton_attack_strip7.png",
+    w: 96,
+    h: 64,
+  },
+  ui_journal_detail: {
+    path: "/assets/diary/UI_Panel_DetailView.png",
+    w: 300,
+    h: 400,
+  },
+  ui_journal_item: {
+    path: "/assets/diary/UI_Panel_ItemArea.png",
+    w: 300,
+    h: 400,
+  },
 };
 
 function getCropPath(cropId: string): string | null {
   if (!cropId) return null;
-  const parts = cropId.replace("crop_", "").split("_stage_");
-  if (parts.length === 2) {
+  if (cropId.includes("_stage_")) {
+    const parts = cropId.replace("crop_", "").split("_stage_");
     const name = parts[0];
     const stage = parts[1].padStart(2, "0");
-    return `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/${name}_${stage}.png`;
+    return `/assets/crops/${name}_${stage}.png`;
   }
-  return null;
+  if (cropId.match(/_[0-9]{2}$/)) {
+    return `/assets/crops/${cropId.replace("crop_", "")}.png`;
+  }
+  return `/assets/crops/${cropId}_05.png`;
 }
 
 export class SurvivalRenderer {
@@ -312,6 +441,11 @@ export class SurvivalRenderer {
   // Smooth camera tracking
   public cameraX = 22;
   public cameraY = 18;
+
+  public snapCameraTo(x: number, y: number) {
+    this.cameraX = x;
+    this.cameraY = y;
+  }
 
   constructor() {
     this.lifeformRenderer = new LifeformRenderer();
@@ -463,26 +597,13 @@ export class SurvivalRenderer {
             const s = shore.hasWaterS;
             const w = shore.hasWaterW;
 
-            // Check diagonal inner corner transitions (when water turns around a land corner):
+            // Base calm cyan water tile
             let waterCrop = TILE_CROPS["water_tile_01"];
-            if (!s && !w && (n || e)) {
-              waterCrop = TILE_CROPS["water_diag_sw"]; // tid 474: Land SW, Water NE
-            } else if (!s && !e && (n || w)) {
-              waterCrop = TILE_CROPS["water_diag_se"]; // tid 534: Land SE, Water NW
-            } else if (!n && !w && (s || e)) {
-              waterCrop = TILE_CROPS["water_diag_nw"]; // tid 471: Land NW, Water SE
-            } else if (!n && !e && (s || w)) {
-              waterCrop = TILE_CROPS["water_diag_ne"]; // tid 472: Land NE, Water SW
-            } else {
-              // Deep water with occasional ripple variant
-              const rippleHash = Math.abs(Math.sin(tx * 31.17 + ty * 97.53) * 43758.5453);
-              if (rippleHash > 0.88) {
-                waterCrop = TILE_CROPS["water_depth_01"];
-              } else if (rippleHash > 0.76) {
-                waterCrop = TILE_CROPS["water_depth_02"];
-              } else {
-                waterCrop = TILE_CROPS["water_tile_01"];
-              }
+            const rippleHash = Math.abs(Math.sin(tx * 31.17 + ty * 97.53) * 43758.5453);
+            if (rippleHash > 0.88) {
+              waterCrop = TILE_CROPS["water_depth_01"];
+            } else if (rippleHash > 0.76) {
+              waterCrop = TILE_CROPS["water_depth_02"];
             }
 
             ctx.drawImage(
@@ -497,29 +618,72 @@ export class SurvivalRenderer {
               tileH,
             );
 
-            // Translucent shallow coastal water shelf
+            // Shoreline autotiling overlay directly on the water tile (Pixel-perfect Sunnyside autotiling)
             if (shore.isShore) {
-              ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
-              ctx.fillRect(screen.sx, screen.sy, tileW, tileH);
+              const nwTile = engine.worldManager.getTile(tx - 1, ty - 1);
+              const neTile = engine.worldManager.getTile(tx + 1, ty - 1);
+              const swTile = engine.worldManager.getTile(tx - 1, ty + 1);
+              const seTile = engine.worldManager.getTile(tx + 1, ty + 1);
 
-              // Animated wave foam surface ripple on shorelines
-              const foamFrame = (Math.floor(Date.now() / 160 + tx * 3 + ty * 5) % 6) + 1;
-              const foamCrop = TILE_CROPS[`water_foam_0${foamFrame}`];
-              if (foamCrop) {
-                ctx.save();
-                ctx.globalAlpha = 0.35 + Math.sin(Date.now() / 350 + tx) * 0.15;
-                ctx.drawImage(
-                  this.tilesetImg,
-                  foamCrop.x,
-                  foamCrop.y,
-                  foamCrop.w,
-                  foamCrop.h,
-                  screen.sx,
-                  screen.sy,
-                  tileW,
-                  tileH,
-                );
-                ctx.restore();
+              // 1. Outer corners (where two adjacent cardinal directions are land)
+              const isCornerNW = !n && !w && (s || e);
+              const isCornerNE = !n && !e && (s || w);
+              const isCornerSW = !s && !w && (n || e);
+              const isCornerSE = !s && !e && (n || w);
+
+              if (isCornerNW) {
+                // NW Outer: Land is North & West, Water is South & East
+                const c = TILE_CROPS["coast_corner_nw"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (isCornerNE) {
+                // NE Outer: Land is North & East, Water is South & West
+                const c = TILE_CROPS["coast_corner_ne"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (isCornerSW) {
+                // SW Outer: Land is South & West, Water is North & East
+                const c = TILE_CROPS["coast_corner_sw"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else if (isCornerSE) {
+                // SE Outer: Land is South & East, Water is North & West
+                const c = TILE_CROPS["coast_corner_se"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              } else {
+                // Straight edges:
+                if (!n) {
+                  const c = TILE_CROPS["coast_sand_n"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!s) {
+                  const c = TILE_CROPS["coast_sand_s"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!w) {
+                  const c = TILE_CROPS["coast_sand_w"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+                if (!e) {
+                  const c = TILE_CROPS["coast_sand_e"];
+                  ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+                }
+              }
+
+              // 2. Inner diagonal corner wave foam (cardinal sides are water, but diagonal neighbor is land):
+              const isLand = (t: any) => !t || !t.isWater;
+              if (n && w && isLand(nwTile)) {
+                const c = TILE_CROPS["coast_inner_nw"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              }
+              if (n && e && isLand(neTile)) {
+                const c = TILE_CROPS["coast_inner_ne"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              }
+              if (s && w && isLand(swTile)) {
+                const c = TILE_CROPS["coast_inner_sw"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+              }
+              if (s && e && isLand(seTile)) {
+                const c = TILE_CROPS["coast_inner_se"];
+                ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
               }
             }
           }
@@ -683,7 +847,7 @@ export class SurvivalRenderer {
               }
             }
           }
-          // 4. Sand Shorelines & Beaches
+          // 4. Sand Shorelines & Beaches with Seamless Grass Fringe Autotiling
           else if (tile.terrain === "sand_tile_01") {
             const crop = TILE_CROPS["sand_tile_01"];
             ctx.drawImage(
@@ -698,17 +862,29 @@ export class SurvivalRenderer {
               tileH,
             );
 
-            // Sand shoreline wave foam if adjacent to water
-            const shore = engine.worldManager.getWaterShoreBitmask(tx, ty);
-            if (shore.hasWaterS && shore.hasWaterE) {
-              const fc = TILE_CROPS["sand_foam_c1"];
-              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
-            } else if (shore.hasWaterS && shore.hasWaterW) {
-              const fc = TILE_CROPS["sand_foam_c2"];
-              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
-            } else if (shore.hasWaterS || shore.isShore) {
-              const fc = TILE_CROPS["sand_foam_h"];
-              ctx.drawImage(this.tilesetImg, fc.x, fc.y, fc.w, fc.h, screen.sx, screen.sy, tileW, tileH);
+            // Overlay soft scalloped grass fringes where sand meets grass
+            const nTile = engine.worldManager.getTile(tx, ty - 1);
+            const sTile = engine.worldManager.getTile(tx, ty + 1);
+            const wTile = engine.worldManager.getTile(tx - 1, ty);
+            const eTile = engine.worldManager.getTile(tx + 1, ty);
+
+            const isGrass = (t: any) => t && !t.isWater && t.terrain !== "sand_tile_01";
+
+            if (isGrass(nTile)) {
+              const c = TILE_CROPS["path_top"];
+              ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+            }
+            if (isGrass(sTile)) {
+              const c = TILE_CROPS["path_bottom"];
+              ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+            }
+            if (isGrass(wTile)) {
+              const c = TILE_CROPS["path_left"];
+              ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
+            }
+            if (isGrass(eTile)) {
+              const c = TILE_CROPS["path_right"];
+              ctx.drawImage(this.tilesetImg, c.x, c.y, c.w, c.h, screen.sx, screen.sy, tileW, tileH);
             }
           }
           // 5. Land Grassland bordering Water (Seamless River & Pond Banks)
@@ -1330,20 +1506,6 @@ export class SurvivalRenderer {
                   }
                 }
               } else if (res.type === "bush") {
-                // Ground shadow
-                ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
-                ctx.beginPath();
-                ctx.ellipse(
-                  screen.sx + cellSize / 2,
-                  screen.sy + cellSize * 0.82,
-                  cellSize * 0.46,
-                  cellSize * 0.22,
-                  0,
-                  0,
-                  Math.PI * 2,
-                );
-                ctx.fill();
-
                 if (this.treeBushImg && this.treeBushImg.complete) {
                   const crop = TREE_BUSH_CROPS.bush_01;
                   const bushW = cellSize * 1.3;
@@ -1525,6 +1687,232 @@ export class SurvivalRenderer {
               4,
               4,
             );
+          } else if (struct.type === "windmill") {
+            // Windmill (3x3 tiles): Authentic Tower Structure + Rotating Blades on Top
+            const wmImg = this.getSpriteImage("windmill");
+            const wmShadowImg = this.getSpriteImage("windmill_shadow");
+
+            const towerW = cellSize * 2.8;
+            const towerH = cellSize * 2.7;
+            const towerX = screen.sx + (cellSize * struct.w - towerW) / 2;
+            const towerY = screen.sy + cellSize * struct.h - towerH;
+
+            // 1. Render the Windmill Tower Base from houses.png (Crop: 800, 12, 256, 247)
+            if (this.housesImg && this.housesImg.complete && this.housesImg.naturalWidth > 0) {
+              ctx.drawImage(
+                this.housesImg,
+                800,
+                12,
+                256,
+                247,
+                towerX,
+                towerY,
+                towerW,
+                towerH,
+              );
+            }
+
+            // 2. Windmill Ground Shadow
+            const fanSize = cellSize * 2.6;
+            const fanCenterX = towerX + towerW * 0.53;
+            const fanCenterY = towerY + towerH * 0.38;
+            const fanX = fanCenterX - fanSize / 2;
+            const fanY = fanCenterY - fanSize / 2;
+
+            const frameIdx = struct.isOperating ? Math.floor(Date.now() / 90) % 9 : 0;
+
+            if (wmShadowImg) {
+              ctx.drawImage(
+                wmShadowImg,
+                frameIdx * 112,
+                0,
+                112,
+                112,
+                fanX + cellSize * 0.25,
+                fanY + cellSize * 0.25,
+                fanSize,
+                fanSize,
+              );
+            }
+
+            // 3. Windmill Rotating Fan Blades mounted directly on top of the tower
+            if (wmImg) {
+              ctx.drawImage(
+                wmImg,
+                frameIdx * 112,
+                0,
+                112,
+                112,
+                fanX,
+                fanY,
+                fanSize,
+                fanSize,
+              );
+            }
+
+            const dist = Math.hypot(engine.player.x - (struct.x + struct.w / 2), engine.player.y - (struct.y + struct.h / 2));
+            if (dist < 2.5) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx + cellSize * 0.8, screen.sy - 22, 90, 16);
+              ctx.fillStyle = struct.isOperating ? "#fef08a" : "#cbd5e1";
+              ctx.textAlign = "center";
+              ctx.fillText(struct.isOperating ? "Milling Wheat..." : "[E] Insert Wheat", screen.sx + cellSize * 0.8 + 45, screen.sy - 10);
+            }
+          } else if (struct.type === "stone_oven") {
+            // Stone Oven with animated baking fire VFX
+            const ovenW = cellSize * 1.6;
+            const ovenH = cellSize * 1.6;
+            const ovenX = screen.sx + (cellSize * struct.w - ovenW) / 2;
+            const ovenY = screen.sy + cellSize * struct.h - ovenH;
+
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(ovenX + 4, ovenY + 6, ovenW - 8, ovenH - 8);
+            ctx.fillStyle = "#334155";
+            ctx.fillRect(ovenX + 8, ovenY + 12, ovenW - 16, ovenH - 16);
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ovenX + 4, ovenY + 6, ovenW - 8, ovenH - 8);
+
+            if (struct.isOperating || (struct.fuelTimer && struct.fuelTimer > 0)) {
+              const fireImg = this.getSpriteImage("fire_vfx");
+              if (fireImg) {
+                const fIdx = Math.floor(Date.now() / 100) % 4;
+                ctx.drawImage(
+                  fireImg,
+                  fIdx * 5,
+                  0,
+                  5,
+                  10,
+                  ovenX + ovenW / 2 - 8,
+                  ovenY + ovenH / 2 - 4,
+                  16,
+                  20,
+                );
+              }
+            }
+
+            const dist = Math.hypot(engine.player.x - (struct.x + struct.w / 2), engine.player.y - (struct.y + struct.h / 2));
+            if (dist < 2.5) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx + 4, screen.sy - 20, 96, 16);
+              ctx.fillStyle = struct.isOperating ? "#fbbf24" : "#f8fafc";
+              ctx.textAlign = "center";
+              ctx.fillText(struct.isOperating ? "Baking Bread..." : "[E] Bake Bread", screen.sx + 52, screen.sy - 8);
+            }
+          } else if (struct.type === "chimney") {
+            // Brick chimney with rising animated smoke
+            ctx.fillStyle = "#b91c1c";
+            ctx.fillRect(screen.sx + 4, screen.sy + 2, cellSize - 8, cellSize - 4);
+            ctx.strokeStyle = "#7f1d1d";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screen.sx + 4, screen.sy + 2, cellSize - 8, cellSize - 4);
+
+            const smokeImg = this.getSpriteImage("chimney_smoke");
+            if (smokeImg) {
+              const sIdx = Math.floor(Date.now() / 70) % 30;
+              const smokeW = cellSize * 0.9;
+              const smokeH = cellSize * 2.2;
+              ctx.drawImage(
+                smokeImg,
+                sIdx * 15,
+                0,
+                15,
+                37,
+                screen.sx + cellSize / 2 - smokeW / 2,
+                screen.sy - smokeH + 4,
+                smokeW,
+                smokeH,
+              );
+            }
+          } else if (struct.type === "coracle") {
+            // Coracle boat floating on water
+            const boatImg = this.getSpriteImage("coracle");
+            if (boatImg) {
+              const bob = Math.sin(Date.now() / 350 + struct.x) * 2;
+              const frameIdx = Math.floor(Date.now() / 250) % 4;
+              const bw = cellSize * 1.8;
+              const bh = cellSize * 1.4;
+              ctx.drawImage(
+                boatImg,
+                frameIdx * 48,
+                0,
+                48,
+                37,
+                screen.sx + (cellSize - bw) / 2,
+                screen.sy + (cellSize - bh) / 2 + bob,
+                bw,
+                bh,
+              );
+
+              const dist = Math.hypot(engine.player.x - (struct.x + 0.5), engine.player.y - (struct.y + 0.5));
+              if (dist < 2.0 && !engine.player.isMountedBoat) {
+                ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(screen.sx - 10, screen.sy - 22, 80, 16);
+                ctx.fillStyle = "#38bdf8";
+                ctx.textAlign = "center";
+                ctx.fillText("[E] Board Boat", screen.sx + 30, screen.sy - 10);
+              }
+            }
+          } else if (struct.type === "bed") {
+            ctx.fillStyle = "#78350f";
+            ctx.fillRect(screen.sx + 2, screen.sy + 2, cellSize - 4, cellSize - 4);
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillRect(screen.sx + 4, screen.sy + 8, cellSize - 8, cellSize - 10);
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillRect(screen.sx + 5, screen.sy + 4, cellSize - 10, 6);
+
+            const dist = Math.hypot(engine.player.x - (struct.x + 0.5), engine.player.y - (struct.y + 0.5));
+            if (dist < 2.0) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx - 4, screen.sy - 20, 72, 16);
+              ctx.fillStyle = "#fef08a";
+              ctx.textAlign = "center";
+              ctx.fillText("[E] Sleep", screen.sx + 32, screen.sy - 8);
+            }
+          } else if (struct.type === "wall_window") {
+            ctx.fillStyle = "#78350f";
+            ctx.fillRect(screen.sx, screen.sy - cellSize * 0.4, cellSize, cellSize * 1.4);
+            ctx.fillStyle = "#bae6fd";
+            ctx.fillRect(screen.sx + 4, screen.sy - cellSize * 0.1, cellSize - 8, cellSize * 0.5);
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screen.sx + 4, screen.sy - cellSize * 0.1, cellSize - 8, cellSize * 0.5);
+          } else if (struct.type === "stone_wall") {
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(screen.sx, screen.sy - cellSize * 0.4, cellSize, cellSize * 1.4);
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screen.sx + 1, screen.sy - cellSize * 0.4 + 1, cellSize - 2, cellSize * 1.4 - 2);
+          } else if (struct.type === "roof_wood") {
+            ctx.fillStyle = "#b45309";
+            ctx.beginPath();
+            ctx.moveTo(screen.sx, screen.sy + cellSize);
+            ctx.lineTo(screen.sx + cellSize / 2, screen.sy - cellSize * 0.4);
+            ctx.lineTo(screen.sx + cellSize, screen.sy + cellSize);
+            ctx.closePath();
+            ctx.fill();
+          } else if (struct.type === "brewing_stand") {
+            ctx.fillStyle = "#334155";
+            ctx.fillRect(screen.sx + 4, screen.sy + cellSize * 0.4, cellSize - 8, cellSize * 0.6);
+            ctx.fillStyle = "#a855f7";
+            ctx.beginPath();
+            ctx.arc(screen.sx + cellSize * 0.35, screen.sy + cellSize * 0.3, 4, 0, Math.PI * 2);
+            ctx.arc(screen.sx + cellSize * 0.65, screen.sy + cellSize * 0.3, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            const dist = Math.hypot(engine.player.x - (struct.x + 0.5), engine.player.y - (struct.y + 0.5));
+            if (dist < 2.0) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx - 6, screen.sy - 20, 80, 16);
+              ctx.fillStyle = "#c084fc";
+              ctx.textAlign = "center";
+              ctx.fillText("[E] Brew Potion", screen.sx + 34, screen.sy - 8);
+            }
           }
 
           if (
@@ -1565,20 +1953,7 @@ export class SurvivalRenderer {
         yOrder: animal.position.y + 0.5,
         draw: () => {
           const screen = worldToScreen(animal.position.x, animal.position.y);
-          // Ground soft elliptical drop shadow
-          ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
-          ctx.beginPath();
-          ctx.ellipse(
-            screen.sx + cellSize / 2,
-            screen.sy + cellSize * 0.78,
-            cellSize * 0.42,
-            cellSize * 0.20,
-            0,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
-
+          const animScale = (animal as any).isBaby ? 0.6 : 1.0;
           this.lifeformRenderer.renderEntity(
             ctx,
             animal,
@@ -1586,8 +1961,24 @@ export class SurvivalRenderer {
             false,
             screen.sx + cellSize / 2,
             screen.sy + cellSize / 2,
-            1.0,
+            animScale,
           );
+
+          // Breeding love hearts
+          if ((animal as any).loveTimer && (animal as any).loveTimer > 0) {
+            const heartImg = this.getSpriteImage("ui_expression_love");
+            if (heartImg) {
+              const bsz = 16 * (this.zoom / 2);
+              const bob = Math.sin(Date.now() / 200) * 3;
+              ctx.drawImage(
+                heartImg,
+                screen.sx + cellSize / 2 - bsz / 2,
+                screen.sy - 18 + bob,
+                bsz,
+                bsz,
+              );
+            }
+          }
         },
       });
     }
@@ -1603,19 +1994,6 @@ export class SurvivalRenderer {
         yOrder: npc.position.y + 0.5,
         draw: () => {
           const screen = worldToScreen(npc.position.x, npc.position.y);
-          // Ground soft elliptical drop shadow
-          ctx.fillStyle = "rgba(15, 23, 42, 0.32)";
-          ctx.beginPath();
-          ctx.ellipse(
-            screen.sx + cellSize / 2,
-            screen.sy + cellSize * 0.82,
-            cellSize * 0.36,
-            cellSize * 0.17,
-            0,
-            0,
-            Math.PI * 2,
-          );
-          ctx.fill();
 
           this.lifeformRenderer.renderEntity(
             ctx,
@@ -1631,7 +2009,7 @@ export class SurvivalRenderer {
           const title = npc.customTitle || "Villager";
           ctx.font = "bold 9px sans-serif";
           const tw = ctx.measureText(title).width;
-          const boxW = Math.max(48, tw + 10);
+          const boxW = Math.max(48, tw + 12);
           ctx.fillStyle = "rgba(0,0,0,0.65)";
           ctx.fillRect(
             screen.sx + cellSize / 2 - boxW / 2,
@@ -1639,28 +2017,51 @@ export class SurvivalRenderer {
             boxW,
             14,
           );
+
           ctx.fillStyle = "#fef08a";
           ctx.textAlign = "center";
           ctx.fillText(title, screen.sx + cellSize / 2, screen.sy - 27);
 
-          // Overhead chat bubble indicator when player is in speaking range
-          const distToPlayer = Math.hypot(
-            engine.player.x - npc.position.x,
-            engine.player.y - npc.position.y,
-          );
-          if (distToPlayer <= 2.2) {
-            const chatImg = this.getSpriteImage("ui_expression_chat");
-            if (chatImg) {
-              const bsz = 18 * (this.zoom / 2);
-              const bob = Math.sin(Date.now() / 250) * 3;
-              ctx.imageSmoothingEnabled = false;
-              ctx.drawImage(
-                chatImg,
-                screen.sx + cellSize / 2 - bsz / 2,
-                screen.sy - 58 + bob,
-                bsz,
-                bsz,
-              );
+          // Sleeping "Zzz" animation
+          if ((npc as any).scheduleState === "SLEEP") {
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillStyle = "#93c5fd";
+            const zBob = (Date.now() / 300) % 3;
+            ctx.fillText("Zzz".slice(0, Math.floor(zBob) + 1), screen.sx + cellSize / 2, screen.sy - 46);
+          } else {
+            // Overhead active expression bubble (love, chat, etc. - no sweat/water droplets)
+            const expr = (npc as any).currentExpression;
+            const exprKey = expr && expr !== "working" ? `ui_expression_${expr}` : null;
+            const distToPlayer = Math.hypot(
+              engine.player.x - npc.position.x,
+              engine.player.y - npc.position.y,
+            );
+            const activeExpr = exprKey || (distToPlayer <= 2.2 ? "ui_expression_chat" : null);
+
+            if (activeExpr) {
+              const exprImg = this.getSpriteImage(activeExpr);
+              if (exprImg) {
+                const bsz = 16 * (this.zoom / 2);
+                const bob = Math.sin(Date.now() / 250) * 3;
+                const bx = screen.sx + cellSize / 2 - bsz / 2;
+                const by = screen.sy - 58 + bob;
+
+                // Speech bubble backdrop pill
+                ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                ctx.strokeStyle = "#334155";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                if (typeof (ctx as any).roundRect === "function") {
+                  (ctx as any).roundRect(bx - 3, by - 3, bsz + 6, bsz + 6, 4);
+                } else {
+                  ctx.rect(bx - 3, by - 3, bsz + 6, bsz + 6);
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(exprImg, bx, by, bsz, bsz);
+              }
             }
           }
         },
@@ -1688,8 +2089,15 @@ export class SurvivalRenderer {
             screen.sy + cellSize / 2,
           );
 
-          // Enemy Health Bar
-          if (enemy.health < enemy.maxHealth && enemy.health > 0) {
+          // Enemy Health Bar or Neutral Trader Label
+          if (enemy.subType === "TRADER" || enemy.subType === "neutral_trader") {
+            ctx.font = "bold 9px sans-serif";
+            ctx.fillStyle = "rgba(0,0,0,0.7)";
+            ctx.fillRect(screen.sx + cellSize / 2 - 45, screen.sy - 22, 90, 14);
+            ctx.fillStyle = "#38bdf8";
+            ctx.textAlign = "center";
+            ctx.fillText("[E] Goblin Trader", screen.sx + cellSize / 2, screen.sy - 12);
+          } else if (enemy.health < enemy.maxHealth && enemy.health > 0) {
             const barW = cellSize * 0.9;
             const barH = 3;
             ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -1806,22 +2214,6 @@ export class SurvivalRenderer {
         const playerCenterX = screen.sx + cellSize / 2;
         const groundY = screen.sy + cellSize / 2;
 
-        // Ground soft elliptical drop shadow (stays pinned on ground while entity jumps)
-        const hopY = p.hopOffset || 0;
-        const shadowScale = Math.max(0.3, 1.0 - hopY * 0.45);
-        ctx.fillStyle = `rgba(15, 23, 42, ${0.35 * shadowScale})`;
-        ctx.beginPath();
-        ctx.ellipse(
-          playerCenterX,
-          groundY + cellSize * 0.35,
-          (cellSize * 0.36) * shadowScale,
-          (cellSize * 0.17) * shadowScale,
-          0,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-
         // RENDER CHARACTER BODY WITH INTEGRATED TOOL ANIMATION
         const playerEntity: any = {
           position: { x: p.x, y: p.y },
@@ -1858,6 +2250,26 @@ export class SurvivalRenderer {
               ].includes(action),
           },
         };
+
+        if ((p as any).isMountedBoat) {
+          const boatImg = this.getSpriteImage("coracle");
+          if (boatImg) {
+            const bob = Math.sin(Date.now() / 350) * 2;
+            const bw = cellSize * 2.0;
+            const bh = cellSize * 1.5;
+            ctx.drawImage(
+              boatImg,
+              0,
+              0,
+              48,
+              37,
+              playerCenterX - bw / 2,
+              groundY - bh / 2 + bob + cellSize * 0.15,
+              bw,
+              bh,
+            );
+          }
+        }
 
         this.lifeformRenderer.renderEntity(
           ctx,
@@ -1897,22 +2309,6 @@ export class SurvivalRenderer {
             const groundY = screen.sy + cellSize / 2;
             const isFacingLeft =
               rp.facing === "LEFT" || rp.direction === "LEFT";
-
-            // Ground soft elliptical drop shadow (stays pinned on ground while jumping)
-            const rpHopY = rp.hopOffset || 0;
-            const rpShadowScale = Math.max(0.3, 1.0 - rpHopY * 0.45);
-            ctx.fillStyle = `rgba(15, 23, 42, ${0.35 * rpShadowScale})`;
-            ctx.beginPath();
-            ctx.ellipse(
-              playerCenterX,
-              groundY + cellSize * 0.35,
-              (cellSize * 0.36) * rpShadowScale,
-              (cellSize * 0.17) * rpShadowScale,
-              0,
-              0,
-              Math.PI * 2,
-            );
-            ctx.fill();
 
             // Determine active held tool/item
             const rpItem = rp.activeHeldItem || (rp.hotbar ? rp.hotbar[rp.activeHotbarIndex || 0]?.item : null);
@@ -2215,8 +2611,9 @@ export class SurvivalRenderer {
         }
 
         // Cutouts for remote players
-        if (engine.remotePlayers) {
-          for (const [, rp] of engine.remotePlayers) {
+        if (engine.remotePlayers && Array.isArray(engine.remotePlayers)) {
+          for (const rp of engine.remotePlayers) {
+            if (!rp || typeof rp.x !== "number" || typeof rp.y !== "number") continue;
             const rScreen = worldToScreen(rp.x, rp.y);
             const rRadius = 90 * (this.zoom / 2);
             const rGlow = lctx.createRadialGradient(
@@ -2290,6 +2687,239 @@ export class SurvivalRenderer {
       ctx.strokeStyle = engine.isBuildPreviewValid ? "#22c55e" : "#ef4444";
       ctx.lineWidth = 2;
       ctx.strokeRect(screen.sx, screen.sy, cellSize, cellSize);
+      ctx.restore();
+    }
+
+    // ── LAYER 9b: MIDNIGHT INVASION ROLLING FOG ─────────────────
+    if (engine.worldTime.hour === 0 || engine.worldTime.hour === 23) {
+      ctx.save();
+      const fogSec = Date.now() / 1000;
+      for (let fi = 0; fi < 5; fi++) {
+        const fogX = ((fi * 220 + fogSec * 18) % (canvas.width + 300)) - 150;
+        const fogY = (fi * 110 + Math.sin(fogSec * 0.8 + fi) * 40) % canvas.height;
+        const fogGrad = ctx.createRadialGradient(fogX, fogY, 20, fogX, fogY, 180);
+        fogGrad.addColorStop(0, "rgba(99, 102, 241, 0.14)");
+        fogGrad.addColorStop(0.6, "rgba(59, 130, 246, 0.08)");
+        fogGrad.addColorStop(1, "rgba(30, 27, 75, 0)");
+        ctx.fillStyle = fogGrad;
+        ctx.beginPath();
+        ctx.arc(fogX, fogY, 180, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ── LAYER 10: QUEST & ADVENTURE JOURNAL MODAL ([J] Key) ─────
+    if ((engine as any).showJournal) {
+      ctx.save();
+      // Dark backdrop
+      ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const modalW = Math.min(680, canvas.width - 40);
+      const modalH = Math.min(460, canvas.height - 40);
+      const mx = (canvas.width - modalW) / 2;
+      const my = (canvas.height - modalH) / 2;
+
+      // Outer diary panel frame
+      ctx.fillStyle = "#fffbeb";
+      ctx.strokeStyle = "#78350f";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(mx, my, modalW, modalH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner ornate header banner
+      ctx.fillStyle = "#78350f";
+      ctx.beginPath();
+      ctx.roundRect(mx + 8, my + 8, modalW - 16, 44, 8);
+      ctx.fill();
+
+      ctx.font = "bold 18px 'Outfit', sans-serif";
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "center";
+      ctx.fillText("📖 ADVENTURE JOURNAL & GUILD LOG", mx + modalW / 2, my + 36);
+
+      // Tab bar
+      const activeTab = (engine as any).activeJournalTab || "ALMANAC";
+      const tabs = [
+        { id: "ALMANAC", label: "🌱 Farmer's Almanac" },
+        { id: "ANGLER", label: "🎣 Angler's Log" },
+        { id: "QUESTS", label: "📜 Village Quests" },
+      ];
+
+      const tabW = (modalW - 32) / tabs.length;
+      tabs.forEach((tab, ti) => {
+        const tx = mx + 16 + ti * tabW;
+        const ty = my + 60;
+        const isSelected = activeTab === tab.id;
+        ctx.fillStyle = isSelected ? "#fef3c7" : "#e2e8f0";
+        ctx.strokeStyle = isSelected ? "#b45309" : "#94a3b8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(tx + 2, ty, tabW - 4, 30, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = isSelected ? "bold 13px sans-serif" : "12px sans-serif";
+        ctx.fillStyle = isSelected ? "#78350f" : "#475569";
+        ctx.textAlign = "center";
+        ctx.fillText(tab.label, tx + tabW / 2, ty + 20);
+      });
+
+      // Tab Content Area
+      const contentY = my + 104;
+      if (activeTab === "ALMANAC") {
+        // Full 11 crops list with seasonal badge & discovery
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = "#78350f";
+        ctx.textAlign = "left";
+        ctx.fillText(`Current Season: ${(engine.worldTime as any).season || "Spring"} (Day ${engine.worldTime.dayNumber})`, mx + 24, contentY + 14);
+
+        const CROPS_LIST = [
+          { name: "Cabbage", season: "Spring", icon: "cabbage_05" },
+          { name: "Carrot", season: "Spring", icon: "carrot_05" },
+          { name: "Parsnip", season: "Spring", icon: "parsnip_05" },
+          { name: "Radish", season: "Spring", icon: "radish_05" },
+          { name: "Wheat", season: "Summer", icon: "wheat_05" },
+          { name: "Sunflower", season: "Summer", icon: "sunflower_05" },
+          { name: "Cauliflower", season: "Summer", icon: "cauliflower_05" },
+          { name: "Pumpkin", season: "Autumn", icon: "pumpkin_05" },
+          { name: "Beetroot", season: "Autumn", icon: "beetroot_05" },
+          { name: "Kale", season: "Autumn", icon: "kale_05" },
+          { name: "Potato", season: "Autumn", icon: "potato_05" },
+        ];
+
+        CROPS_LIST.forEach((c, idx) => {
+          const col = idx % 4;
+          const row = Math.floor(idx / 4);
+          const cx = mx + 24 + col * ((modalW - 48) / 4);
+          const cy = contentY + 30 + row * 90;
+
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(cx, cy, (modalW - 72) / 4, 80, 8);
+          ctx.fill();
+          ctx.stroke();
+
+          // Crop icon
+          const cropImg = this.getCropImage(c.icon);
+          if (cropImg) {
+            ctx.drawImage(cropImg, cx + 8, cy + 12, 32, 32);
+          }
+
+          ctx.font = "bold 12px sans-serif";
+          ctx.fillStyle = "#0f172a";
+          ctx.textAlign = "left";
+          ctx.fillText(c.name, cx + 46, cy + 24);
+
+          ctx.font = "10px sans-serif";
+          ctx.fillStyle = c.season === "Spring" ? "#16a34a" : c.season === "Summer" ? "#d97706" : "#b45309";
+          ctx.fillText(c.season, cx + 46, cy + 40);
+
+          ctx.fillStyle = "#64748b";
+          ctx.fillText("✓ Recorded", cx + 46, cy + 56);
+        });
+      } else if (activeTab === "ANGLER") {
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = "#78350f";
+        ctx.textAlign = "left";
+        ctx.fillText("Freshwater & Deep Ocean Species Log", mx + 24, contentY + 14);
+
+        const FISH_LIST = [
+          { name: "Sunnyside Bass", rarity: "Common", weight: "2.4 kg", habitat: "Village Pond" },
+          { name: "River Salmon", rarity: "Uncommon", weight: "4.1 kg", habitat: "Swift Rivers" },
+          { name: "Rainbow Trout", rarity: "Uncommon", weight: "3.2 kg", habitat: "Clear Lakes" },
+          { name: "Golden Carp", rarity: "Rare", weight: "5.8 kg", habitat: "Deep Lakes" },
+          { name: "Midnight Catfish", rarity: "Rare", weight: "7.0 kg", habitat: "Night Waters" },
+          { name: "Great Reef Shark", rarity: "Legendary", weight: "42.5 kg", habitat: "Deep Ocean" },
+        ];
+
+        FISH_LIST.forEach((f, idx) => {
+          const col = idx % 2;
+          const row = Math.floor(idx / 2);
+          const fx = mx + 24 + col * ((modalW - 48) / 2);
+          const fy = contentY + 30 + row * 95;
+
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(fx, fy, (modalW - 64) / 2, 85, 8);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = "bold 24px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("🐟", fx + 32, fy + 48);
+
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillStyle = "#0f172a";
+          ctx.textAlign = "left";
+          ctx.fillText(f.name, fx + 60, fy + 26);
+
+          ctx.font = "11px sans-serif";
+          ctx.fillStyle = f.rarity === "Legendary" ? "#e11d48" : f.rarity === "Rare" ? "#9333ea" : "#2563eb";
+          ctx.fillText(`${f.rarity} • Max: ${f.weight}`, fx + 60, fy + 46);
+
+          ctx.fillStyle = "#64748b";
+          ctx.fillText(`Habitat: ${f.habitat}`, fx + 60, fy + 64);
+        });
+      } else {
+        // Quests tab
+        ctx.font = "bold 13px sans-serif";
+        ctx.fillStyle = "#78350f";
+        ctx.textAlign = "left";
+        ctx.fillText("Village Notice Board Tasks (Rewards Gold Coins)", mx + 24, contentY + 14);
+
+        const QUESTS_LIST = [
+          { title: "Milling for the Outpost", desc: "Deliver 10 Wheat to the Windmill to grind into flour.", reward: "25 Coins", status: "Active" },
+          { title: "Bakery Warmth", desc: "Bake 2 Fresh Loaves of Bread in the Stone Oven.", reward: "30 Coins", status: "Active" },
+          { title: "Midnight Vanguard", desc: "Defend the settlement against 3 midnight invading skeletons.", reward: "50 Coins", status: "Active" },
+          { title: "Ocean Wayfarer", desc: "Board a Coracle Boat and explore an offshore island.", reward: "40 Coins", status: "Completed" },
+        ];
+
+        QUESTS_LIST.forEach((q, idx) => {
+          const qy = contentY + 30 + idx * 72;
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(mx + 24, qy, modalW - 48, 64, 8);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillStyle = "#0f172a";
+          ctx.textAlign = "left";
+          ctx.fillText(q.title, mx + 40, qy + 24);
+
+          ctx.font = "11px sans-serif";
+          ctx.fillStyle = "#64748b";
+          ctx.fillText(q.desc, mx + 40, qy + 44);
+
+          // Reward & status badge
+          ctx.fillStyle = q.status === "Completed" ? "#dcfce7" : "#fef3c7";
+          ctx.beginPath();
+          ctx.roundRect(mx + modalW - 160, qy + 16, 120, 32, 6);
+          ctx.fill();
+
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillStyle = q.status === "Completed" ? "#16a34a" : "#b45309";
+          ctx.textAlign = "center";
+          ctx.fillText(`🪙 ${q.reward} [${q.status}]`, mx + modalW - 100, qy + 36);
+        });
+      }
+
+      // Footer
+      ctx.font = "11px sans-serif";
+      ctx.fillStyle = "#78350f";
+      ctx.textAlign = "center";
+      ctx.fillText("Press [J] or [ESC] to close journal • Click tabs 1-3 to switch categories", mx + modalW / 2, my + modalH - 14);
+
       ctx.restore();
     }
   }
