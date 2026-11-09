@@ -122,7 +122,7 @@ export class NetworkClient {
   public readonly interpolator = new EntityInterpolator();
   private socket: Socket;
   private peers = new Map<string, RTCPeerConnection>();
-  private roomCode = "";
+  public roomCode = "";
   private lastJoin: { event: "host-world" | "join-world"; payload: Record<string, string> } | null = null;
   private identity = { name: "Explorer", hairstyle: "mophair" };
   private shouldResume = false;
@@ -141,7 +141,8 @@ export class NetworkClient {
     onSyncEntities?: (entities: any) => void;
   }) {
     this.onSnapshot = options.onSnapshot; this.onJoined = options.onJoined; this.onStatus = options.onStatus; this.onAction = options.onAction; this.onSyncEntities = options.onSyncEntities;
-    const endpoint = (import.meta as any).env?.VITE_SERVER_URL || `${location.protocol}//${location.hostname}:3001`;
+    const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const endpoint = (import.meta as any).env?.VITE_SERVER_URL || (isLocalhost ? `${location.protocol}//${location.hostname}:3001` : window.location.origin);
     this.socket = io(endpoint, { autoConnect: false, transports: ["websocket", "polling"] });
     this.socket.on("connect", () => {
       this.connectionState = "CONNECTED";

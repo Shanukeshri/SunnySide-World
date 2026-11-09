@@ -54,6 +54,20 @@ export class VillageInfraGenerator {
    * Connects each house door to the nearest road located strictly south of it.
    */
   public connectHousesToRoads(): GridCoord[] {
+    const pathCrossesWater = (fx: number, fy: number, tx: number, ty: number): boolean => {
+      let x = fx;
+      let y = fy;
+      while (y < ty) {
+        y++;
+        if (this.grid[y]?.[x]?.isWater || this.grid[y]?.[x]?.terrain === 'sand_tile_01') return true;
+      }
+      while (x !== tx) {
+        x += Math.sign(tx - x);
+        if (this.grid[y]?.[x]?.isWater || this.grid[y]?.[x]?.terrain === 'sand_tile_01') return true;
+      }
+      return false;
+    };
+
     for (const house of this.houses) {
       if (!house.door) continue;
       const startX = house.door.x;
@@ -65,7 +79,7 @@ export class VillageInfraGenerator {
       for (const road of this.roadCells) {
         if (road.y > startY) {
           const dist = Math.abs(road.x - startX) + (road.y - startY);
-          if (dist < minDistance) {
+          if (dist < minDistance && !pathCrossesWater(startX, startY + 1, road.x, road.y)) {
             minDistance = dist;
             closestRoad = road;
           }
@@ -75,7 +89,7 @@ export class VillageInfraGenerator {
       if (!closestRoad) {
         for (const road of this.roadCells) {
           const dist = Math.abs(road.x - startX) + Math.abs(road.y - startY);
-          if (dist < minDistance) {
+          if (dist < minDistance && !pathCrossesWater(startX, startY + 1, road.x, road.y)) {
             minDistance = dist;
             closestRoad = road;
           }
@@ -92,8 +106,13 @@ export class VillageInfraGenerator {
           break;
         }
 
+        // Stop immediately if hitting water or sand shoreline; never carve roads across water
+        if (this.grid[cy][cx].isWater || this.grid[cy][cx].terrain === 'sand_tile_01') {
+          break;
+        }
+
         if (cy >= 0 && cy < this.height && cx >= 0 && cx < this.width) {
-          if (!this.grid[cy][cx].isWater && !this.grid[cy][cx].blocked) {
+          if (!this.grid[cy][cx].isWater && this.grid[cy][cx].terrain !== 'sand_tile_01' && !this.grid[cy][cx].blocked) {
             this.grid[cy][cx].terrain = this.getRandomPathTile();
             this.grid[cy][cx].isRoad = true;
             this.grid[cy][cx].isRoadReserved = true;

@@ -25,6 +25,8 @@ import {
   ResourceNode,
   DroppedItem,
   PlacedStructure,
+  BlockMaterial,
+  Placed3DBlock,
   EnemyEntity,
   FloatingText,
   WoodChipParticle,
@@ -966,6 +968,127 @@ export const ITEM_CATALOG: Record<ItemId, ItemDef> = {
     maxStack: 5,
     isPlaceable: true,
   },
+  roof_terracotta: {
+    id: "roof_terracotta",
+    name: "Terracotta Clay Roof",
+    category: "building",
+    description: "Overhanging clay tile roof providing warm house protection.",
+    icon: "🏠",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 50,
+    isPlaceable: true,
+  },
+  farm_soil: {
+    id: "farm_soil",
+    name: "Tilled Farmland Plot",
+    category: "building",
+    description: "Rich fertile tilled soil for planting seeds, watering, and growing crops.",
+    icon: "🪴",
+    spritePath: "/tilled_soil.png",
+    maxStack: 99,
+    isPlaceable: true,
+  },
+  farm_fence: {
+    id: "farm_fence",
+    name: "Farm Perimeter Fence",
+    category: "building",
+    description: "Wooden post-and-rail fence that automatically connects to enclose fields and animals.",
+    icon: "🪵",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 99,
+    isPlaceable: true,
+  },
+  farm_gate: {
+    id: "farm_gate",
+    name: "Farm Fence Gate",
+    category: "building",
+    description: "Hinged wooden gate that swings open and closed with a click.",
+    icon: "🚪",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/indicator.png",
+    maxStack: 20,
+    isPlaceable: true,
+  },
+  water_well: {
+    id: "water_well",
+    name: "Stone Water Well",
+    category: "building",
+    description: "Fresh groundwater well to replenish watering cans and buckets.",
+    icon: "🪣",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 5,
+    isPlaceable: true,
+  },
+  wood_bridge: {
+    id: "wood_bridge",
+    name: "Wooden Bridge Pier",
+    category: "building",
+    description: "Sturdy wooden walkway spanning over water bodies to link lands.",
+    icon: "🌉",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 99,
+    isPlaceable: true,
+  },
+  // ── Placeable 3D Volumetric Blocks ──
+  block_stone: {
+    id: "block_stone",
+    name: "Cobblestone 3D Block",
+    category: "building",
+    description: "Volumetric 3D stone block. Stackable up to 4 tiers for castles, towers, and ramparts.",
+    icon: "🧱",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
+  block_wood: {
+    id: "block_wood",
+    name: "Timber 3D Block",
+    category: "building",
+    description: "Volumetric 3D timber plank block. Stackable for elevated wooden walkways and structures.",
+    icon: "🪵",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/wood.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
+  block_dirt: {
+    id: "block_dirt",
+    name: "Earth 3D Block",
+    category: "building",
+    description: "Volumetric 3D earth block with lush grass crown. Stackable for terraforming and ramparts.",
+    icon: "🌱",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/seeds.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
+  block_brick: {
+    id: "block_brick",
+    name: "Terracotta Brick 3D Block",
+    category: "building",
+    description: "Volumetric 3D mortared brick block for fortified masonry structures.",
+    icon: "🧱",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_01.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
+  block_sandstone: {
+    id: "block_sandstone",
+    name: "Sandstone 3D Block",
+    category: "building",
+    description: "Volumetric 3D stratified sandstone block for warm desert architecture.",
+    icon: "🪨",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Elements/Crops/rock.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
+  block_glass: {
+    id: "block_glass",
+    name: "Reinforced Glass 3D Block",
+    category: "building",
+    description: "Volumetric 3D translucent glass block with frosted framed edges.",
+    icon: "🪟",
+    spritePath: "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/UI/itemdisc_02.png",
+    maxStack: 64,
+    isPlaceable: true,
+  },
   gold_coin: {
     id: "gold_coin",
     name: "Realm Gold Coin",
@@ -1576,6 +1699,119 @@ export const CRAFTING_RECIPES: Recipe[] = [
     requiresStation: "workbench",
     category: "survival",
   },
+  {
+    id: "roof_terracotta",
+    name: "Terracotta Clay Roof (x2)",
+    result: "roof_terracotta",
+    count: 2,
+    ingredients: [{ item: "stone", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "farm_soil",
+    name: "Tilled Farmland Plot (x4)",
+    result: "farm_soil",
+    count: 4,
+    ingredients: [
+      { item: "wood", count: 1 },
+      { item: "seeds", count: 1 },
+    ],
+    category: "building",
+  },
+  {
+    id: "farm_fence",
+    name: "Farm Perimeter Fence (x4)",
+    result: "farm_fence",
+    count: 4,
+    ingredients: [
+      { item: "wood", count: 2 },
+      { item: "stick", count: 2 },
+    ],
+    category: "building",
+  },
+  {
+    id: "farm_gate",
+    name: "Farm Fence Gate",
+    result: "farm_gate",
+    count: 1,
+    ingredients: [
+      { item: "wood", count: 2 },
+      { item: "stick", count: 2 },
+    ],
+    category: "building",
+  },
+  {
+    id: "water_well",
+    name: "Stone Water Well",
+    result: "water_well",
+    count: 1,
+    ingredients: [
+      { item: "stone", count: 8 },
+      { item: "wood", count: 2 },
+    ],
+    requiresStation: "workbench",
+    category: "building",
+  },
+  {
+    id: "wood_bridge",
+    name: "Wooden Bridge Pier (x2)",
+    result: "wood_bridge",
+    count: 2,
+    ingredients: [{ item: "wood", count: 2 }],
+    category: "building",
+  },
+  // ── 3D Volumetric Blocks Crafting Recipes ──
+  {
+    id: "craft_block_stone",
+    name: "Cobblestone 3D Block (x2)",
+    result: "block_stone",
+    count: 2,
+    ingredients: [{ item: "stone", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "craft_block_wood",
+    name: "Timber 3D Block (x2)",
+    result: "block_wood",
+    count: 2,
+    ingredients: [{ item: "wood", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "craft_block_dirt",
+    name: "Earth 3D Block (x2)",
+    result: "block_dirt",
+    count: 2,
+    ingredients: [
+      { item: "seeds", count: 2 },
+      { item: "fiber", count: 1 },
+    ],
+    category: "building",
+  },
+  {
+    id: "craft_block_brick",
+    name: "Terracotta Brick 3D Block (x2)",
+    result: "block_brick",
+    count: 2,
+    ingredients: [{ item: "stone", count: 3 }],
+    category: "building",
+  },
+  {
+    id: "craft_block_sandstone",
+    name: "Sandstone 3D Block (x2)",
+    result: "block_sandstone",
+    count: 2,
+    ingredients: [{ item: "stone", count: 2 }],
+    category: "building",
+  },
+  {
+    id: "craft_block_glass",
+    name: "Reinforced Glass 3D Block (x2)",
+    result: "block_glass",
+    count: 2,
+    ingredients: [{ item: "stone", count: 1 }],
+    category: "building",
+  },
 ];
 
 export class SurvivalEngine {
@@ -1606,8 +1842,12 @@ export class SurvivalEngine {
     rollTimer: number;
     isSwimming: boolean;
     doingTimer: number;
-    fishingState: "NONE" | "CASTING" | "REELING" | "CAUGHT";
+    fishingState: "NONE" | "CASTING" | "WAITING" | "HOOKED" | "REELING" | "CAUGHT";
     fishingTimer: number;
+    fishingWaitTimer?: number;
+    hookedTimer?: number;
+    fishingTarget?: { x: number; y: number };
+    swingDuration?: number;
     isBlocking: boolean;
     isMountedBoat?: boolean;
     mountedBoatId?: string | number;
@@ -1624,6 +1864,8 @@ export class SurvivalEngine {
   public enemies: EnemyEntity[] = [];
   public droppedItems: DroppedItem[] = [];
   public placedStructures: PlacedStructure[] = [];
+  public placedBlocks: Placed3DBlock[] = [];
+  public blockMap: Map<string, Placed3DBlock> = new Map();
   public particles: HeartParticle[] = [];
   public woodChips: WoodChipParticle[] = [];
   public footstepParticles: FootstepVFX[] = [];
@@ -1636,6 +1878,7 @@ export class SurvivalEngine {
   // Juicy Micro-Feel & Screen Shake
   public footstepTimer: number = 0;
   public screenShakeTimer: number = 0;
+  public screenShakeDuration: number = 0.16;
   public screenShakeIntensity: number = 0;
   public screenShakeX: number = 0;
   public screenShakeY: number = 0;
@@ -1721,6 +1964,7 @@ export class SurvivalEngine {
   public buildPiece: ItemId | null = null;
   public buildPreviewX = 0;
   public buildPreviewY = 0;
+  public buildPreviewZ = 0;
   public isBuildPreviewValid = false;
 
   // NPC Dialogue / Barter State
@@ -1862,7 +2106,23 @@ export class SurvivalEngine {
       durability: 30,
       maxDurability: 30,
     };
-    this.hotbar[7] = { item: "berries", count: 10 };
+    this.hotbar[7] = { item: "block_stone", count: 32 };
+
+    // Starter house & farm building materials in inventory
+    this.inventory[0] = { item: "wood_wall", count: 32 };
+    this.inventory[1] = { item: "wood_floor", count: 32 };
+    this.inventory[2] = { item: "wood_door", count: 4 };
+    this.inventory[3] = { item: "roof_wood", count: 20 };
+    this.inventory[4] = { item: "farm_soil", count: 32 };
+    this.inventory[5] = { item: "farm_fence", count: 32 };
+    this.inventory[6] = { item: "farm_gate", count: 4 };
+    this.inventory[7] = { item: "seeds", count: 20 };
+    this.inventory[8] = { item: "block_wood", count: 32 };
+    this.inventory[9] = { item: "block_brick", count: 16 };
+    this.inventory[10] = { item: "bed", count: 2 };
+    this.inventory[11] = { item: "chest", count: 2 };
+    this.inventory[12] = { item: "wood_bridge", count: 16 };
+    this.inventory[13] = { item: "berries", count: 10 };
   }
 
   /**
@@ -2328,10 +2588,20 @@ export class SurvivalEngine {
           Math.floor(this.player.x + 0.5),
           Math.floor(this.player.y + 0.65),
         );
+        const curTx = Math.floor(this.player.x + 0.5);
+        const curTy = Math.floor(this.player.y + 0.65);
+        const isCurBridge =
+          curTile.isBridge ||
+          curTile.terrain?.startsWith("bridge_") ||
+          this.placedStructures.some(
+            (s) => s.type === "wood_bridge" && s.x === curTx && s.y === curTy,
+          );
+
         let surface: "grass" | "dirt" | "sand" | "water" | "wood" = "grass";
-        if (this.player.isSwimming || curTile.isWater) {
+        if (this.player.isSwimming || (curTile.isWater && !isCurBridge)) {
           surface = "water";
         } else if (
+          isCurBridge ||
           this.placedStructures.some(
             (s) =>
               s.type === "wood_floor" &&
@@ -2439,8 +2709,8 @@ export class SurvivalEngine {
   public canMoveTo(x: number, y: number): boolean {
     const footX = x + 0.5;
     const footY = y + 0.65;
-    const rx = 0.35;
-    const ry = 0.25;
+    const rx = 0.28;
+    const ry = 0.20;
 
     // Check 4 corners + center foot point + 4 edge midpoints for robust diagonal collision.
     // This prevents corner-cutting through diagonally adjacent water/blocked tiles.
@@ -2459,8 +2729,20 @@ export class SurvivalEngine {
       { x: footX + rx, y: footY }, // right-center
     ];
     for (const p of pts) {
-      const tile = this.worldManager.getTile(Math.floor(p.x), Math.floor(p.y));
-      if (tile.isWater || tile.isBlocked) return false;
+      const tx = Math.floor(p.x);
+      const ty = Math.floor(p.y);
+      const tile = this.worldManager.getTile(tx, ty);
+      const isBridge =
+        tile.isBridge ||
+        tile.terrain?.startsWith("bridge_") ||
+        this.placedStructures.some(
+          (s) => s.type === "wood_bridge" && s.x === tx && s.y === ty,
+        );
+
+      // Water blocks movement UNLESS there is a wooden bridge spanning this tile
+      if (tile.isWater && !isBridge) return false;
+      // Blocked tile stops movement UNLESS it's a bridge marked unblocked
+      if (tile.isBlocked && !isBridge) return false;
     }
     if (this.isBlockedByStructure(footX, footY)) return false;
     if (this.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
@@ -2493,9 +2775,15 @@ export class SurvivalEngine {
     for (const struct of this.placedStructures) {
       const isSolid =
         struct.type === "wood_wall" ||
+        struct.type === "stone_wall" ||
+        struct.type === "wall_window" ||
+        struct.type === "farm_fence" ||
         struct.type === "chest" ||
         struct.type === "workbench" ||
-        (struct.type === "wood_door" && !struct.isOpen);
+        struct.type === "water_well" ||
+        struct.type === "stone_oven" ||
+        struct.type === "windmill" ||
+        ((struct.type === "wood_door" || struct.type === "farm_gate") && !struct.isOpen);
       if (isSolid) {
         const sx = struct.x + 0.5;
         const sy = struct.y + 0.5;
@@ -2504,6 +2792,18 @@ export class SurvivalEngine {
         }
       }
     }
+
+    // Placed 3D Blocks at ground tier (Z = 0)
+    const gx = Math.round(footX - 0.5);
+    const gy = Math.round(footY - 0.5);
+    if (this.blockMap.has(`${gx},${gy},0`)) {
+      const sx = gx + 0.5;
+      const sy = gy + 0.5;
+      if (Math.abs(footX - sx) < 0.62 && Math.abs(footY - sy) < 0.62) {
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -2766,6 +3066,61 @@ export class SurvivalEngine {
     this.screenShakeTimer = 0.16;
     this.screenShakeIntensity = intensity;
     this.hitStopTimer = hitStopSeconds;
+  }
+
+  /**
+   * Triggers customized tool-specific camera shake with distinctive weights and feels.
+   */
+  public triggerToolImpactShake(toolId: string = "", targetType?: string) {
+    let intensity = 1.5;
+    let duration = 0.14;
+
+    if (toolId.includes("hammer")) {
+      intensity = 3.8;
+      duration = 0.22;
+    } else if (toolId.includes("pickaxe")) {
+      intensity = 3.2;
+      duration = 0.18;
+    } else if (toolId.includes("axe")) {
+      intensity = 2.8;
+      duration = 0.15;
+    } else if (toolId.includes("sword")) {
+      intensity = 2.2;
+      duration = 0.12;
+    } else if (toolId.includes("shovel")) {
+      intensity = 1.8;
+      duration = 0.14;
+    } else if (toolId === "bare_hands" || !toolId) {
+      intensity = 1.2;
+      duration = 0.10;
+    }
+
+    if (targetType === "block") {
+      intensity *= 1.2;
+    }
+
+    this.screenShakeIntensity = intensity;
+    this.screenShakeDuration = duration;
+    this.screenShakeTimer = duration;
+    this.triggerImpactJuice(intensity, 0.03);
+  }
+
+  /**
+   * Hits a village NPC, dealing damage, triggering retaliation AI and floating text.
+   */
+  public hitNPC(
+    npcId: number | string,
+    damage: number,
+    attackerX: number,
+    attackerY: number,
+    isRemote = false,
+  ): boolean {
+    const npc = this.npcs.find((n) => n.id === npcId);
+    if (!npc) return false;
+    npc.onDamaged(damage, attackerX, attackerY, "player", isRemote ? "remote" : "local");
+    this.addFloatingText(`-${damage}`, npc.position.x, npc.position.y - 0.6, "#ef4444");
+    this.triggerToolImpactShake(this.getActiveItemSlot()?.item || "iron_sword", "entity");
+    return true;
   }
 
   /**
@@ -3283,7 +3638,13 @@ export class SurvivalEngine {
     if (struct.health <= 0) {
       this.placedStructures.splice(idx, 1);
       const tile = this.worldManager.getTile(tileX, tileY);
-      tile.isBlocked = false;
+      if (struct.type === "wood_bridge") {
+        tile.isBridge = false;
+        tile.terrain = "water_tile_01";
+        tile.isBlocked = true;
+      } else {
+        tile.isBlocked = false;
+      }
       GameAudio.playHurt();
       this.addFloatingText("Dismantled!", tileX + 0.5, tileY - 0.5, "#f87171");
       this.spawnDroppedItem(struct.type as ItemId, 1, tileX + 0.5, tileY + 0.5);
@@ -3297,7 +3658,9 @@ export class SurvivalEngine {
   public toggleDoor(tileX: number, tileY: number, isRemote = false): boolean {
     tileX = Math.round(tileX);
     tileY = Math.round(tileY);
-    const struct = this.placedStructures.find((s) => s.x === tileX && s.y === tileY && s.type === "wood_door");
+    const struct = this.placedStructures.find(
+      (s) => s.x === tileX && s.y === tileY && (s.type === "wood_door" || s.type === "farm_gate"),
+    );
     if (!struct) return false;
     struct.isOpen = !struct.isOpen;
     GameAudio.playBuild();
@@ -3560,19 +3923,73 @@ export class SurvivalEngine {
       }
     }
 
-    // 4. Check if clicking on a placed chest, door, or structure
+    // 4. Check if clicking on a placed chest, door, farm soil, or structure
     for (const struct of this.placedStructures) {
-      if (Math.hypot(wx - (struct.x + 0.5), wy - (struct.y + 0.5)) < 1.2) {
+      if (Math.hypot(wx - (struct.x + 0.5), wy - (struct.y + 0.5)) < 1.3) {
         if (struct.type === "chest") {
           this.activeChest = struct;
           return;
-        } else if (struct.type === "wood_door") {
+        } else if (struct.type === "wood_door" || struct.type === "farm_gate") {
           this.toggleDoor(struct.x, struct.y, false);
           return;
+        } else if (struct.type === "bed") {
+          this.worldTime.hour = 6;
+          this.worldTime.minute = 0;
+          this.player.health = this.player.maxHealth;
+          this.player.hunger = Math.min(100, this.player.hunger + 30);
+          this.addFloatingText("Slept peacefully in bed until dawn! [Well Rested]", this.player.x, this.player.y - 1, "#38bdf8");
+          GameAudio.playHeartChime();
+          return;
+        } else if (struct.type === "water_well") {
+          if (activeItem.includes("watering") || activeItem === "bucket") {
+            this.addFloatingText("Refilled fresh well water! 💧", struct.x + 0.5, struct.y - 0.5, "#38bdf8");
+            GameAudio.playBuild();
+            return;
+          }
+        } else if (struct.type === "farm_soil") {
+          if (activeItem && (activeItem === "seeds" || activeItem === "wheat" || activeItem === "cabbage" || activeItem === "carrot" || activeItem === "pumpkin")) {
+            const existingRes = this.worldManager.getResourceAt(struct.x + 0.5, struct.y + 0.5, 0.6);
+            if (!existingRes || existingRes.isDepleted) {
+              this.removeItem(activeItem, 1);
+              const cropSpecies = activeItem === "seeds" ? "wheat" : activeItem;
+              this.worldManager.addResourceToWorld({
+                id: this.worldManager.getResourceId(struct.x, struct.y),
+                type: "crop",
+                x: struct.x,
+                y: struct.y,
+                w: 1,
+                h: 1,
+                health: 5,
+                maxHealth: 5,
+                lootItem: cropSpecies as ItemId,
+                secondaryLoot: "seeds",
+                isDepleted: false,
+              });
+              GameAudio.playRustle();
+              this.emitWoodChips(struct.x + 0.5, struct.y + 0.5, "#22c55e");
+              this.addFloatingText(`Planted ${ITEM_CATALOG[activeItem]?.name || activeItem}! 🌱`, struct.x, struct.y - 0.5, "#22c55e");
+              return;
+            }
+          }
         } else if (activeItem.includes("hammer") || activeItem.includes("axe") || activeItem.includes("pickaxe")) {
           this.hitStructure(struct.x, struct.y, 10, false);
           return;
         }
+      }
+    }
+
+    // 4.5 Check if clicking on a placed 3D block
+    const clickTileX = Math.round(wx);
+    const clickTileY = Math.round(wy);
+    const topBlock = this.getTopBlock(clickTileX, clickTileY);
+    if (topBlock && Math.hypot(this.player.x - (topBlock.x + 0.5), this.player.y - (topBlock.y + 0.5)) <= 5.5) {
+      if (activeItem && (activeItem.includes("hammer") || activeItem.includes("axe") || activeItem.includes("pickaxe") || activeItem.includes("shovel"))) {
+        let power = 10;
+        if (activeItem.includes("pickaxe") && (topBlock.material.includes("stone") || topBlock.material.includes("brick") || topBlock.material.includes("sandstone"))) power = 20;
+        if (activeItem.includes("axe") && topBlock.material.includes("wood")) power = 20;
+        if (activeItem.includes("shovel") && topBlock.material.includes("dirt")) power = 20;
+        this.hit3DBlock(topBlock.x, topBlock.y, topBlock.z, power, false);
+        return;
       }
     }
 
@@ -3980,8 +4397,13 @@ export class SurvivalEngine {
     tileX = Math.round(tileX);
     tileY = Math.round(tileY);
 
-    const existing = this.placedStructures.find((s) => s.x === tileX && s.y === tileY);
+    const isFloorPiece =
+      pieceId === "wood_floor" || pieceId === "stone_floor" || pieceId === "farm_soil";
+    const existing = this.placedStructures.find(
+      (s) => s.x === tileX && s.y === tileY && s.type !== "wood_floor" && s.type !== "stone_floor" && s.type !== "farm_soil",
+    );
     if (existing) return false;
+    if (isFloorPiece && this.placedStructures.some((s) => s.x === tileX && s.y === tileY)) return false;
 
     const tile = this.worldManager.getTile(tileX, tileY);
     const structType = pieceId as PlacedStructure["type"];
@@ -4002,12 +4424,34 @@ export class SurvivalEngine {
     };
 
     this.placedStructures.push(struct);
-    tile.isBlocked =
+
+    const isSolid =
       structType === "wood_wall" ||
+      structType === "stone_wall" ||
+      structType === "wall_window" ||
+      structType === "farm_fence" ||
+      structType === "water_well" ||
       structType === "chest" ||
-      structType === "workbench";
+      structType === "workbench" ||
+      structType === "stone_oven" ||
+      structType === "windmill";
+
+    if (isSolid) {
+      tile.isBlocked = true;
+    } else if (structType === "wood_bridge") {
+      tile.isBlocked = false;
+      tile.isBridge = true;
+      tile.terrain = "bridge_wood";
+    }
+
     GameAudio.playBuild();
-    this.emitWoodChips(tileX + 0.5, tileY + 0.5, "#a16207");
+    const chipColor =
+      structType.includes("stone") || structType.includes("brick") || structType === "water_well"
+        ? "#78716c"
+        : structType.includes("soil")
+        ? "#5b3b1e"
+        : "#a16207";
+    this.emitWoodChips(tileX + 0.5, tileY + 0.5, chipColor);
     this.addFloatingText(
       `Placed ${ITEM_CATALOG[pieceId]?.name || pieceId}`,
       tileX,
@@ -4026,12 +4470,33 @@ export class SurvivalEngine {
     const tileY = Math.round(wy);
 
     const tile = this.worldManager.getTile(tileX, tileY);
-    if (tile.isWater || tile.isBlocked) {
-      this.addFloatingText("Cannot build here!", tileX, tileY, "#ef4444");
-      return false;
+    const hasFloorHere = this.placedStructures.some(
+      (s) =>
+        s.x === tileX &&
+        s.y === tileY &&
+        (s.type === "wood_floor" || s.type === "stone_floor" || s.type === "farm_soil"),
+    );
+
+    if (pieceId === "wood_bridge") {
+      if (!tile.isWater) {
+        this.addFloatingText("Bridges must be built on water!", tileX, tileY, "#ef4444");
+        return false;
+      }
+    } else {
+      if (tile.isWater) {
+        this.addFloatingText("Cannot build on water!", tileX, tileY, "#ef4444");
+        return false;
+      }
+      if (tile.isBlocked && !hasFloorHere) {
+        this.addFloatingText("Cannot build here!", tileX, tileY, "#ef4444");
+        return false;
+      }
     }
 
-    if (!this.hasItem(pieceId, 1)) return false;
+    if (!this.hasItem(pieceId, 1)) {
+      this.addFloatingText("Need item in inventory!", tileX, tileY, "#ef4444");
+      return false;
+    }
 
     this.removeItem(pieceId, 1);
     this.addPlacedStructure(pieceId, tileX, tileY, false);
@@ -4043,6 +4508,186 @@ export class SurvivalEngine {
     });
 
     if (pieceId === "campfire") this.updateQuestProgress("build_campfire", 1);
+
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PLACEABLE 3D BLOCKS (Volumetric Multi-Tier Stacking)
+  // ═══════════════════════════════════════════════════════════════════
+
+  public getBlockAt(x: number, y: number, z: number): Placed3DBlock | undefined {
+    return this.blockMap.get(`${Math.round(x)},${Math.round(y)},${z}`);
+  }
+
+  public getTopBlock(x: number, y: number): Placed3DBlock | null {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    for (let z = 3; z >= 0; z--) {
+      const b = this.blockMap.get(`${rx},${ry},${z}`);
+      if (b) return b;
+    }
+    return null;
+  }
+
+  public canPlaceBlockAt(x: number, y: number, z: number): boolean {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    if (z < 0 || z > 3) return false;
+
+    if (this.blockMap.has(`${rx},${ry},${z}`)) return false;
+
+    const tile = this.worldManager.getTile(rx, ry);
+    if (tile.isWater && !tile.isBridge) return false;
+
+    if (z > 0) {
+      const support = this.blockMap.get(`${rx},${ry},${z - 1}`);
+      if (!support) return false;
+    } else {
+      const hasStructure = this.placedStructures.some((s) => s.x === rx && s.y === ry);
+      if (hasStructure) return false;
+    }
+
+    if (Math.hypot(this.player.x - (rx + 0.5), this.player.y - (ry + 0.5)) > 5.5) {
+      return false;
+    }
+
+    if (z === 0 && Math.hypot(this.player.x - (rx + 0.5), this.player.y - (ry + 0.5)) < 0.7) {
+      return false;
+    }
+
+    return true;
+  }
+
+  public place3DBlock(
+    material: BlockMaterial,
+    x: number,
+    y: number,
+    z: number,
+    isRemote = false,
+  ): boolean {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+
+    if (!isRemote) {
+      if (!this.canPlaceBlockAt(rx, ry, z)) {
+        this.addFloatingText("Cannot place block here!", rx, ry - 0.5, "#ef4444");
+        return false;
+      }
+      if (!this.hasItem(material, 1)) {
+        this.addFloatingText("No blocks in inventory!", rx, ry - 0.5, "#ef4444");
+        return false;
+      }
+      this.removeItem(material, 1);
+    }
+
+    const block: Placed3DBlock = {
+      id: this.nextEntityId++,
+      material,
+      x: rx,
+      y: ry,
+      z,
+      health: 25,
+      maxHealth: 25,
+      shakeTimer: 0,
+    };
+
+    this.placedBlocks.push(block);
+    this.blockMap.set(`${rx},${ry},${z}`, block);
+
+    if (z === 0) {
+      const tile = this.worldManager.getTile(rx, ry);
+      tile.isBlocked = true;
+    }
+
+    GameAudio.playBuild();
+    const particleColor =
+      material.includes("stone") || material.includes("brick")
+        ? "#78716c"
+        : material.includes("wood")
+        ? "#a16207"
+        : "#568735";
+    this.emitWoodChips(rx + 0.5, ry + 0.5, particleColor);
+    this.addFloatingText(
+      `Placed ${ITEM_CATALOG[material]?.name || material} (Tier ${z + 1})`,
+      rx,
+      ry - 0.5 - z * 0.3,
+      "#22c55e",
+    );
+
+    if (!isRemote) {
+      this.onWorldAction?.({
+        type: "place-3d-block",
+        material,
+        x: rx,
+        y: ry,
+        z,
+      });
+    }
+
+    return true;
+  }
+
+  public hit3DBlock(
+    x: number,
+    y: number,
+    z: number,
+    damage: number,
+    isRemote = false,
+  ): boolean {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const block = this.blockMap.get(`${rx},${ry},${z}`);
+    if (!block) return false;
+
+    block.health = Math.max(0, block.health - damage);
+    block.shakeTimer = 0.18;
+    GameAudio.playMine();
+    this.triggerToolImpactShake(this.getActiveItemSlot()?.item || "pickaxe", "block");
+
+    const particleColor =
+      block.material.includes("stone") || block.material.includes("brick")
+        ? "#78716c"
+        : block.material.includes("wood")
+        ? "#a16207"
+        : "#568735";
+    this.emitWoodChips(rx + 0.5, ry + 0.5, particleColor);
+
+    if (block.health <= 0) {
+      this.placedBlocks = this.placedBlocks.filter((b) => b !== block);
+      this.blockMap.delete(`${rx},${ry},${z}`);
+
+      for (let topZ = z + 1; topZ <= 3; topZ++) {
+        const higher = this.blockMap.get(`${rx},${ry},${topZ}`);
+        if (higher) {
+          this.placedBlocks = this.placedBlocks.filter((b) => b !== higher);
+          this.blockMap.delete(`${rx},${ry},${topZ}`);
+          this.spawnDroppedItem(higher.material, 1, rx + 0.5, ry + 0.5);
+        }
+      }
+
+      if (z === 0 && !this.blockMap.has(`${rx},${ry},0`)) {
+        const tile = this.worldManager.getTile(rx, ry);
+        const hasOtherStruct = this.placedStructures.some((s) => s.x === rx && s.y === ry);
+        if (!hasOtherStruct && !tile.isWater) {
+          tile.isBlocked = false;
+        }
+      }
+
+      this.spawnDroppedItem(block.material, 1, rx + 0.5, ry + 0.5);
+      GameAudio.playMine();
+      this.addFloatingText("Block Broken", rx, ry - 0.5 - z * 0.3, "#f59e0b");
+    }
+
+    if (!isRemote) {
+      this.onWorldAction?.({
+        type: "hit-3d-block",
+        x: rx,
+        y: ry,
+        z,
+        damage,
+      });
+    }
 
     return true;
   }

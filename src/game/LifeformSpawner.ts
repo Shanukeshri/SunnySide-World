@@ -239,9 +239,13 @@ export class LifeformSpawner {
         : 0;
       for (let i = 0; i < numWater; i++) roles.push("fisher");
 
+      // Guarantee at least one dedicated village guard
+      roles.push("guard");
+
       // Rest roles deterministically assigned
       const rngRoles = createSeededRNG(this.seed + 99991);
       const possibleRoles = [
+        "guard",
         "blacksmith",
         "builder",
         "guide",

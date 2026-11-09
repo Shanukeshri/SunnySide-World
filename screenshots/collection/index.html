@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunnyside Survival RTS — Visual Screenshot Collection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 28, 45, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+      --accent: #10b981;
+      --gold: #f59e0b;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b0f19 100%);
+      color: var(--text);
+      font-family: 'Outfit', -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 40px 24px;
+    }
+    .header {
+      max-width: 1400px;
+      margin: 0 auto 36px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 16px;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    .categories {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 28px 0;
+    }
+    .cat-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .cat-btn:hover, .cat-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+    }
+    .thumb-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #020617;
+      overflow: hidden;
+    }
+    .thumb-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.35s ease;
+    }
+    .card:hover .thumb-wrapper img {
+      transform: scale(1.03);
+    }
+    .tag {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .card-body {
+      padding: 18px 20px 22px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      flex: 1;
+    }
+    .card-footer {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: #64748b;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 24px;
+    }
+    .lightbox.active {
+      display: flex;
+    }
+    .lightbox-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .lightbox-img {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .lightbox-caption {
+      margin-top: 16px;
+      text-align: center;
+    }
+    .lightbox-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .lightbox-sub {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .close-btn {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      font-size: 32px;
+      color: #fff;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .close-btn:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="badge">📸 Visual Asset Atlas • 26 Screenshots</div>
+    <h1>Game Features Collection</h1>
+    <p class="subtitle">Curated gallery of high-resolution 1080p screenshots showcasing procedural farms, architecture, water features, 3D placeable blocks, wildlife, and atmosphere.</p>
+
+    <div class="categories">
+      <button class="cat-btn active" onclick="filterCat('all', this)">All (26)</button>
+      <button class="cat-btn" onclick="filterCat('Farms', this)">Farms (5)</button><button class="cat-btn" onclick="filterCat('Houses', this)">Houses (6)</button><button class="cat-btn" onclick="filterCat('Water', this)">Water (5)</button><button class="cat-btn" onclick="filterCat('Blocks', this)">Blocks (5)</button><button class="cat-btn" onclick="filterCat('Nature & Life', this)">Nature & Life (5)</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    
+      <div class="card" data-category="Farms" onclick="openLightbox('01_farms_lush_village_crops.png', 'Oakvale Central Vegetable Fields', 'Sprawling organic village farm plot with flourishing crop rows, irrigation paths, and wooden fencing.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Farms</span>
+          <img src="01_farms_lush_village_crops.png" alt="Oakvale Central Vegetable Fields" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Oakvale Central Vegetable Fields</h3>
+          <p class="card-desc">Sprawling organic village farm plot with flourishing crop rows, irrigation paths, and wooden fencing.</p>
+          <div class="card-footer">
+            <span>01_farms_lush_village_crops.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Farms" onclick="openLightbox('02_farms_pumpkin_harvest.png', 'Golden Pumpkin Patch', 'Round orange pumpkins basking in the sunlight surrounded by tilled soil and village roads.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Farms</span>
+          <img src="02_farms_pumpkin_harvest.png" alt="Golden Pumpkin Patch" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Golden Pumpkin Patch</h3>
+          <p class="card-desc">Round orange pumpkins basking in the sunlight surrounded by tilled soil and village roads.</p>
+          <div class="card-footer">
+            <span>02_farms_pumpkin_harvest.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Farms" onclick="openLightbox('03_farms_tending_crop_closeup.png', 'Crop Inspection (Macro Zoom)', 'High-magnification close-up of tilled soil furrows, budding carrots, and player tending the harvest.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Farms</span>
+          <img src="03_farms_tending_crop_closeup.png" alt="Crop Inspection (Macro Zoom)" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Crop Inspection (Macro Zoom)</h3>
+          <p class="card-desc">High-magnification close-up of tilled soil furrows, budding carrots, and player tending the harvest.</p>
+          <div class="card-footer">
+            <span>03_farms_tending_crop_closeup.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Farms" onclick="openLightbox('04_farms_potato_farmstead.png', 'Rustic Potato Farmstead', 'Abundant potato fields bordering country pathways and stone borders.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Farms</span>
+          <img src="04_farms_potato_farmstead.png" alt="Rustic Potato Farmstead" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Rustic Potato Farmstead</h3>
+          <p class="card-desc">Abundant potato fields bordering country pathways and stone borders.</p>
+          <div class="card-footer">
+            <span>04_farms_potato_farmstead.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Farms" onclick="openLightbox('05_farms_golden_sunset_harvest.png', 'Sunset Over Farmland (Panoramic)', 'Panoramic wide-angle view of the agricultural plots washed in warm golden evening sunset tones.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Farms</span>
+          <img src="05_farms_golden_sunset_harvest.png" alt="Sunset Over Farmland (Panoramic)" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Sunset Over Farmland (Panoramic)</h3>
+          <p class="card-desc">Panoramic wide-angle view of the agricultural plots washed in warm golden evening sunset tones.</p>
+          <div class="card-footer">
+            <span>05_farms_golden_sunset_harvest.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('06_houses_noble_manor_facade.png', 'The Grand Noble Manor', 'Majestic multi-gable stone manor featuring slate roof tiles, double chimney stacks, and stone masonry.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="06_houses_noble_manor_facade.png" alt="The Grand Noble Manor" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">The Grand Noble Manor</h3>
+          <p class="card-desc">Majestic multi-gable stone manor featuring slate roof tiles, double chimney stacks, and stone masonry.</p>
+          <div class="card-footer">
+            <span>06_houses_noble_manor_facade.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('07_houses_thatched_cottage_garden.png', 'Thatched Village Cottage', 'Picturesque rural cottage with thatched roof, stone chimney, blooming flower beds, and lantern post.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="07_houses_thatched_cottage_garden.png" alt="Thatched Village Cottage" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Thatched Village Cottage</h3>
+          <p class="card-desc">Picturesque rural cottage with thatched roof, stone chimney, blooming flower beds, and lantern post.</p>
+          <div class="card-footer">
+            <span>07_houses_thatched_cottage_garden.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('08_houses_village_tavern_inn.png', 'The Boar & Barrel Tavern', 'Spacious wooden tavern with roadside terrace, brewing barrels, rustic timber siding, and welcoming entryway.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="08_houses_village_tavern_inn.png" alt="The Boar & Barrel Tavern" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">The Boar & Barrel Tavern</h3>
+          <p class="card-desc">Spacious wooden tavern with roadside terrace, brewing barrels, rustic timber siding, and welcoming entryway.</p>
+          <div class="card-footer">
+            <span>08_houses_village_tavern_inn.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('09_houses_timber_barn.png', 'Timber Barn & Workshop', 'Heavy timber farm building with haylofts, double wide doorways, and crafting facilities.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="09_houses_timber_barn.png" alt="Timber Barn & Workshop" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Timber Barn & Workshop</h3>
+          <p class="card-desc">Heavy timber farm building with haylofts, double wide doorways, and crafting facilities.</p>
+          <div class="card-footer">
+            <span>09_houses_timber_barn.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('10_houses_cutaway_interior_living.png', 'Furnished House Interior (2.5D Cutaway)', 'Walkable 2.5D interior showing stone hearth fireplace, patterned rug, wooden bed, dining table, and lanterns.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="10_houses_cutaway_interior_living.png" alt="Furnished House Interior (2.5D Cutaway)" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Furnished House Interior (2.5D Cutaway)</h3>
+          <p class="card-desc">Walkable 2.5D interior showing stone hearth fireplace, patterned rug, wooden bed, dining table, and lanterns.</p>
+          <div class="card-footer">
+            <span>10_houses_cutaway_interior_living.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Houses" onclick="openLightbox('11_houses_night_village_lanterns.png', 'Nocturnal Village Glow', 'Village houses illuminated in the dark with glowing lantern posts, window light, and warm torchlight ambiance.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Houses</span>
+          <img src="11_houses_night_village_lanterns.png" alt="Nocturnal Village Glow" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Nocturnal Village Glow</h3>
+          <p class="card-desc">Village houses illuminated in the dark with glowing lantern posts, window light, and warm torchlight ambiance.</p>
+          <div class="card-footer">
+            <span>11_houses_night_village_lanterns.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Water" onclick="openLightbox('12_water_wooden_bridge_stilts.png', 'Wooden Bridge with 3D Stilts', 'Authentic timber bridge spanning clear blue water with visible underwater support stilts and drop shadows.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Water</span>
+          <img src="12_water_wooden_bridge_stilts.png" alt="Wooden Bridge with 3D Stilts" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Wooden Bridge with 3D Stilts</h3>
+          <p class="card-desc">Authentic timber bridge spanning clear blue water with visible underwater support stilts and drop shadows.</p>
+          <div class="card-footer">
+            <span>12_water_wooden_bridge_stilts.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Water" onclick="openLightbox('13_water_crossing_perspective.png', 'Crossing the River Bridge', 'Player navigating the wooden bridge over deep water with a fishing rod in hand.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Water</span>
+          <img src="13_water_crossing_perspective.png" alt="Crossing the River Bridge" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Crossing the River Bridge</h3>
+          <p class="card-desc">Player navigating the wooden bridge over deep water with a fishing rod in hand.</p>
+          <div class="card-footer">
+            <span>13_water_crossing_perspective.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Water" onclick="openLightbox('14_water_curved_lake_shoreline.png', 'Curved Shoreline & Water Reeds', 'Natural organic water body with sandy bank transitions, aquatic reeds, and deep blue water ripples.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Water</span>
+          <img src="14_water_curved_lake_shoreline.png" alt="Curved Shoreline & Water Reeds" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Curved Shoreline & Water Reeds</h3>
+          <p class="card-desc">Natural organic water body with sandy bank transitions, aquatic reeds, and deep blue water ripples.</p>
+          <div class="card-footer">
+            <span>14_water_curved_lake_shoreline.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Water" onclick="openLightbox('15_water_lakeside_sunset_reflection.png', 'Sunset Over the Waterway', 'Dusk ambiance reflecting warm orange and violet sky tones across the shimmering river and lake surface.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Water</span>
+          <img src="15_water_lakeside_sunset_reflection.png" alt="Sunset Over the Waterway" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Sunset Over the Waterway</h3>
+          <p class="card-desc">Dusk ambiance reflecting warm orange and violet sky tones across the shimmering river and lake surface.</p>
+          <div class="card-footer">
+            <span>15_water_lakeside_sunset_reflection.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Water" onclick="openLightbox('16_water_deep_river_bend.png', 'Winding River Bend & Sandbanks', 'Lush river embankment winding past the northern boundary of the settlement with pristine water.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Water</span>
+          <img src="16_water_deep_river_bend.png" alt="Winding River Bend & Sandbanks" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Winding River Bend & Sandbanks</h3>
+          <p class="card-desc">Lush river embankment winding past the northern boundary of the settlement with pristine water.</p>
+          <div class="card-footer">
+            <span>16_water_deep_river_bend.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Blocks" onclick="openLightbox('17_blocks_3d_stacked_watchtower.png', '3D Fortress Watchtower', 'Multi-tiered 3D stone and timber bastion demonstrating vertical stacking (Tiers 0-3), directional lighting, and block depth.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Blocks</span>
+          <img src="17_blocks_3d_stacked_watchtower.png" alt="3D Fortress Watchtower" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">3D Fortress Watchtower</h3>
+          <p class="card-desc">Multi-tiered 3D stone and timber bastion demonstrating vertical stacking (Tiers 0-3), directional lighting, and block depth.</p>
+          <div class="card-footer">
+            <span>17_blocks_3d_stacked_watchtower.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Blocks" onclick="openLightbox('18_blocks_material_showcase.png', 'All 6 3D Block Materials Showcase', 'Stepped architectural podium showcasing Stone, Wood, Dirt, Brick, Sandstone, and Glass blocks with isometric depth.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Blocks</span>
+          <img src="18_blocks_material_showcase.png" alt="All 6 3D Block Materials Showcase" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">All 6 3D Block Materials Showcase</h3>
+          <p class="card-desc">Stepped architectural podium showcasing Stone, Wood, Dirt, Brick, Sandstone, and Glass blocks with isometric depth.</p>
+          <div class="card-footer">
+            <span>18_blocks_material_showcase.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Blocks" onclick="openLightbox('19_blocks_construction_preview.png', 'Active 3D Construction & Preview', 'Builder placing structural 3D blocks with the holographic snap preview cursor showing tier placement.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Blocks</span>
+          <img src="19_blocks_construction_preview.png" alt="Active 3D Construction & Preview" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Active 3D Construction & Preview</h3>
+          <p class="card-desc">Builder placing structural 3D blocks with the holographic snap preview cursor showing tier placement.</p>
+          <div class="card-footer">
+            <span>19_blocks_construction_preview.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Blocks" onclick="openLightbox('20_blocks_defensive_wall_gate.png', 'Fortified Perimeter Wall & Ramparts', 'Continuous defensive wall created out of stone & brick blocks protecting the eastern border of the settlement.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Blocks</span>
+          <img src="20_blocks_defensive_wall_gate.png" alt="Fortified Perimeter Wall & Ramparts" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Fortified Perimeter Wall & Ramparts</h3>
+          <p class="card-desc">Continuous defensive wall created out of stone & brick blocks protecting the eastern border of the settlement.</p>
+          <div class="card-footer">
+            <span>20_blocks_defensive_wall_gate.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Blocks" onclick="openLightbox('21_blocks_glass_sanctuary.png', 'Luminous Glass & Sandstone Monument', 'Translucent glass blocks layered atop warm sandstone pedestal, capturing daylight refractions.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Blocks</span>
+          <img src="21_blocks_glass_sanctuary.png" alt="Luminous Glass & Sandstone Monument" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Luminous Glass & Sandstone Monument</h3>
+          <p class="card-desc">Translucent glass blocks layered atop warm sandstone pedestal, capturing daylight refractions.</p>
+          <div class="card-footer">
+            <span>21_blocks_glass_sanctuary.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Nature & Life" onclick="openLightbox('22_env_enchanted_forest_clearing.png', 'Wilderness Forest Clearing', 'Dense woodland grove with towering pine trees, leafy oaks, mossy boulders, and woodland flora.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Nature & Life</span>
+          <img src="22_env_enchanted_forest_clearing.png" alt="Wilderness Forest Clearing" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Wilderness Forest Clearing</h3>
+          <p class="card-desc">Dense woodland grove with towering pine trees, leafy oaks, mossy boulders, and woodland flora.</p>
+          <div class="card-footer">
+            <span>22_env_enchanted_forest_clearing.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Nature & Life" onclick="openLightbox('23_env_rocky_mining_quarry.png', 'Rocky Outcrop & Iron Ore Veins', 'Natural stone quarry with exposed boulders, mineral veins, and miner extracting ores.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Nature & Life</span>
+          <img src="23_env_rocky_mining_quarry.png" alt="Rocky Outcrop & Iron Ore Veins" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Rocky Outcrop & Iron Ore Veins</h3>
+          <p class="card-desc">Natural stone quarry with exposed boulders, mineral veins, and miner extracting ores.</p>
+          <div class="card-footer">
+            <span>23_env_rocky_mining_quarry.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Nature & Life" onclick="openLightbox('24_life_village_square_market.png', 'Oakvale Central Market Square', 'Cobblestone crossroads connecting the village inns, houses, and townspeople going about daily routines.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Nature & Life</span>
+          <img src="24_life_village_square_market.png" alt="Oakvale Central Market Square" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Oakvale Central Market Square</h3>
+          <p class="card-desc">Cobblestone crossroads connecting the village inns, houses, and townspeople going about daily routines.</p>
+          <div class="card-footer">
+            <span>24_life_village_square_market.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Nature & Life" onclick="openLightbox('25_life_grazing_wildlife_pasture.png', 'Pastoral Meadow with Grazing Animals', 'Peaceful green pastures where sheep, chickens, and wildlife roam freely beside the settlement.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Nature & Life</span>
+          <img src="25_life_grazing_wildlife_pasture.png" alt="Pastoral Meadow with Grazing Animals" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Pastoral Meadow with Grazing Animals</h3>
+          <p class="card-desc">Peaceful green pastures where sheep, chickens, and wildlife roam freely beside the settlement.</p>
+          <div class="card-footer">
+            <span>25_life_grazing_wildlife_pasture.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card" data-category="Nature & Life" onclick="openLightbox('26_night_wilderness_campfire.png', 'Starlit Wilderness Campfire', 'Crackling campfire casting dynamic flickering embers and warm illumination into the deep nocturnal wilderness.')">
+        <div class="thumb-wrapper">
+          <span class="tag">Nature & Life</span>
+          <img src="26_night_wilderness_campfire.png" alt="Starlit Wilderness Campfire" loading="lazy">
+        </div>
+        <div class="card-body">
+          <h3 class="card-title">Starlit Wilderness Campfire</h3>
+          <p class="card-desc">Crackling campfire casting dynamic flickering embers and warm illumination into the deep nocturnal wilderness.</p>
+          <div class="card-footer">
+            <span>26_night_wilderness_campfire.png</span>
+            <span>1920 × 1080</span>
+          </div>
+        </div>
+      </div>
+    
+  </div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <span class="close-btn">&times;</span>
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <img id="lightbox-img" class="lightbox-img" src="" alt="">
+      <div class="lightbox-caption">
+        <div id="lightbox-title" class="lightbox-title"></div>
+        <div id="lightbox-sub" class="lightbox-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function filterCat(cat, btn) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.card').forEach(card => {
+        if (cat === 'all' || card.dataset.category === cat) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function openLightbox(filename, title, desc) {
+      document.getElementById('lightbox-img').src = filename;
+      document.getElementById('lightbox-title').textContent = title;
+      document.getElementById('lightbox-sub').textContent = desc;
+      document.getElementById('lightbox').classList.add('active');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+</body>
+</html>

@@ -98,7 +98,8 @@ export class EnvironmentDetector {
     const cell = row[tileX];
     if (!cell) return false;
 
-    const isCellWater = Boolean(cell.isWater || cell.terrain?.startsWith('water_'));
+    const isBridge = Boolean(cell.isBridge || cell.terrain?.startsWith('bridge_'));
+    const isCellWater = Boolean((cell.isWater || cell.terrain?.startsWith('water_')) && !isBridge);
 
     // If creature is swimming (e.g. ducks in pond)
     if (waterOnly) {

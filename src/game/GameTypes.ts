@@ -95,7 +95,20 @@ export type ItemId =
   | "stone_floor"
   | "roof_wood"
   | "bed"
-  | "gold_coin";
+  | "roof_terracotta"
+  | "farm_soil"
+  | "farm_fence"
+  | "farm_gate"
+  | "water_well"
+  | "wood_bridge"
+  | "gold_coin"
+  // Placeable 3D Blocks:
+  | "block_stone"
+  | "block_wood"
+  | "block_dirt"
+  | "block_brick"
+  | "block_sandstone"
+  | "block_glass";
 
 export type ItemCategory = "resource" | "tool" | "weapon" | "food" | "building" | "station" | "survival";
 
@@ -177,7 +190,13 @@ export interface PlacedStructure {
     | "stone_wall"
     | "stone_floor"
     | "roof_wood"
+    | "roof_terracotta"
     | "bed"
+    | "farm_soil"
+    | "farm_fence"
+    | "farm_gate"
+    | "water_well"
+    | "wood_bridge"
     | "coracle";
   x: number;
   y: number;
@@ -199,6 +218,25 @@ export interface PlacedStructure {
   outputItem?: ItemId | null;
   outputCount?: number;
   fuelTimer?: number;
+}
+
+export type BlockMaterial =
+  | "block_stone"
+  | "block_wood"
+  | "block_dirt"
+  | "block_brick"
+  | "block_sandstone"
+  | "block_glass";
+
+export interface Placed3DBlock {
+  id: number | string;
+  material: BlockMaterial;
+  x: number; // Integer Grid X
+  y: number; // Integer Grid Y
+  z: number; // Vertical Level: 0 = ground tier, 1 = 1st tier, 2 = 2nd tier, etc. (max 4)
+  health: number;
+  maxHealth: number;
+  shakeTimer?: number;
 }
 
 export interface CoracleEntity {

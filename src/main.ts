@@ -30,6 +30,7 @@ import {
   Recipe,
   PlacedStructure,
   InventorySlot,
+  BlockMaterial,
 } from "./game/GameTypes";
 import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 import { isAssetCollidable } from "./data/assetCollision";
@@ -466,7 +467,9 @@ collisionFilterButtons.forEach((btn) => {
 window.addEventListener("DOMContentLoaded", () => {
   // Hide all tabs for the actual game experience
   const topTabBar = document.querySelector(".top-tab-bar") as HTMLElement;
-  // topTabBar.style.display = "none"; // Tab bar is kept visible as per request
+  if (topTabBar) {
+    topTabBar.style.display = "none";
+  }
 
   // Init Menu UI
   const mainMenu = new MainMenuUI();
@@ -1459,15 +1462,25 @@ const hudStaminaVal = document.getElementById("hud-stamina-val")!;
 const hudStaminaImg = document.getElementById(
   "hud-stamina-img",
 ) as HTMLImageElement | null;
-const hudClockIcon = document.getElementById("hud-clock-icon")!;
-const hudClockTime = document.getElementById("hud-clock-time")!;
-const hudClockPhase = document.getElementById("hud-clock-phase")!;
-const hudVillagesCount = document.getElementById("hud-villages-count")!;
-const hudNearestVillage = document.getElementById("hud-nearest-village")!;
+const hudClockIcon = document.getElementById("hud-clock-icon");
+const hudClockTime = document.getElementById("hud-clock-time");
+const hudRoomCodeTag = document.getElementById("hud-room-code-tag");
+const hudRoomCodeVal = document.getElementById("hud-room-code-val");
+const hudClockPhase = document.getElementById("hud-clock-phase");
+const hudVillagesCount = document.getElementById("hud-villages-count");
+const hudNearestVillage = document.getElementById("hud-nearest-village");
 const hotbarSlotsContainer = document.getElementById("hotbar-slots-container")!;
 const gameActionPrompt = document.getElementById("game-action-prompt")!;
 const questListItems = document.getElementById("quest-list-items")!;
-const radarVillageList = document.getElementById("radar-village-list")!;
+const radarVillageList = document.getElementById("radar-village-list");
+const btnToggleObjectives = document.getElementById("btn-toggle-objectives");
+const btnCloseObjectives = document.getElementById("btn-close-objectives");
+const compactObjectivesPanel = document.getElementById("compact-objectives-panel");
+const btnToggleBuild = document.getElementById("btn-toggle-build");
+const btnCloseBuild = document.getElementById("btn-close-build");
+const compactBuildPanel = document.getElementById("compact-build-panel");
+const buildCategoryTabs = document.getElementById("build-category-tabs");
+const buildItemsGrid = document.getElementById("build-items-grid");
 
 // Modals
 const modalInventory = document.getElementById("modal-inventory")!;
@@ -1585,6 +1598,8 @@ function handleRemotePlayerAction(action: { sessionId: string; type: string; [ke
     }
   } else if (action.type === "hit-animal") {
     survivalEngine.hitAnimal(action.animalId, action.damage, action.attackerX, action.attackerY, true);
+  } else if (action.type === "hit-npc") {
+    survivalEngine.hitNPC(action.npcId, action.damage, action.attackerX, action.attackerY, true);
   } else if (action.type === "hit-resource") {
     survivalEngine.hitResource(action.x, action.y, action.damage, action.tool, true, action.id);
   } else if (action.type === "hit-enemy") {
@@ -1593,6 +1608,10 @@ function handleRemotePlayerAction(action: { sessionId: string; type: string; [ke
     survivalEngine.hitStructure(action.x, action.y, action.damage, true);
   } else if (action.type === "place-structure" || action.type === "place") {
     survivalEngine.addPlacedStructure(action.piece, action.x, action.y, true);
+  } else if (action.type === "place-3d-block") {
+    survivalEngine.place3DBlock(action.material, action.x, action.y, action.z, true);
+  } else if (action.type === "hit-3d-block") {
+    survivalEngine.hit3DBlock(action.x, action.y, action.z, action.damage, true);
   } else if (action.type === "toggle-door") {
     survivalEngine.toggleDoor(action.x, action.y, true);
   } else if (action.type === "spawn-item") {
@@ -1680,6 +1699,17 @@ function handleSyncEntities(entities: any) {
       }
     }
   }
+  // Placed 3D blocks reconciliation
+  if (entities.placedBlocks && Array.isArray(entities.placedBlocks)) {
+    for (const pb of entities.placedBlocks) {
+      const existing = survivalEngine.getBlockAt(pb.x, pb.y, pb.z);
+      if (!existing) {
+        survivalEngine.place3DBlock(pb.material, pb.x, pb.y, pb.z, true);
+      } else if (pb.health !== undefined) {
+        existing.health = pb.health;
+      }
+    }
+  }
   // Dropped items reconciliation
   if (entities.droppedItems && Array.isArray(entities.droppedItems)) {
     for (const di of entities.droppedItems) {
@@ -1759,6 +1789,10 @@ function joinMultiplayerWorld(snapshot: any) {
   (survivalEngine.player as any).activeHeldItem = slot0?.item || "wooden_axe";
   applyMultiplayerSnapshot(snapshot);
   setMultiplayerStatus(`Online · invite code ${snapshot.roomCode}`, snapshot.players.length);
+  if (hudRoomCodeVal && hudRoomCodeTag) {
+    hudRoomCodeVal.textContent = snapshot.roomCode;
+    hudRoomCodeTag.classList.remove("hidden");
+  }
 }
 
 function ensureSurvivalGameLoaded() {
@@ -2121,45 +2155,71 @@ function updateSurvivalHUD() {
   const p = survivalEngine.player;
   const wt = survivalEngine.worldTime;
 
-  // Meters (Pixel Art Sprite Bars)
-  hudHpVal.textContent = `${Math.ceil(p.health)}/${p.maxHealth}`;
+  // Meters (Pixel Art Sprite Bars) - Compact & Correctly Filled
+  hudHpVal.textContent = `${Math.ceil(p.health)}`;
   const hpRatio = Math.max(0, Math.min(1, p.health / p.maxHealth));
-  const hpFrame = Math.max(0, Math.min(6, Math.floor(hpRatio * 6)));
+  let hpFrame = Math.round(hpRatio * 6);
+  if (p.health > 0 && hpFrame === 0) hpFrame = 1;
+  if (p.health < p.maxHealth && hpFrame === 6) hpFrame = 5;
   if (hudHpImg) hudHpImg.src = `/assets/ui/redbar_0${hpFrame}.png`;
+  const hpFill = document.getElementById("hud-hp-fill");
+  if (hpFill) hpFill.style.width = `${Math.round(hpRatio * 100)}%`;
 
-  hudHungerVal.textContent = `${Math.ceil(p.hunger)}/${p.maxHunger}`;
+  hudHungerVal.textContent = `${Math.ceil(p.hunger)}`;
   const hungerRatio = Math.max(0, Math.min(1, p.hunger / p.maxHunger));
-  const hungerFrame = Math.max(0, Math.min(6, Math.floor(hungerRatio * 6)));
-  if (hudHungerImg)
-    hudHungerImg.src = `/assets/ui/greenbar_0${hungerFrame}.png`;
+  let hungerFrame = Math.round(hungerRatio * 6);
+  if (p.hunger > 0 && hungerFrame === 0) hungerFrame = 1;
+  if (p.hunger < p.maxHunger && hungerFrame === 6) hungerFrame = 5;
+  if (hudHungerImg) hudHungerImg.src = `/assets/ui/greenbar_0${hungerFrame}.png`;
+  const hungerFill = document.getElementById("hud-hunger-fill");
+  if (hungerFill) hungerFill.style.width = `${Math.round(hungerRatio * 100)}%`;
 
-  hudStaminaVal.textContent = `${Math.ceil(p.stamina)}/${p.maxStamina}`;
+  hudStaminaVal.textContent = `${Math.ceil(p.stamina)}`;
   const staminaRatio = Math.max(0, Math.min(1, p.stamina / p.maxStamina));
-  const staminaFrame = Math.max(0, Math.min(5, Math.floor(staminaRatio * 5)));
-  if (hudStaminaImg)
-    hudStaminaImg.src = `/assets/ui/bluebar_0${staminaFrame}.png`;
+  let staminaFrame = Math.round(staminaRatio * 5);
+  if (p.stamina > 0 && staminaFrame === 0) staminaFrame = 1;
+  if (p.stamina < p.maxStamina && staminaFrame === 5) staminaFrame = 4;
+  if (hudStaminaImg) hudStaminaImg.src = `/assets/ui/bluebar_0${staminaFrame}.png`;
+  const staminaFill = document.getElementById("hud-stamina-fill");
+  if (staminaFill) staminaFill.style.width = `${Math.round(staminaRatio * 100)}%`;
 
-  // World Clock
-  const hrPad = String(wt.hour).padStart(2, "0");
+  // World Clock (Translucent Time with AM/PM)
   const minPad = String(wt.minute).padStart(2, "0");
   const isPM = wt.hour >= 12;
   const displayHour = wt.hour % 12 === 0 ? 12 : wt.hour % 12;
-  hudClockTime.textContent = `${String(displayHour).padStart(2, "0")}:${minPad} ${isPM ? "PM" : "AM"}`;
-  hudClockPhase.textContent = `Day ${wt.dayNumber} • ${wt.timeOfDay}`;
+  if (hudClockTime) {
+    hudClockTime.textContent = `${String(displayHour).padStart(2, "0")}:${minPad} ${isPM ? "PM" : "AM"}`;
+  }
+  const currentRoomCode = (survivalEngine as any)?.roomCode || (networkClient as any)?.roomCode;
+  if (hudRoomCodeVal && hudRoomCodeTag) {
+    if (currentRoomCode) {
+      hudRoomCodeVal.textContent = currentRoomCode;
+      hudRoomCodeTag.classList.remove("hidden");
+    } else {
+      hudRoomCodeTag.classList.add("hidden");
+    }
+  }
+  if (hudClockPhase) {
+    hudClockPhase.textContent = `Day ${wt.dayNumber} • ${wt.timeOfDay}`;
+  }
 
-  // Discovered Villages (out of max 4)
-  const totalDiscovered = survivalEngine.worldManager.villages.filter(
-    (v) => v.discovered,
-  ).length;
-  hudVillagesCount.textContent = `${totalDiscovered}/4`;
+  // Discovered Villages
+  if (hudVillagesCount) {
+    const totalDiscovered = survivalEngine.worldManager.villages.filter(
+      (v) => v.discovered,
+    ).length;
+    hudVillagesCount.textContent = `${totalDiscovered}/4`;
+  }
 
-  const nearest = survivalEngine.worldManager.getNearestVillage(p.x, p.y);
-  if (nearest) {
-    const distMeters = Math.round(nearest.dist);
-    hudNearestVillage.textContent =
-      distMeters < 25
-        ? `In: ${nearest.village.name}`
-        : `Nearest: ${nearest.village.name} (~${distMeters}m)`;
+  if (hudNearestVillage) {
+    const nearest = survivalEngine.worldManager.getNearestVillage(p.x, p.y);
+    if (nearest) {
+      const distMeters = Math.round(nearest.dist);
+      hudNearestVillage.textContent =
+        distMeters < 25
+          ? `In: ${nearest.village.name}`
+          : `Nearest: ${nearest.village.name} (~${distMeters}m)`;
+    }
   }
 
   // Hotbar render
@@ -2321,7 +2381,16 @@ function renderQuestTracker() {
 }
 
 /**
- * Renders the Compass / Radar widget showing player orientation and 2-4x gap villages.
+ * Renders the Rectangular Minimap showing surrounding terrain, water bodies,
+ * marked houses, local player, and colored dots for any other players clamped to boundary.
+ */
+/**
+ * Renders the Rectangular Realm Minimap as a downgraded pixel-perfect version of the same world.
+ * Everything in the physical world (terrain, water bodies, elevation cliffs, shores, roads,
+ * bridges, farmland soil, village houses/structures, fences, and player-built structures) is visible.
+ * Flora (trees/bushes/flowers), fauna (wildlife/animals), and people (NPCs/villagers/enemies) are
+ * excluded to maintain a crisp, clean architectural and geographic cartographic view.
+ * Other players are marked with colored dots clamped to the boundary when off-screen.
  */
 function renderRadarMiniMap() {
   if (!survivalEngine || !radarCanvas) return;
@@ -2330,63 +2399,358 @@ function renderRadarMiniMap() {
 
   const w = radarCanvas.width;
   const h = radarCanvas.height;
-  const center = w / 2;
+  const p = survivalEngine.player;
 
   ctx.clearRect(0, 0, w, h);
 
-  // Radar circle background
-  ctx.fillStyle = "#022c22";
-  ctx.beginPath();
-  ctx.arc(center, center, center - 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Minimap pixel scale: 2.0 px per tile
+  const scale = 2.0;
+  const rangeTilesX = Math.ceil(w / (2 * scale)) + 2;
+  const rangeTilesY = Math.ceil(h / (2 * scale)) + 2;
 
-  // Draw concentric range rings (2 village widths and 4 village widths)
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+  const startTileX = Math.floor(p.x - rangeTilesX);
+  const endTileX = Math.ceil(p.x + rangeTilesX);
+  const startTileY = Math.floor(p.y - rangeTilesY);
+  const endTileY = Math.ceil(p.y + rangeTilesY);
+
+  const wm = survivalEngine.worldManager;
+
+  // 1. Draw Ground Terrain & Elevation (Exact match to world palette and autotiling contours)
+  for (let ty = startTileY; ty <= endTileY; ty++) {
+    for (let tx = startTileX; tx <= endTileX; tx++) {
+      const tile = wm.getTile(tx, ty);
+      const screenX = Math.round((tx - p.x) * scale + w / 2);
+      const screenY = Math.round((ty - p.y) * scale + h / 2);
+      const nextScreenX = Math.round(((tx + 1) - p.x) * scale + w / 2);
+      const nextScreenY = Math.round(((ty + 1) - p.y) * scale + h / 2);
+      const tileW = Math.max(1, nextScreenX - screenX);
+      const tileH = Math.max(1, nextScreenY - screenY);
+
+      if (tile.isWater || tile.terrain === "water_tile_01") {
+        // Check if shoreline water tile (borders land)
+        const nTile = wm.getTile(tx, ty - 1);
+        const sTile = wm.getTile(tx, ty + 1);
+        const wTile = wm.getTile(tx - 1, ty);
+        const eTile = wm.getTile(tx + 1, ty);
+        const isShore = (!nTile.isWater && !nTile.isBridge) ||
+                        (!sTile.isWater && !sTile.isBridge) ||
+                        (!wTile.isWater && !wTile.isBridge) ||
+                        (!eTile.isWater && !eTile.isBridge);
+
+        if (tile.isDeepOcean) {
+          ctx.fillStyle = "#0284c7";
+          ctx.fillRect(screenX, screenY, tileW, tileH);
+        } else if (isShore) {
+          // Shoreline shallow water with foam edge
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillRect(screenX, screenY, tileW, tileH);
+          ctx.fillStyle = "#bae6fd";
+          if (!nTile.isWater) ctx.fillRect(screenX, screenY, tileW, 1);
+          if (!sTile.isWater) ctx.fillRect(screenX, screenY + tileH - 1, tileW, 1);
+          if (!wTile.isWater) ctx.fillRect(screenX, screenY, 1, tileH);
+          if (!eTile.isWater) ctx.fillRect(screenX + tileW - 1, screenY, 1, tileH);
+        } else {
+          ctx.fillStyle = "#0ea5e9";
+          ctx.fillRect(screenX, screenY, tileW, tileH);
+        }
+      } else if (tile.isBridge || tile.terrain?.startsWith("bridge_")) {
+        // Wooden Bridge spanning water
+        ctx.fillStyle = "#a16207";
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+        ctx.fillStyle = "#713f12";
+        ctx.fillRect(screenX, screenY, 1, tileH);
+        ctx.fillRect(screenX + tileW - 1, screenY, 1, tileH);
+      } else if (tile.isRoad) {
+        // Cobblestone & Dirt Village Roads
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+        const hash = Math.abs((tx * 19 + ty * 37) % 3);
+        if (hash === 0) {
+          ctx.fillStyle = "#b45309";
+          ctx.fillRect(screenX, screenY, 1, 1);
+        }
+      } else if (tile.isFarm) {
+        // Farmland Tilled Soil
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+        ctx.fillStyle = "#59270b";
+        ctx.fillRect(screenX, screenY + Math.floor(tileH / 2), tileW, 1);
+      } else if (tile.terrain?.includes("sand") || tile.isIslandShore) {
+        // Beach Sand
+        ctx.fillStyle = "#fde047";
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+        const sHash = Math.abs((tx * 23 + ty * 41) % 4);
+        if (sHash === 0) {
+          ctx.fillStyle = "#eab308";
+          ctx.fillRect(screenX, screenY, 1, 1);
+        }
+      } else if (tile.isBlocked && !tile.isWater && !tile.isRoad) {
+        // Stone Elevation / Cliff face
+        ctx.fillStyle = "#57534e";
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+        ctx.fillStyle = "#78716c";
+        ctx.fillRect(screenX, screenY, tileW, 1);
+      } else {
+        // Natural Grass with authentic organic scatter matching the world
+        const gHash = Math.abs((tx * 31 + ty * 17) % 6);
+        if (tile.terrain === "grass_jungle_01") {
+          ctx.fillStyle = gHash === 0 ? "#4d7c0f" : "#3f6212";
+        } else if (tile.terrain === "grass_forest_01") {
+          ctx.fillStyle = gHash === 0 ? "#365314" : "#486e2d";
+        } else {
+          ctx.fillStyle = gHash === 0 ? "#5e943a" : gHash === 1 ? "#4d7c2f" : "#568735";
+        }
+        ctx.fillRect(screenX, screenY, tileW, tileH);
+      }
+    }
+  }
+
+  // 2. Village Houses & Buildings (Downgraded authentic architectural roofs, walls, chimneys, doorways)
+  if (wm.villages) {
+    for (const v of wm.villages) {
+      if (!v.data?.houses) continue;
+      for (const house of v.data.houses) {
+        const hWorldX = v.gridX + house.x;
+        const hWorldY = v.gridY + house.y;
+        const hW = house.footprintW || 8;
+        const hH = house.footprintH || 8;
+
+        const hsx = Math.round((hWorldX - p.x) * scale + w / 2);
+        const hsy = Math.round((hWorldY - p.y) * scale + h / 2);
+        const hsw = Math.round(hW * scale);
+        const hsh = Math.round(hH * scale);
+
+        // Skip if outside minimap viewport
+        if (hsx + hsw < -5 || hsx > w + 5 || hsy + hsh < -5 || hsy > h + 5) continue;
+
+        // Ground wall shadow
+        ctx.fillStyle = "rgba(15, 23, 42, 0.4)";
+        ctx.fillRect(hsx + 1, hsy + hsh - 1, hsw, 2);
+
+        // Plaster & stone foundation wall
+        ctx.fillStyle = "#fef3c7";
+        ctx.fillRect(hsx, hsy + Math.floor(hsh * 0.35), hsw, Math.ceil(hsh * 0.65));
+
+        // Stone corner accents
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillRect(hsx, hsy + Math.floor(hsh * 0.35), 1, Math.ceil(hsh * 0.65));
+        ctx.fillRect(hsx + hsw - 1, hsy + Math.floor(hsh * 0.35), 1, Math.ceil(hsh * 0.65));
+
+        // Terracotta / Wood Roof Body
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(hsx, hsy, hsw, Math.floor(hsh * 0.68));
+
+        // Roof ridge apex highlight
+        ctx.fillStyle = "#f87171";
+        ctx.fillRect(hsx + 1, hsy, Math.max(1, hsw - 2), 1);
+
+        // Roof eaves shadow line
+        ctx.fillStyle = "#991b1b";
+        ctx.fillRect(hsx, hsy + Math.floor(hsh * 0.68) - 1, hsw, 1);
+
+        // Stone chimney on roof
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(hsx + Math.max(2, hsw - 3), hsy - 1, 2, 2);
+
+        // Front Door notch at bottom
+        ctx.fillStyle = "#451a03";
+        const doorW = Math.max(1, Math.floor(scale));
+        ctx.fillRect(hsx + Math.floor(hsw / 2) - Math.floor(doorW / 2), hsy + hsh - 2, doorW, 2);
+      }
+    }
+  }
+
+  // 3. Player Placed Structures (Walls, Doors, Chests, Campfires)
+  if (survivalEngine.placedStructures) {
+    for (const struct of survivalEngine.placedStructures) {
+      const ssx = Math.round((struct.x - p.x) * scale + w / 2);
+      const ssy = Math.round((struct.y - p.y) * scale + h / 2);
+      const ssw = Math.max(2, Math.round(scale));
+      const ssh = Math.max(2, Math.round(scale));
+
+      if (ssx + ssw < 0 || ssx > w || ssy + ssh < 0 || ssy > h) continue;
+
+      if (struct.type === "wood_wall") {
+        ctx.fillStyle = "#a16207";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+        ctx.fillStyle = "#713f12";
+        ctx.strokeRect(ssx + 0.5, ssy + 0.5, ssw - 1, ssh - 1);
+      } else if (struct.type === "stone_wall") {
+        ctx.fillStyle = "#64748b";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+        ctx.fillStyle = "#334155";
+        ctx.strokeRect(ssx + 0.5, ssy + 0.5, ssw - 1, ssh - 1);
+      } else if (struct.type === "wall_window") {
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+        ctx.fillStyle = "#0284c7";
+        ctx.strokeRect(ssx + 0.5, ssy + 0.5, ssw - 1, ssh - 1);
+      } else if (struct.type === "roof_wood") {
+        ctx.fillStyle = "#92400e";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "roof_terracotta") {
+        ctx.fillStyle = "#dc2626";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "wood_floor") {
+        ctx.fillStyle = "#b45309";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "stone_floor") {
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "farm_soil") {
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "farm_fence") {
+        ctx.fillStyle = "#a16207";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "wood_door" || struct.type === "farm_gate") {
+        ctx.fillStyle = struct.isOpen ? "#22c55e" : "#b45309";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "wood_bridge") {
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "water_well") {
+        ctx.fillStyle = "#0284c7";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "bed") {
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      } else if (struct.type === "chest") {
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(ssx, ssy + Math.floor(ssh / 2), ssw, 1);
+      } else if (struct.type === "campfire" || struct.type === "stone_oven") {
+        ctx.fillStyle = "#ea580c";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+        ctx.fillStyle = "#fde047";
+        ctx.fillRect(ssx + 1, ssy + 1, Math.max(1, ssw - 2), Math.max(1, ssh - 2));
+      } else {
+        ctx.fillStyle = "#d97706";
+        ctx.fillRect(ssx, ssy, ssw, ssh);
+      }
+    }
+  }
+
+  // 3.5 Player Placed 3D Volumetric Blocks (with elevation brightness shading)
+  if (survivalEngine.placedBlocks) {
+    for (const block of survivalEngine.placedBlocks) {
+      const bsx = Math.round((block.x - p.x) * scale + w / 2);
+      const bsy = Math.round((block.y - p.y) * scale + h / 2);
+      const bsw = Math.max(2, Math.round(scale));
+      const bsh = Math.max(2, Math.round(scale));
+
+      if (bsx + bsw < 0 || bsx > w || bsy + bsh < 0 || bsy > h) continue;
+
+      let baseColor = "#78716c"; // stone
+      if (block.material === "block_wood") baseColor = "#a16207";
+      else if (block.material === "block_dirt") baseColor = "#568735";
+      else if (block.material === "block_brick") baseColor = "#b91c1c";
+      else if (block.material === "block_sandstone") baseColor = "#ca8a04";
+      else if (block.material === "block_glass") baseColor = "#38bdf8";
+
+      // Elevation brightness tint (+18% brightness per tier)
+      if (block.z === 1) {
+        if (block.material === "block_stone") baseColor = "#94a3b8";
+        else if (block.material === "block_wood") baseColor = "#b45309";
+        else if (block.material === "block_dirt") baseColor = "#65a30d";
+        else if (block.material === "block_brick") baseColor = "#dc2626";
+        else if (block.material === "block_sandstone") baseColor = "#eab308";
+        else if (block.material === "block_glass") baseColor = "#7dd3fc";
+      } else if (block.z >= 2) {
+        if (block.material === "block_stone") baseColor = "#cbd5e1";
+        else if (block.material === "block_wood") baseColor = "#d97706";
+        else if (block.material === "block_dirt") baseColor = "#84cc16";
+        else if (block.material === "block_brick") baseColor = "#ef4444";
+        else if (block.material === "block_sandstone") baseColor = "#fde047";
+        else if (block.material === "block_glass") baseColor = "#bae6fd";
+      }
+
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(bsx, bsy, bsw, bsh);
+
+      // 3D South edge relief shadow
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(bsx, bsy + bsh - 1, bsw, 1);
+    }
+  }
+
+  // NOTE: Flora (trees, bushes, flowers), fauna (wildlife), and people (NPCs, enemies)
+  // are deliberately EXCLUDED from the minimap per requirements.
+
+  // 4. Remote Players (Colored Dots) - Clamped to Boundary when out of view
+  const pad = 6;
+  if (survivalEngine.remotePlayers && Array.isArray(survivalEngine.remotePlayers)) {
+    survivalEngine.remotePlayers.forEach((rp: any) => {
+      const rawX = (rp.x - p.x) * scale + w / 2;
+      const rawY = (rp.y - p.y) * scale + h / 2;
+
+      const isOutside =
+        rawX < pad || rawX > w - pad || rawY < pad || rawY > h - pad;
+
+      // When the player gets out of the minimap section, they remain stuck to the boundary!
+      const dotX = Math.max(pad, Math.min(w - pad, rawX));
+      const dotY = Math.max(pad, Math.min(h - pad, rawY));
+
+      const dotColor = rp.color || "#a855f7"; // Vibrant purple / magenta player marker
+
+      // Draw colored dot
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, isOutside ? 4.5 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = dotColor;
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // If stuck to the boundary, draw a directional indicator pointing outward
+      if (isOutside) {
+        const angle = Math.atan2(rawY - h / 2, rawX - w / 2);
+        ctx.beginPath();
+        ctx.arc(
+          dotX + Math.cos(angle) * 3,
+          dotY + Math.sin(angle) * 3,
+          1.8,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+    });
+  }
+
+  // 5. Local Player Marker at Center
+  const localX = w / 2;
+  const localY = h / 2;
+
+  // Local player pulsing halo
+  ctx.beginPath();
+  ctx.arc(localX, localY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#facc15"; // Bright yellow dot
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Subtle player heading line
+  const facing = survivalEngine.player.facing;
+  let hx = facing === "LEFT" ? -6 : 6;
+  let hy = 0;
+  if (p.vy < -0.1) hy = -6;
+  else if (p.vy > 0.1) hy = 6;
+
+  ctx.beginPath();
+  ctx.moveTo(localX, localY);
+  ctx.lineTo(localX + hx, localY + hy);
+  ctx.strokeStyle = "#facc15";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Subtle inner vignette border
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(center, center, center * 0.5, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(center, center, center * 0.85, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Player position in center
-  ctx.fillStyle = "#facc15";
-  ctx.beginPath();
-  ctx.arc(center, center, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Draw compass needles towards villages (enforcing 2 to 4 gap rule)
-  const p = survivalEngine.player;
-  const planned = survivalEngine.worldManager.villagePlannedSites;
-
-  planned.forEach((site, i) => {
-    const isGenerated = site.generated;
-    const dx = site.targetX - p.x;
-    const dy = site.targetY - p.y;
-    const dist = Math.hypot(dx, dy);
-    const angle = Math.atan2(dy, dx);
-
-    // Radar scale: radius corresponds to ~160 tiles (4 village equivalents)
-    const radarDist = Math.min(center - 8, (dist / 160) * (center - 8));
-    const iconX = center + Math.cos(angle) * radarDist;
-    const iconY = center + Math.sin(angle) * radarDist;
-
-    ctx.fillStyle = isGenerated ? "#22c55e" : "rgba(255, 255, 255, 0.4)";
-    ctx.beginPath();
-    ctx.arc(iconX, iconY, isGenerated ? 4 : 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Pointer line from center to village marker
-    ctx.strokeStyle = isGenerated
-      ? "rgba(34, 197, 94, 0.4)"
-      : "rgba(255, 255, 255, 0.15)";
-    ctx.beginPath();
-    ctx.moveTo(center, center);
-    ctx.lineTo(iconX, iconY);
-    ctx.stroke();
-  });
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 }
 
 const activeSurvivalKeys = new Set<string>();
@@ -2518,6 +2882,26 @@ function initSurvivalInputs() {
       toggleInventoryModal();
     }
 
+    // Objectives [O]
+    if (key === "o") {
+      toggleObjectivesModal();
+    }
+
+    // Build Palette [B]
+    if (key === "b") {
+      toggleBuildPalette();
+    }
+
+    // Sound / Audio [M]
+    if (key === "m") {
+      const isMuted = GameAudio.toggleMute();
+      const icon = document.getElementById("audio-icon");
+      if (icon) {
+        if (isMuted) icon.classList.add("audio-muted");
+        else icon.classList.remove("audio-muted");
+      }
+    }
+
     // Journal & Quests [J]
     if (key === "j") {
       survivalEngine?.toggleJournalModal();
@@ -2541,7 +2925,21 @@ function initSurvivalInputs() {
 
     // Pause / Close Modal [ESC]
     if (key === "escape") {
-      if (survivalEngine && survivalEngine.showJournal) {
+      if (
+        compactObjectivesPanel &&
+        !compactObjectivesPanel.classList.contains("hidden")
+      ) {
+        compactObjectivesPanel.classList.add("hidden");
+        btnToggleObjectives?.classList.remove("active");
+      } else if (!modalInventory.classList.contains("hidden")) {
+        toggleInventoryModal();
+      } else if (!modalDialogue.classList.contains("hidden")) {
+        modalDialogue.classList.add("hidden");
+        if (survivalEngine) survivalEngine.activeDialogueNPC = null;
+      } else if (!modalChest.classList.contains("hidden")) {
+        modalChest.classList.add("hidden");
+        if (survivalEngine) survivalEngine.activeChest = null;
+      } else if (survivalEngine && survivalEngine.showJournal) {
         survivalEngine.showJournal = false;
       } else {
         togglePauseModal();
@@ -2640,7 +3038,45 @@ function initSurvivalInputs() {
       const worldX = survivalRenderer.cameraX + (screenX - halfW) / cellSize;
       const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
 
-      if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
+      const activeItem = survivalEngine.getActiveItemSlot()?.item || null;
+      const is3DBlockPiece =
+        (survivalEngine.isBuildMode &&
+          survivalEngine.buildPiece?.startsWith("block_")) ||
+        (activeItem && activeItem.startsWith("block_"));
+
+      if (is3DBlockPiece) {
+        const material = (survivalEngine.buildPiece &&
+        survivalEngine.buildPiece.startsWith("block_")
+          ? survivalEngine.buildPiece
+          : activeItem) as BlockMaterial;
+        const targetX = Math.round(worldX);
+        const targetY = Math.round(worldY);
+        const topBlock = survivalEngine.getTopBlock(targetX, targetY);
+        const targetZ = topBlock ? topBlock.z + 1 : 0;
+
+        const placed = survivalEngine.place3DBlock(
+          material,
+          targetX,
+          targetY,
+          targetZ,
+          false,
+        );
+        if (placed) {
+          renderHotbar();
+          const duration = 0.25;
+          (survivalEngine.player as any).swingDuration = duration;
+          survivalEngine.player.swingTimer = duration;
+          networkClient?.sendAction({
+            type: "swing",
+            tool: material,
+            actionName: "HAMMERING",
+            facing: survivalEngine.player.facing,
+            targetX,
+            targetY,
+            duration,
+          });
+        }
+      } else if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
         survivalEngine.placeStructure(
           survivalEngine.buildPiece,
           worldX,
@@ -2654,7 +3090,6 @@ function initSurvivalInputs() {
         });
       } else {
         survivalEngine.handleWorldClick(worldX, worldY);
-        const activeItem = survivalEngine.getActiveItemSlot()?.item || null;
         let actionName = "ATTACK";
         let duration = 0.25;
         if (activeItem) {
@@ -2692,24 +3127,57 @@ function initSurvivalInputs() {
 
     survivalCanvas.addEventListener("mousemove", (e) => {
       if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
-      if (survivalEngine.isBuildMode) {
+      const activeItem = survivalEngine.getActiveItemSlot()?.item || null;
+      const is3DBlockPiece =
+        (survivalEngine.isBuildMode &&
+          survivalEngine.buildPiece?.startsWith("block_")) ||
+        (activeItem && activeItem.startsWith("block_"));
+
+      if (is3DBlockPiece || survivalEngine.isBuildMode) {
         const rect = survivalCanvas.getBoundingClientRect();
         const cellSize = survivalRenderer.baseTileSize * survivalRenderer.zoom;
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
         const halfW = survivalCanvas.width / 2;
         const halfH = survivalCanvas.height / 2;
-        survivalEngine.buildPreviewX = Math.round(
+        const targetX = Math.round(
           survivalRenderer.cameraX + (screenX - halfW) / cellSize,
         );
-        survivalEngine.buildPreviewY = Math.round(
+        const targetY = Math.round(
           survivalRenderer.cameraY + (screenY - halfH) / cellSize,
         );
-        const tile = survivalEngine.worldManager.getTile(
-          survivalEngine.buildPreviewX,
-          survivalEngine.buildPreviewY,
-        );
-        survivalEngine.isBuildPreviewValid = !tile.isWater && !tile.isBlocked;
+
+        survivalEngine.buildPreviewX = targetX;
+        survivalEngine.buildPreviewY = targetY;
+
+        if (is3DBlockPiece) {
+          const topBlock = survivalEngine.getTopBlock(targetX, targetY);
+          const targetZ = topBlock ? topBlock.z + 1 : 0;
+          survivalEngine.buildPreviewZ = targetZ;
+          survivalEngine.isBuildPreviewValid = survivalEngine.canPlaceBlockAt(
+            targetX,
+            targetY,
+            targetZ,
+          );
+        } else {
+          survivalEngine.buildPreviewZ = 0;
+          const tile = survivalEngine.worldManager.getTile(targetX, targetY);
+          const previewPiece = survivalEngine.buildPiece;
+          if (previewPiece === "wood_bridge") {
+            const hasExisting = survivalEngine.placedStructures.some(
+              (s) => s.x === targetX && s.y === targetY,
+            );
+            survivalEngine.isBuildPreviewValid = tile.isWater && !hasExisting;
+          } else {
+            const hasFloor = survivalEngine.placedStructures.some(
+              (s) =>
+                s.x === targetX &&
+                s.y === targetY &&
+                (s.type === "wood_floor" || s.type === "stone_floor" || s.type === "farm_soil"),
+            );
+            survivalEngine.isBuildPreviewValid = !tile.isWater && (!tile.isBlocked || hasFloor);
+          }
+        }
       }
     });
 
@@ -2743,6 +3211,20 @@ function initSurvivalUI() {
     }
   });
 
+  // Room Code click-to-copy
+  hudRoomCodeTag?.addEventListener("click", () => {
+    const code = hudRoomCodeVal?.textContent;
+    if (code) {
+      navigator.clipboard?.writeText(code).then(() => {
+        const prevText = hudRoomCodeVal.textContent;
+        hudRoomCodeVal.textContent = "COPIED!";
+        setTimeout(() => {
+          hudRoomCodeVal.textContent = prevText;
+        }, 1200);
+      }).catch(() => {});
+    }
+  });
+
   // Sound toggle
   btnToggleAudio.addEventListener("click", () => {
     const isMuted = GameAudio.toggleMute();
@@ -2760,9 +3242,35 @@ function initSurvivalUI() {
   btnOpenInventory.addEventListener("click", toggleInventoryModal);
   btnOpenPause.addEventListener("click", togglePauseModal);
 
-  btnCloseInventory.addEventListener("click", () =>
-    modalInventory.classList.add("hidden"),
-  );
+  // Objectives panel toggle
+  btnToggleObjectives?.addEventListener("click", toggleObjectivesModal);
+  btnCloseObjectives?.addEventListener("click", () => {
+    compactObjectivesPanel?.classList.add("hidden");
+    btnToggleObjectives?.classList.remove("active");
+  });
+
+  // Build palette toggle
+  btnToggleBuild?.addEventListener("click", toggleBuildPalette);
+  btnCloseBuild?.addEventListener("click", () => {
+    compactBuildPanel?.classList.add("hidden");
+    btnToggleBuild?.classList.remove("active");
+  });
+
+  // Build category tabs
+  const bTabs = document.querySelectorAll(".build-tab-btn");
+  bTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      bTabs.forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      activeBuildCategory = (tab as HTMLElement).dataset.cat || "houses";
+      renderBuildPalette();
+    });
+  });
+
+  btnCloseInventory.addEventListener("click", () => {
+    modalInventory.classList.add("hidden");
+    btnOpenInventory.classList.remove("active");
+  });
   btnCloseDialogue.addEventListener("click", () => {
     modalDialogue.classList.add("hidden");
     if (survivalEngine) survivalEngine.activeDialogueNPC = null;
@@ -2843,14 +3351,128 @@ function initSurvivalUI() {
   });
 }
 
+function toggleObjectivesModal() {
+  if (!compactObjectivesPanel) return;
+  const isHidden = compactObjectivesPanel.classList.toggle("hidden");
+  if (!isHidden) {
+    renderQuestTracker();
+    btnToggleObjectives?.classList.add("active");
+    if (compactBuildPanel && !compactBuildPanel.classList.contains("hidden")) {
+      compactBuildPanel.classList.add("hidden");
+      btnToggleBuild?.classList.remove("active");
+    }
+  } else {
+    btnToggleObjectives?.classList.remove("active");
+  }
+}
+
+let activeBuildCategory = "houses";
+
+const BUILD_CATEGORIES: Record<string, { id: string; name: string; icon: string }[]> = {
+  houses: [
+    { id: "wood_wall", name: "Timber Wall", icon: "🪵" },
+    { id: "stone_wall", name: "Stone Wall", icon: "🧱" },
+    { id: "wall_window", name: "Windowed Wall", icon: "🪟" },
+    { id: "wood_door", name: "Wooden Door", icon: "🚪" },
+    { id: "wood_floor", name: "Hardwood Floor", icon: "🪵" },
+    { id: "stone_floor", name: "Flagstone Floor", icon: "🪨" },
+    { id: "roof_wood", name: "Timber Roof", icon: "🏠" },
+    { id: "roof_terracotta", name: "Terracotta Roof", icon: "🏡" },
+    { id: "bed", name: "Cozy Bed", icon: "🛏️" },
+    { id: "chest", name: "Storage Chest", icon: "📦" },
+    { id: "chimney", name: "Stone Chimney", icon: "🧱" },
+  ],
+  farms: [
+    { id: "farm_soil", name: "Farmland Soil", icon: "🌾" },
+    { id: "farm_fence", name: "Wooden Fence", icon: "🪵" },
+    { id: "farm_gate", name: "Fence Gate", icon: "🚪" },
+    { id: "water_well", name: "Stone Well", icon: "💧" },
+    { id: "seeds", name: "Wheat Seeds", icon: "🌱" },
+    { id: "beet_seeds", name: "Beet Seeds", icon: "🌱" },
+  ],
+  stations: [
+    { id: "wood_bridge", name: "Wooden Bridge", icon: "🌉" },
+    { id: "campfire", name: "Campfire", icon: "🔥" },
+    { id: "stone_oven", name: "Stone Oven", icon: "♨️" },
+    { id: "workbench", name: "Workbench", icon: "🔨" },
+  ],
+  blocks: [
+    { id: "block_wood", name: "Wood 3D Block", icon: "🪵" },
+    { id: "block_stone", name: "Stone 3D Block", icon: "🪨" },
+    { id: "block_dirt", name: "Dirt 3D Block", icon: "🌱" },
+    { id: "block_brick", name: "Brick 3D Block", icon: "🧱" },
+    { id: "block_sandstone", name: "Sandstone 3D", icon: "🏜️" },
+    { id: "block_glass", name: "Glass 3D Block", icon: "🪟" },
+    { id: "block_gold", name: "Gold 3D Block", icon: "🪙" },
+  ],
+};
+
+function renderBuildPalette() {
+  if (!buildItemsGrid || !survivalEngine) return;
+  buildItemsGrid.innerHTML = "";
+
+  const items = BUILD_CATEGORIES[activeBuildCategory] || [];
+  for (const item of items) {
+    const card = document.createElement("div");
+    card.className = "build-item-card";
+
+    let count = 0;
+    for (const slot of survivalEngine.hotbar) {
+      if (slot?.item === item.id) count += slot.count;
+    }
+    for (const slot of survivalEngine.inventory) {
+      if (slot?.item === item.id) count += slot.count;
+    }
+
+    card.innerHTML = `
+      <span class="build-item-icon" style="font-size: 16px; display: inline-flex; align-items: center; justify-content: center;">${item.icon}</span>
+      <div class="build-item-info">
+        <span class="build-item-name">${item.name}</span>
+        <span class="build-item-qty">${count > 0 ? `Owned: ${count}` : "Pick 10x"}</span>
+      </div>
+    `;
+
+    card.addEventListener("click", () => {
+      if (!survivalEngine) return;
+      if (count === 0) {
+        survivalEngine.addItemToInventory(item.id as any, 10);
+      }
+      const curIdx = survivalEngine.activeHotbarIndex;
+      survivalEngine.hotbar[curIdx] = { item: item.id as any, count: Math.max(10, count) };
+      renderHotbar();
+      renderBuildPalette();
+      survivalEngine.addFloatingText(`Equipped: ${item.name}`, survivalEngine.player.x, survivalEngine.player.y - 1, "#fbbf24");
+    });
+
+    buildItemsGrid.appendChild(card);
+  }
+}
+
+function toggleBuildPalette() {
+  if (!compactBuildPanel) return;
+  const isHidden = compactBuildPanel.classList.toggle("hidden");
+  if (!isHidden) {
+    renderBuildPalette();
+    btnToggleBuild?.classList.add("active");
+    if (compactObjectivesPanel && !compactObjectivesPanel.classList.contains("hidden")) {
+      compactObjectivesPanel.classList.add("hidden");
+      btnToggleObjectives?.classList.remove("active");
+    }
+  } else {
+    btnToggleBuild?.classList.remove("active");
+  }
+}
+
 function toggleInventoryModal() {
   const isHidden = modalInventory.classList.contains("hidden");
   if (isHidden) {
     renderInventoryGrids();
     renderCraftingList();
     modalInventory.classList.remove("hidden");
+    btnOpenInventory.classList.add("active");
   } else {
     modalInventory.classList.add("hidden");
+    btnOpenInventory.classList.remove("active");
   }
 }
 

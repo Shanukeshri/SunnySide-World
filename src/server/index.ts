@@ -1,10 +1,87 @@
-import { createServer } from "node:http";
+import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { Server } from "socket.io";
 import { GameState } from "../game/core/GameState";
 import { PlayerSystem } from "../game/systems/PlayerSystem";
+import { readFile } from "node:fs";
+import { join, extname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const ROOT_DIR = join(__dirname, "../..");
+const DIST_DIR = join(ROOT_DIR, "dist");
+
+const MIME: Record<string, string> = {
+  ".html": "text/html",
+  ".js":   "application/javascript",
+  ".css":  "text/css",
+  ".png":  "image/png",
+  ".jpg":  "image/jpeg",
+  ".svg":  "image/svg+xml",
+  ".ico":  "image/x-icon",
+  ".wav":  "audio/wav",
+  ".mp3":  "audio/mpeg",
+  ".json": "application/json",
+  ".woff2": "font/woff2",
+  ".woff":  "font/woff",
+  ".ttf":   "font/ttf",
+};
+
+function serveStatic(req: IncomingMessage, res: ServerResponse): boolean {
+  // Let socket.io handle its own requests
+  if (req.url?.startsWith("/socket.io")) return false;
+
+  let urlPath = decodeURIComponent(req.url?.split("?")[0] || "/");
+  if (urlPath === "/" || (!extname(urlPath) && !urlPath.includes("."))) urlPath = "/index.html";
+
+  // Check dist first, then root directory (for Sunnyside_World_ASSET_PACK_V2.1, assets, etc.)
+  let filePath = join(DIST_DIR, urlPath);
+  const ext = extname(filePath);
+  const mime = MIME[ext] || "application/octet-stream";
+
+  readFile(filePath, (err, data) => {
+    if (!err) {
+      res.writeHead(200, {
+        "Content-Type": mime,
+        "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000",
+      });
+      res.end(data);
+      return;
+    }
+
+    // Try root folder
+    const rootFilePath = join(ROOT_DIR, urlPath);
+    readFile(rootFilePath, (err2, data2) => {
+      if (!err2) {
+        res.writeHead(200, {
+          "Content-Type": mime,
+          "Cache-Control": "public, max-age=31536000",
+        });
+        res.end(data2);
+        return;
+      }
+
+      // If it's a static file request (has extension) and not found, return 404 rather than corrupting images with index.html!
+      if (ext && ext !== ".html") {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not found");
+        return;
+      }
+
+      // SPA fallback: only serve index.html for page navigation routes
+      readFile(join(DIST_DIR, "index.html"), (err3, html) => {
+        if (err3) { res.writeHead(404); res.end("Not found"); return; }
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(html);
+      });
+    });
+  });
+  return true;
+}
 
 type Room = { code: string; hostSessionId: string; state: GameState; players: PlayerSystem; tick: number; timer: NodeJS.Timeout; emptyTimer?: NodeJS.Timeout; entities?: any };
-const httpServer = createServer();
+const httpServer = createServer((req, res) => {
+  serveStatic(req, res);
+});
 const io = new Server(httpServer, { cors: { origin: true, methods: ["GET", "POST"] } });
 const rooms = new Map<string, Room>();
 const code = () => Math.random().toString(36).slice(2, 7).toUpperCase();

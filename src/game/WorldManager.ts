@@ -569,7 +569,7 @@ export class WorldManager {
     }
   }
 
-  private addResourceToWorld(res: ResourceNode) {
+  public addResourceToWorld(res: ResourceNode) {
     const cx = Math.floor(res.x / CHUNK_SIZE);
     const cy = Math.floor(res.y / CHUNK_SIZE);
     const chunk = this.getOrCreateChunk(cx, cy);
@@ -1042,16 +1042,26 @@ export class WorldManager {
    * Retrieves tile at world coordinate (wx, wy).
    */
   public getTile(wx: number, wy: number): WorldTile {
-    const cx = Math.floor(wx / CHUNK_SIZE);
-    const cy = Math.floor(wy / CHUNK_SIZE);
+    const tileX = Math.floor(wx);
+    const tileY = Math.floor(wy);
+    const cx = Math.floor(tileX / CHUNK_SIZE);
+    const cy = Math.floor(tileY / CHUNK_SIZE);
     const chunk = this.getOrCreateChunk(cx, cy);
 
-    let lx = wx - cx * CHUNK_SIZE;
-    let ly = wy - cy * CHUNK_SIZE;
+    let lx = tileX - cx * CHUNK_SIZE;
+    let ly = tileY - cy * CHUNK_SIZE;
     if (lx < 0) lx += CHUNK_SIZE;
     if (ly < 0) ly += CHUNK_SIZE;
 
-    return chunk.tiles[ly][lx];
+    return (
+      chunk.tiles[ly]?.[lx] || {
+        terrain: "grass_textured_01",
+        isWater: false,
+        isRoad: false,
+        isFarm: false,
+        isBlocked: false,
+      }
+    );
   }
 
   /**
@@ -1129,6 +1139,30 @@ export class WorldManager {
           tile.isBlocked = false;
         }
       }
+    }
+  }
+
+  /**
+   * Completely removes harvested crop from village farm cells and marks crop resource depleted.
+   */
+  public removeCropAt(wx: number, wy: number): void {
+    const tileX = Math.floor(wx);
+    const tileY = Math.floor(wy);
+
+    for (const v of this.villages) {
+      if (!v.data?.farms) continue;
+      for (const farm of v.data.farms) {
+        for (const cell of farm.cells) {
+          if (v.gridX + cell.x === tileX && v.gridY + cell.y === tileY) {
+            cell.cropId = "";
+          }
+        }
+      }
+    }
+
+    const res = this.getResourceAt(tileX + 0.5, tileY + 0.5, 0.8);
+    if (res && res.type === "crop") {
+      this.markResourceDepleted(res.id);
     }
   }
 

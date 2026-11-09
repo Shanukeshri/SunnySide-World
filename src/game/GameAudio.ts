@@ -8,8 +8,57 @@ class SoundSynthesizer {
   private enabled = true;
   private masterGain: GainNode | null = null;
 
+  private bgmAudio: HTMLAudioElement | null = null;
+  private bgmStarted = false;
+  private readonly BGM_VOLUME = 0.10;
+
   constructor() {
-    // Lazy initialize on first user interaction to satisfy browser autoplay policies
+    // Attempt instant autoplay on site arrival, with user interaction fallbacks
+    this.startBgm();
+    this.setupUserInteractionListener();
+  }
+
+  private setupUserInteractionListener() {
+    if (typeof window === "undefined") return;
+    const startAudio = () => {
+      this.initContext();
+      this.startBgm();
+      if (this.bgmAudio && !this.bgmAudio.paused) {
+        window.removeEventListener("click", startAudio);
+        window.removeEventListener("keydown", startAudio);
+        window.removeEventListener("pointerdown", startAudio);
+        window.removeEventListener("touchstart", startAudio);
+        window.removeEventListener("mousemove", startAudio);
+      }
+    };
+    window.addEventListener("click", startAudio);
+    window.addEventListener("keydown", startAudio);
+    window.addEventListener("pointerdown", startAudio);
+    window.addEventListener("touchstart", startAudio);
+    window.addEventListener("mousemove", startAudio, { once: true });
+  }
+
+  public startBgm() {
+    if (typeof window === "undefined") return;
+    if (!this.bgmAudio) {
+      this.bgmAudio = new Audio("/audio/bgm.wav");
+      this.bgmAudio.loop = true;
+      this.bgmAudio.volume = this.enabled ? this.BGM_VOLUME : 0;
+    }
+    if (this.enabled && this.bgmAudio.paused) {
+      this.bgmAudio.play().then(() => {
+        this.bgmStarted = true;
+      }).catch((e) => {
+        // Autoplay policy might block until next interaction
+        console.warn("BGM autoplay pending user interaction:", e);
+      });
+    }
+  }
+
+  public stopBgm() {
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+    }
   }
 
   private initContext() {
@@ -32,7 +81,13 @@ class SoundSynthesizer {
     if (this.masterGain) {
       this.masterGain.gain.value = this.enabled ? 0.25 : 0;
     }
-    return this.enabled;
+    if (this.bgmAudio) {
+      this.bgmAudio.volume = this.enabled ? this.BGM_VOLUME : 0;
+      if (this.enabled && this.bgmAudio.paused) {
+        this.bgmAudio.play().catch(() => {});
+      }
+    }
+    return !this.enabled;
   }
 
   public isMuted(): boolean {

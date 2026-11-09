@@ -22,6 +22,7 @@ export type NPCRole =
   | "builder"
   | "farmer"
   | "fisher"
+  | "guard"
   | "guide"
   | "merchant"
   | "child"
@@ -82,6 +83,17 @@ export const NPC_ROLE_CONFIGS: Record<NPCRole, NPCRoleConfig> = {
       "The river is plentiful! Cast your rod into clear water and reel in fish for hearty meals.",
     hairstyle: "bowlhair",
   },
+  guard: {
+    role: "guard",
+    title: "Gareth the Village Guard",
+    compositeSheet:
+      "/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Composites/guide_longhair_attack_strip10.png",
+    totalFrames: 10,
+    speed: 0.08,
+    dialogue:
+      "I stand vigilant day and night. Any monster or trespasser seeking to harm our people will answer to my blade!",
+    hairstyle: "longhair",
+  },
   guide: {
     role: "guide",
     title: "Gareth the Village Guard",
@@ -141,9 +153,19 @@ export class NPC extends LivingEntity {
   public bedLocation?: { x: number; y: number };
   public happiness: number = 85; // 0 to 100
   public currentExpression?: {
-    type: "love" | "chat" | "working" | "stress" | "alerted";
+    type: "love" | "chat" | "working" | "stress" | "alerted" | "sleep";
     timer: number;
   };
+
+  // Sleep & Night Schedule
+  public isSleeping: boolean = false;
+
+  // Combat & Fighting Back
+  public combatTarget: { id?: string | number; type: "player" | "enemy"; x: number; y: number } | null = null;
+  public attackCooldown: number = 0;
+  public attackDamage: number = 8;
+  public attackRange: number = 1.3;
+  public onAttackHit?: (target: { id?: string | number; type: "player" | "enemy"; x: number; y: number }) => void;
 
   constructor(
     id: number,
@@ -213,6 +235,34 @@ export class NPC extends LivingEntity {
       }
       this.customDialogue = cfg.dialogue;
     }
+
+    if (role === "guard" || role === "guide") {
+      this.attackDamage = 14;
+      this.attackRange = 1.4;
+      this.health = 80;
+      this.maxHealth = 80;
+    } else {
+      this.attackDamage = 7;
+      this.attackRange = 1.2;
+      this.health = 50;
+      this.maxHealth = 50;
+    }
+  }
+
+  public onDamaged(
+    damage: number,
+    attackerX: number,
+    attackerY: number,
+    attackerType: "player" | "enemy" = "player",
+    attackerId?: string | number,
+  ) {
+    this.takeDamage(damage);
+    this.isSleeping = false;
+    this.hurtTimer = 0.35;
+    this.combatTarget = { id: attackerId, type: attackerType, x: attackerX, y: attackerY };
+    this.currentExpression = { type: "alerted", timer: 4.0 };
+    this.behaviorState = "WALK";
+    this.setTarget(attackerX, attackerY);
   }
 
   updateAI(
@@ -221,6 +271,89 @@ export class NPC extends LivingEntity {
     worldTime?: any,
     worldManager?: any,
   ) {
+    if (this.health <= 0) {
+      this.behaviorState = "DEAD";
+      this.clearTarget();
+      return;
+    }
+
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= dt;
+    }
+
+    // 1. Handle Active Combat & Retaliation
+    if (this.combatTarget) {
+      const dist = Math.hypot(
+        this.combatTarget.x - this.position.x,
+        this.combatTarget.y - this.position.y,
+      );
+      if (dist <= this.attackRange) {
+        this.behaviorState = "ATTACK";
+        this.clearTarget();
+        if (this.attackCooldown <= 0) {
+          this.attackCooldown = 1.1;
+          this.onAttackHit?.(this.combatTarget);
+        }
+        return;
+      } else if (dist < 18) {
+        this.behaviorState = "WALK";
+        this.setTarget(this.combatTarget.x, this.combatTarget.y);
+        return;
+      } else {
+        // Lost target
+        this.combatTarget = null;
+      }
+    }
+
+    const isNight = worldTime && (worldTime.timeOfDay === "Night" || worldTime.hour >= 21 || worldTime.hour < 5);
+    const isGuard = this.role === "guard" || this.role === "guide" || this.customTitle?.toLowerCase().includes("guard");
+
+    // 2. Night Schedule: Everyone goes home and sleeps, EXCEPT the village guard!
+    if (isNight && !isGuard) {
+      const bedX = this.bedLocation?.x ?? this.homeX;
+      const bedY = this.bedLocation?.y ?? this.homeY;
+      const distToHome = Math.hypot(bedX - this.position.x, bedY - this.position.y);
+
+      if (distToHome > 1.2) {
+        this.isSleeping = false;
+        this.scheduleState = "SLEEP";
+        this.setTarget(bedX, bedY);
+        this.behaviorState = "WALK";
+        return;
+      } else {
+        // In bed: sleep soundly
+        this.isSleeping = true;
+        this.scheduleState = "SLEEP";
+        this.behaviorState = "IDLE";
+        this.clearTarget();
+        this.currentExpression = { type: "sleep", timer: 10 };
+        return;
+      }
+    } else {
+      this.isSleeping = false;
+    }
+
+    // 3. Guard Night Patrol: stays awake and guards the settlement!
+    if (isNight && isGuard) {
+      this.scheduleState = "WORK";
+      this.isSleeping = false;
+      this.stateTimer -= dt;
+      if (this.stateTimer <= 0) {
+        this.stateTimer = 2.5 + Math.random() * 2.5;
+        const step = ++this.aiDecisionCount;
+        const patrolAngle = (step * 1.2) % (Math.PI * 2);
+        const patrolRadius = 6 + (step % 4) * 3;
+        const targetX = this.homeX + Math.cos(patrolAngle) * patrolRadius;
+        const targetY = this.homeY + Math.sin(patrolAngle) * patrolRadius;
+        if (det.isAreaWalkable(targetX, targetY, 0.2, 0.2, false, false)) {
+          this.setTarget(targetX, targetY);
+          this.behaviorState = "WALK";
+        }
+      }
+      return;
+    }
+
+    // 4. Regular Daytime Routine
     this.stateTimer -= dt;
     if (this.stateTimer <= 0) {
       this.stateTimer = 2.0 + Math.random() * 3.0; // Check every 2-5s
@@ -250,7 +383,7 @@ export class NPC extends LivingEntity {
           const step = ++this.aiDecisionCount;
           targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 6;
           targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 6;
-        } else if (this.role === "guide") {
+        } else if (this.role === "guide" || this.role === "guard") {
           const step = ++this.aiDecisionCount;
           targetX = this.homeX + (seededRand(this.id, step, 1) - 0.5) * 20;
           targetY = this.homeY + (seededRand(this.id, step, 2) - 0.5) * 20;

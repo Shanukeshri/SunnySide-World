@@ -14,7 +14,7 @@
   --text-muted: #9ca3af;
   --font-ui: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --tab-bar-h: 54px;
+  --tab-bar-h: 0px;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -55,6 +55,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
    TOP TAB BAR
    ═══════════════════════════════════════════════════════════ */
 .top-tab-bar {
+  display: none !important;
   position: relative;
   z-index: 20;
   height: var(--tab-bar-h);
@@ -1334,7 +1335,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 .settlement-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--tab-bar-h));
+  height: 100vh;
   overflow: hidden;
   background: radial-gradient(circle at 50% 20%, #151b28 0%, #0c0f17 100%);
 }
@@ -1627,7 +1628,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 #game-view {
   position: relative;
   width: 100%;
-  height: calc(100vh - 48px);
+  height: 100vh;
   overflow: hidden;
   background: #090d13;
 }
@@ -1653,352 +1654,330 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 /* ── TOP HUD ──────────────────────────────────────────────────────── */
 .game-hud-top {
   position: absolute;
-  top: 14px;
-  left: 16px;
-  right: 16px;
+  top: 10px;
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   pointer-events: none;
   z-index: 10;
-  gap: 16px;
 }
 
 .game-hud-top > * {
   pointer-events: auto;
 }
 
-/* Survival Meters Card */
+/* Minimal Survival Meters Card */
 .survival-bars-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border: 12px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Containers/WoodenContainers/WoodenContainer1.png') 12 fill / 12px stretch;
+  gap: 4px;
+  border: 6px solid transparent;
+  border-image: url('/assets/cozy_ui/Frames/Frame1_wood.png') 6 fill / 6px stretch;
   image-rendering: pixelated;
   padding: 4px 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  min-width: 240px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+  width: 140px;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .stat-bar-group {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.stat-label-row {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 700;
-  color: #f1f5f9;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  gap: 5px;
 }
 
 .stat-icon {
   display: flex;
   align-items: center;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .stat-pixel-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   object-fit: contain;
   image-rendering: pixelated;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 }
 
-.stat-name {
-  flex: 1;
-  font-family: var(--font-ui);
-}
-
-.stat-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #cbd5e1;
-  font-weight: 700;
-}
-
 .stat-bar-container {
+  position: relative;
   display: flex;
   align-items: center;
-  width: 100%;
-  height: 21px; /* 7px * 3x scale */
+  flex: 1;
+  height: 10px;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.stat-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.15s ease-out;
+}
+
+.hp-fill {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+}
+
+.hunger-fill {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+}
+
+.stamina-fill {
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
 }
 
 .pixel-stat-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: fill;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  opacity: 0.85;
+  pointer-events: none;
 }
 
-/* Center World Status Card */
-.world-status-card {
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #e2e8f0;
+  font-weight: 700;
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Translucent Minimal Center Time Capsule */
+.hud-time-capsule {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 4px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 3px 14px;
+  color: rgba(248, 250, 252, 0.88);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  pointer-events: auto;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud-room-code-tag {
+  display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 12px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Containers/WoodenContainers/WoodenContainer2.png') 12 fill / 12px stretch;
-  image-rendering: pixelated;
-  padding: 4px 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-}
-
-.clock-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.clock-icon {
-  display: flex;
-  align-items: center;
-}
-
-.hud-pixel-icon {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  vertical-align: middle;
-}
-
-.hud-pixel-icon.mini-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.hud-pixel-icon.settings-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.clock-time {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 14px;
-  color: #f8fafc;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-}
-
-.clock-phase-badge {
-  font-size: 11px;
-  color: #fde047;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(253, 224, 71, 0.3);
-  padding: 2px 8px;
+  padding: 1px 7px;
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.45);
   border-radius: 6px;
-  font-weight: 600;
-}
-
-.village-realm-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #e2e8f0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-.village-realm-badge strong {
-  color: #4ade80;
-}
-
-.badge-sub {
-  color: #94a3b8;
-  font-size: 10px;
-}
-
-/* Server Status & Multiplayer Presence */
-.server-status-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 10px;
-  color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-.server-status-badge .server-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 6px #22c55e;
-}
-
-.server-status-badge .badge-pipe {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.server-status-badge .badge-players-wrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* Right HUD Actions */
-.game-hud-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hud-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 8px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/Square/SquareButton1_wood.png') 8 fill / 8px stretch;
-  image-rendering: pixelated;
-  color: #f8fafc;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  color: #fef08a;
   cursor: pointer;
-  transition: transform 0.12s ease, filter 0.12s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  user-select: all;
+  transition: all 0.15s ease;
 }
 
-.hud-action-btn:hover {
-  filter: brightness(1.15);
-  transform: translateY(-2px);
+.hud-room-code-tag:hover {
+  background: rgba(251, 191, 36, 0.3);
+  border-color: rgba(251, 191, 36, 0.8);
+  color: #fff;
 }
 
-.primary-hud-btn {
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/Square/SquareButton1_wood.png') 8 fill / 8px stretch;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
+.hud-room-code-label {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.8;
+  letter-spacing: 0.6px;
 }
 
-.pause-hud-btn {
-  padding: 4px 8px;
+.hud-room-code-val {
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
-/* ── SIDE HUD: RADAR & QUESTS ─────────────────────────────────────── */
-.game-side-hud {
-  position: absolute;
-  top: 74px;
-  right: 16px;
+/* ── TOP RIGHT: RECTANGULAR MINIMAP & BUTTONS BELOW IT ──────────────── */
+.game-hud-top-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: flex-end;
+  gap: 5px;
   pointer-events: none;
-  z-index: 10;
-  width: 230px;
+  position: relative;
 }
 
-.game-side-hud > * {
+.game-hud-top-right > * {
   pointer-events: auto;
 }
 
-.radar-card {
-  border: 12px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Containers/WoodenContainers/WoodenContainer3.png') 12 fill / 12px stretch;
+.minimap-rect-card {
+  width: 180px;
+  height: 120px;
+  border: 8px solid transparent;
+  border-image: url('/assets/cozy_ui/Frames/Frame1_wood.png') 8 fill / 8px stretch;
   image-rendering: pixelated;
-  padding: 4px 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-}
-
-.quest-card {
-  border: 12px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Containers/WoodenContainers/WoodenContainer4.png') 12 fill / 12px stretch;
-  image-rendering: pixelated;
-  padding: 4px 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-}
-
-.radar-header, .quest-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 700;
-  color: #f8fafc;
-  margin-bottom: 8px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-.header-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.radar-badge {
-  font-size: 9px;
-  background: rgba(34, 197, 94, 0.2);
-  color: #86efac;
-  border: 1px solid rgba(34, 197, 94, 0.4);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.radar-viewport {
-  width: 140px;
-  height: 140px;
-  margin: 0 auto 8px auto;
-  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
   overflow: hidden;
-  border: 3px solid #78350f;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(0, 0, 0, 0.9);
-  background: #022c22;
+  background: #2d5a27;
+  position: relative;
 }
 
 #radar-canvas {
   width: 100%;
   height: 100%;
   display: block;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
-.radar-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.radar-village-item {
+/* Icon Buttons Toolbar below Minimap */
+.hud-icon-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  color: #cbd5e1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  width: 180px;
+  gap: 3px;
 }
 
-.radar-village-item.active {
-  color: #fef08a;
+.hud-icon-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border: 6px solid transparent;
+  border-image: url('/assets/cozy_ui/Buttons/Square/SquareButton1_wood.png') 6 fill / 6px stretch;
+  image-rendering: pixelated;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.1s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.hud-icon-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+.hud-icon-btn:active,
+.hud-icon-btn.active {
+  transform: translateY(1px);
+  border-image: url('/assets/cozy_ui/Buttons/Square/IsPressed/SquarePressedButton1_wood.png') 6 fill / 6px stretch;
+  filter: brightness(0.95);
+}
+
+.hud-icon-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.hud-key-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
   font-weight: 700;
+  padding: 0px 2px;
+  line-height: 1.1;
+  pointer-events: none;
 }
 
-.rv-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 4px;
+/* Compact Objectives Popover */
+.compact-objectives-panel {
+  position: absolute;
+  top: 162px;
+  right: 0;
+  width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 10px solid transparent;
+  border-image: url('/assets/cozy_ui/Containers/WoodenContainers/WoodenContainer4.png') 10 fill / 10px stretch;
+  image-rendering: pixelated;
+  padding: 6px 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.rv-dot.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-.rv-dot.gray { background: #94a3b8; }
+.compact-objectives-panel.hidden {
+  display: none;
+}
+
+.compact-objectives-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.obj-header-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fde68a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.obj-mini-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+}
+
+.obj-close-btn {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.obj-close-btn:hover {
+  color: #f87171;
+}
 
 .quest-list {
   display: flex;
@@ -2015,6 +1994,145 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   font-size: 11px;
+}
+
+/* Compact Build Mode Palette */
+.compact-build-panel {
+  position: absolute;
+  top: 162px;
+  right: 0;
+  width: 250px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 10px solid transparent;
+  border-image: url('/assets/cozy_ui/Containers/WoodenContainers/WoodenContainer4.png') 10 fill / 10px stretch;
+  image-rendering: pixelated;
+  padding: 6px 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.compact-build-panel.hidden {
+  display: none;
+}
+
+.compact-build-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.build-header-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fde68a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.build-mini-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+}
+
+.build-close-btn {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.build-close-btn:hover {
+  color: #f87171;
+}
+
+.build-category-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.build-tab-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 9px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.build-tab-btn.active {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+  color: #fef08a;
+  font-weight: 700;
+}
+
+.build-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.build-item-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.build-item-card:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.5);
+  transform: translateY(-1px);
+}
+
+.build-item-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.build-item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.build-item-name {
+  font-size: 9px;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.build-item-qty {
+  font-size: 8px;
+  color: #94a3b8;
 }
 
 .quest-item.completed {
@@ -2122,24 +2240,24 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  border: 12px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Containers/WoodenContainers/WoodenContainer5.png') 12 fill / 12px stretch;
+  gap: 2px;
+  border: 6px solid transparent;
+  border-image: url('/assets/cozy_ui/Containers/WoodenContainers/WoodenContainer5.png') 6 fill / 6px stretch;
   image-rendering: pixelated;
-  padding: 4px 10px;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8);
+  padding: 3px 5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
 }
 
 .hotbar-grid {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .hotbar-slot {
   position: relative;
-  width: 48px;
-  height: 48px;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  width: 38px;
+  height: 38px;
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;
@@ -2147,26 +2265,27 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.15s ease, filter 0.15s ease;
+  transition: transform 0.12s ease, filter 0.12s ease;
   user-select: none;
 }
 
 .hotbar-slot:hover {
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
   transform: translateY(-2px);
   filter: brightness(1.1);
 }
 
 .hotbar-slot.active {
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
-  transform: translateY(-3px) scale(1.06);
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  transform: translateY(-2px);
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
 }
 
 /* 4 Sunnyside Corner Brackets for active slot */
 .selectbox-corner {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   background-size: contain;
   background-repeat: no-repeat;
   image-rendering: pixelated;
@@ -2175,38 +2294,39 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 }
 
 .corner-tl {
-  top: -3px;
-  left: -3px;
+  top: -2px;
+  left: -2px;
   background-image: url('/assets/ui/selectbox_tl.png');
 }
 
 .corner-tr {
-  top: -3px;
-  right: -3px;
+  top: -2px;
+  right: -2px;
   background-image: url('/assets/ui/selectbox_tr.png');
 }
 
 .corner-bl {
-  bottom: -3px;
-  left: -3px;
+  bottom: -2px;
+  left: -2px;
   background-image: url('/assets/ui/selectbox_bl.png');
 }
 
 .corner-br {
-  bottom: -3px;
-  right: -3px;
+  bottom: -2px;
+  right: -2px;
   background-image: url('/assets/ui/selectbox_br.png');
 }
 
 .slot-key-num {
   position: absolute;
-  top: 2px;
-  left: 4px;
-  font-size: 10px;
+  top: 1px;
+  left: 2px;
+  font-size: 8px;
   font-weight: 700;
   color: #78350f;
   font-family: 'JetBrains Mono', monospace;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  line-height: 1;
 }
 
 .hotbar-slot.active .slot-key-num {
@@ -2222,39 +2342,40 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 }
 
 .slot-pixel-icon {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   object-fit: contain;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
   pointer-events: none;
 }
 
 .slot-item-icon {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .slot-item-count {
   position: absolute;
-  bottom: 2px;
-  right: 4px;
-  font-size: 10px;
+  bottom: 1px;
+  right: 2px;
+  font-size: 8px;
   font-weight: 700;
   color: #f8fafc;
   font-family: 'JetBrains Mono', monospace;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  line-height: 1;
 }
 
 .slot-durability-bar {
   position: absolute;
-  bottom: 2px;
-  left: 4px;
-  right: 4px;
-  height: 3px;
+  bottom: 1px;
+  left: 3px;
+  right: 3px;
+  height: 2px;
   background: #22c55e;
-  border-radius: 2px;
+  border-radius: 1px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
@@ -2284,7 +2405,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 
 .survival-modal-box {
   border: 24px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Modals/WoodenModals/WoodenModal.png') 32 fill / 32px stretch;
+  border-image: url('/assets/cozy_ui/Modals/WoodenModals/WoodenModal.png') 32 fill / 32px stretch;
   image-rendering: pixelated;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
   width: 100%;
@@ -2373,7 +2494,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 .inv-slot {
   position: relative;
   aspect-ratio: 1;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   image-rendering: pixelated;
@@ -2385,13 +2506,13 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 }
 
 .inv-slot:hover {
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
   filter: brightness(1.15);
   transform: scale(1.05);
 }
 
 .inv-slot.active {
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsSelected/SlotHover1_cream.png');
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
 }
 
@@ -2420,7 +2541,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 
 .craft-tab-btn {
   border: 6px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/Square/SquareButton1_wood.png') 6 fill / 6px stretch;
+  border-image: url('/assets/cozy_ui/Buttons/Square/SquareButton1_wood.png') 6 fill / 6px stretch;
   image-rendering: pixelated;
   color: #cbd5e1;
   padding: 6px 10px;
@@ -2475,7 +2596,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
+  background-image: url('/assets/cozy_ui/Inventory/ItemSlots/ItemSlotsDefault/SlotDefaultl1_cream.png');
   background-size: 100% 100%;
   image-rendering: pixelated;
   flex-shrink: 0;
@@ -2516,7 +2637,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 
 .btn-craft {
   border: 6px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/Square/SquareButton1_wood.png') 6 fill / 6px stretch;
+  border-image: url('/assets/cozy_ui/Buttons/Square/SquareButton1_wood.png') 6 fill / 6px stretch;
   color: #fef08a;
   font-family: var(--font-ui);
   font-weight: 700;
@@ -2650,22 +2771,22 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
 
 #btn-resume-game {
   width: 96px;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/PlayButton.png');
+  background-image: url('/assets/cozy_ui/Buttons/ButtonsBuild/PlayButton.png');
 }
 
 #btn-save-game {
   width: 124px;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SaveButton.png');
+  background-image: url('/assets/cozy_ui/Buttons/ButtonsBuild/SaveButton.png');
 }
 
 #btn-load-game {
   width: 124px;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/ContinueButton.png');
+  background-image: url('/assets/cozy_ui/Buttons/ButtonsBuild/ContinueButton.png');
 }
 
 #btn-reset-game {
   width: 124px;
-  background-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/CancelButton.png');
+  background-image: url('/assets/cozy_ui/Buttons/ButtonsBuild/CancelButton.png');
 }
 
 .death-box {
@@ -2697,7 +2818,7 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   font-size: 14px;
   font-weight: 700;
   border: 8px solid transparent;
-  border-image: url('/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/SquareButtons/SquareButton1_wood.png') 10 fill / 10px stretch;
+  border-image: url('/assets/cozy_ui/Buttons/Square/SquareButton1_wood.png') 10 fill / 10px stretch;
   image-rendering: pixelated;
   color: #fef08a;
   cursor: pointer;

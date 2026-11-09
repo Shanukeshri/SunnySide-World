@@ -45,7 +45,7 @@
               class="menu-btn primary-menu-btn"
             >
               <img
-                src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/PlayButton.png"
+                src="/assets/cozy_ui/Buttons/ButtonsBuild/PlayButton.png"
                 alt="Play"
                 class="menu-btn-icon"
               />
@@ -53,13 +53,17 @@
             </button>
 
             <button id="btn-menu-multiplayer" class="menu-btn multiplayer-menu-btn">
-              <span aria-hidden="true">👥</span>
+              <img
+                src="/assets/ui/playercount.png"
+                alt="Multiplayer"
+                class="menu-btn-icon"
+              />
               <span>Multiplayer</span>
             </button>
 
             <button id="btn-menu-settings" class="menu-btn secondary-menu-btn">
               <img
-                src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SettingsButton.png"
+                src="/assets/cozy_ui/Buttons/ButtonsBuild/SettingsButton.png"
                 alt="Settings"
                 class="menu-btn-icon"
               />
@@ -86,10 +90,8 @@
 
 
 
-      <!-- ═══════════════════════════════════════════════ -->
-      <!-- TOP TAB BAR                                     -->
-      <!-- ═══════════════════════════════════════════════ -->
-      <header class="top-tab-bar">
+      <!-- TOP TAB BAR (Hidden for fullscreen experience) -->
+      <header class="top-tab-bar" style="display: none;">
         <!-- Brand -->
         <div class="brand-badge">
           <span class="brand-icon">🎮</span>
@@ -643,24 +645,18 @@
 
           <!-- TOP HUD -->
           <header class="game-hud-top">
-            <!-- Left: Survival Meters -->
+            <!-- Left: Minimal Survival Meters -->
             <div class="survival-bars-card">
               <!-- Health -->
-              <div
-                class="stat-bar-group"
-                title="Player Health (Starvation or monster damage drains health)"
-              >
-                <div class="stat-label-row">
-                  <span class="stat-icon"
-                    ><img
-                      src="/assets/ui/expression_love.png"
-                      class="stat-pixel-icon"
-                      alt="Health"
-                  /></span>
-                  <span class="stat-name">Health</span>
-                  <span class="stat-val" id="hud-hp-val">100/100</span>
-                </div>
+              <div class="stat-bar-group" title="Player Health">
+                <span class="stat-icon"
+                  ><img
+                    src="/assets/ui/expression_love.png"
+                    class="stat-pixel-icon"
+                    alt="Health"
+                /></span>
                 <div class="stat-bar-container">
+                  <div id="hud-hp-fill" class="stat-bar-fill hp-fill" style="width: 100%;"></div>
                   <img
                     id="hud-hp-img"
                     class="pixel-stat-bar"
@@ -668,24 +664,19 @@
                     alt="Health Bar"
                   />
                 </div>
+                <span class="stat-val" id="hud-hp-val">100/100</span>
               </div>
 
               <!-- Hunger -->
-              <div
-                class="stat-bar-group"
-                title="Player Hunger (Drains slowly; restored by berries, bread, meat)"
-              >
-                <div class="stat-label-row">
-                  <span class="stat-icon"
-                    ><img
-                      src="/assets/ui/basket.png"
-                      class="stat-pixel-icon"
-                      alt="Hunger"
-                  /></span>
-                  <span class="stat-name">Hunger</span>
-                  <span class="stat-val" id="hud-hunger-val">100/100</span>
-                </div>
+              <div class="stat-bar-group" title="Player Hunger">
+                <span class="stat-icon"
+                  ><img
+                    src="/assets/ui/basket.png"
+                    class="stat-pixel-icon"
+                    alt="Hunger"
+                /></span>
                 <div class="stat-bar-container">
+                  <div id="hud-hunger-fill" class="stat-bar-fill hunger-fill" style="width: 100%;"></div>
                   <img
                     id="hud-hunger-img"
                     class="pixel-stat-bar"
@@ -693,24 +684,19 @@
                     alt="Hunger Bar"
                   />
                 </div>
+                <span class="stat-val" id="hud-hunger-val">100/100</span>
               </div>
 
               <!-- Stamina -->
-              <div
-                class="stat-bar-group"
-                title="Stamina (Consumed by sprint [Shift]; recovers automatically)"
-              >
-                <div class="stat-label-row">
-                  <span class="stat-icon"
-                    ><img
-                      src="/assets/ui/sword.png"
-                      class="stat-pixel-icon"
-                      alt="Stamina"
-                  /></span>
-                  <span class="stat-name">Stamina</span>
-                  <span class="stat-val" id="hud-stamina-val">100/100</span>
-                </div>
+              <div class="stat-bar-group" title="Stamina">
+                <span class="stat-icon"
+                  ><img
+                    src="/assets/ui/sword.png"
+                    class="stat-pixel-icon"
+                    alt="Stamina"
+                /></span>
                 <div class="stat-bar-container">
+                  <div id="hud-stamina-fill" class="stat-bar-fill stamina-fill" style="width: 100%;"></div>
                   <img
                     id="hud-stamina-img"
                     class="pixel-stat-bar"
@@ -718,171 +704,141 @@
                     alt="Stamina Bar"
                   />
                 </div>
+                <span class="stat-val" id="hud-stamina-val">100/100</span>
               </div>
             </div>
 
-            <!-- Center: World Clock & Realm Villages Badge -->
-            <div class="world-status-card">
-              <div class="clock-display">
-                <span class="clock-icon" id="hud-clock-icon"
-                  ><img
-                    src="/assets/ui/stopwatch.png"
-                    class="hud-pixel-icon"
-                    alt="Clock"
-                /></span>
-                <span class="clock-time" id="hud-clock-time">08:30 AM</span>
-                <span class="clock-phase-badge" id="hud-clock-phase"
-                  >Day 1 &bull; Midday</span
-                >
+            <!-- Center: Translucent Time Indicator & Room Code -->
+            <div class="hud-time-capsule" id="hud-time-capsule">
+              <span id="hud-clock-time">08:30 AM</span>
+              <span id="hud-room-code-tag" class="hud-room-code-tag hidden">
+                <span class="hud-room-code-label">CODE:</span>
+                <span id="hud-room-code-val" class="hud-room-code-val"></span>
+              </span>
+            </div>
+
+            <!-- Top Right: Rectangular Minimap, Icon Buttons below it, and Objectives drawer -->
+            <aside class="game-hud-top-right">
+              <!-- Rectangular Realm Navigator / Minimap -->
+              <div class="minimap-rect-card" id="radar-card">
+                <canvas id="radar-canvas" width="180" height="120"></canvas>
               </div>
-              <div
-                class="village-realm-badge"
-                id="hud-village-badge"
-                title="Discovered Villages across the Realm (Gap between villages is 2 to 4 village equivalents, max 4)"
-              >
-                <span class="badge-icon-wrap"
-                  ><img
+
+              <!-- Icon Toolbar below Minimap: only icon + key badge -->
+              <div class="hud-icon-toolbar">
+                <button
+                  id="btn-open-inventory"
+                  class="hud-icon-btn"
+                  title="Inventory & Crafting [I]"
+                >
+                  <img
+                    src="/assets/ui/basket.png"
+                    class="hud-icon-img"
+                    alt="Inventory"
+                  />
+                  <span class="hud-key-badge">I</span>
+                </button>
+
+                <button
+                  id="btn-toggle-build"
+                  class="hud-icon-btn"
+                  title="Build Mode [B]"
+                >
+                  <img
+                    src="/assets/ui/hammer.png"
+                    class="hud-icon-img"
+                    alt="Build"
+                  />
+                  <span class="hud-key-badge">B</span>
+                </button>
+
+                <button
+                  id="btn-toggle-objectives"
+                  class="hud-icon-btn"
+                  title="Objectives [O]"
+                >
+                  <img
                     src="/assets/ui/plan alt.png"
-                    class="hud-pixel-icon"
-                    alt="Villages"
-                /></span>
-                <span
-                  >Villages Discovered:
-                  <strong id="hud-villages-count">1/4</strong></span
-                >
-                <span class="badge-sub" id="hud-nearest-village"
-                  >Current: Oakvale</span
-                >
-              </div>
-              <!-- Authoritative Server Status & Multiplayer Presence -->
-              <div class="server-status-badge" id="hud-server-badge">
-                <span class="server-dot" id="hud-server-dot"></span>
-                <span id="hud-server-status"
-                  >Authoritative Server: Connecting...</span
-                >
-                <span class="badge-pipe">|</span>
-                <span class="badge-players-wrap"
-                  ><img
-                    src="/assets/ui/playercount.png"
-                    class="hud-pixel-icon mini-icon"
-                    alt="Players"
-                  /><span id="hud-player-count"> 1 Online</span></span
-                >
-              </div>
-            </div>
+                    class="hud-icon-img"
+                    alt="Objectives"
+                  />
+                  <span class="hud-key-badge">O</span>
+                </button>
 
-            <!-- Right: Action Buttons & Utilities -->
-            <div class="game-hud-actions">
-              <button
-                id="btn-toggle-fullscreen"
-                class="hud-action-btn"
-                title="Toggle Fullscreen (⛶)"
-              >
-                <img
-                  src="/assets/ui/arrow_up.png"
-                  class="hud-pixel-icon"
-                  alt="Fullscreen"
-                />
-                <span class="btn-text">Fullscreen</span>
-              </button>
-              <button
-                id="btn-toggle-audio"
-                class="hud-action-btn"
-                title="Toggle Sound"
-              >
-                <img
-                  id="audio-icon"
-                  src="/assets/PixelInventoryDiaryUI_FreeDemo/Icons_Demo/UI_Icon_Headphones.png"
-                  class="hud-pixel-icon"
-                  alt="Sound"
-                />
-                <span class="btn-text">Sound</span>
-              </button>
-              <button
-                id="btn-open-inventory"
-                class="hud-action-btn primary-hud-btn"
-                title="Inventory & Crafting (I / C)"
-              >
-                <img
-                  src="/assets/ui/basket.png"
-                  class="hud-pixel-icon"
-                  alt="Inventory"
-                />
-                <span class="btn-text">Inventory [I]</span>
-              </button>
-              <button
-                id="btn-open-pause"
-                class="hud-action-btn pause-hud-btn"
-                title="Help & Menu (ESC)"
-              >
-                <img
-                  src="/assets/DEMO_MegaCozyUIPack_doboui - copia/Buttons/ButtonsBuild/SettingsButton.png"
-                  class="hud-pixel-icon settings-icon"
-                  alt="Settings"
-                />
-              </button>
-            </div>
+                <button
+                  id="btn-toggle-audio"
+                  class="hud-icon-btn"
+                  title="Toggle Sound [M]"
+                >
+                  <img
+                    id="audio-icon"
+                    src="/assets/PixelInventoryDiaryUI_FreeDemo/Icons_Demo/UI_Icon_Headphones.png"
+                    class="hud-icon-img"
+                    alt="Sound"
+                  />
+                  <span class="hud-key-badge">M</span>
+                </button>
+
+                <button
+                  id="btn-toggle-fullscreen"
+                  class="hud-icon-btn"
+                  title="Fullscreen [F]"
+                >
+                  <img
+                    src="/assets/ui/arrow_up.png"
+                    class="hud-icon-img"
+                    alt="Fullscreen"
+                  />
+                  <span class="hud-key-badge">F</span>
+                </button>
+
+                <button
+                  id="btn-open-pause"
+                  class="hud-icon-btn"
+                  title="Menu & Settings [ESC]"
+                >
+                  <img
+                    src="/assets/cozy_ui/Buttons/ButtonsBuild/SettingsButton.png"
+                    class="hud-icon-img"
+                    alt="Settings"
+                  />
+                  <span class="hud-key-badge">ESC</span>
+                </button>
+              </div>
+
+              <!-- Compact Objectives Popover (toggled by Objectives button or 'O' key) -->
+              <div class="compact-objectives-panel hidden" id="compact-objectives-panel">
+                <div class="compact-objectives-header">
+                  <span class="obj-header-title">
+                    <img src="/assets/ui/plan alt.png" class="obj-mini-icon" alt="Quests" />
+                    Objectives
+                  </span>
+                  <button id="btn-close-objectives" class="obj-close-btn" title="Close [O]">&times;</button>
+                </div>
+                <div class="quest-list" id="quest-list-items"></div>
+              </div>
+
+              <!-- Compact Build Palette Drawer (toggled by Build button or 'B' key) -->
+              <div class="compact-build-panel hidden" id="compact-build-panel">
+                <div class="compact-build-header">
+                  <span class="build-header-title">
+                    <img src="/assets/ui/hammer.png" class="build-mini-icon" alt="Build" />
+                    Build Mode
+                  </span>
+                  <button id="btn-close-build" class="build-close-btn" title="Close [B]">&times;</button>
+                </div>
+                <div class="build-category-tabs" id="build-category-tabs">
+                  <button class="build-tab-btn active" data-cat="houses">🏠 Houses</button>
+                  <button class="build-tab-btn" data-cat="farms">🌾 Farms</button>
+                  <button class="build-tab-btn" data-cat="stations">⚙️ Stations</button>
+                  <button class="build-tab-btn" data-cat="blocks">🧱 Blocks</button>
+                </div>
+                <div class="build-items-grid" id="build-items-grid"></div>
+              </div>
+            </aside>
           </header>
 
-          <!-- TOP RIGHT: RADAR / COMPASS & QUEST TRACKER -->
-          <aside class="game-side-hud">
-            <!-- Village Compass / Radar Widget -->
-            <div class="radar-card" id="radar-card">
-              <div class="radar-header">
-                <span class="header-title-wrap"
-                  ><img
-                    src="/assets/ui/indicator.png"
-                    class="hud-pixel-icon"
-                    alt="Compass"
-                  />
-                  Realm Navigator</span
-                >
-                <span class="radar-badge">2-4x Gap Rule</span>
-              </div>
-              <div class="radar-viewport">
-                <canvas id="radar-canvas" width="140" height="140"></canvas>
-              </div>
-              <div class="radar-legend" id="radar-village-list">
-                <div class="radar-village-item active">
-                  <span class="rv-dot green"></span>
-                  <span class="rv-name">Oakvale (Starter)</span>
-                  <span class="rv-dist">Here</span>
-                </div>
-                <div class="radar-village-item">
-                  <span class="rv-dot gray"></span>
-                  <span class="rv-name">Riverwood</span>
-                  <span class="rv-dist">~100m ↗</span>
-                </div>
-                <div class="radar-village-item">
-                  <span class="rv-dot gray"></span>
-                  <span class="rv-name">Sunhaven</span>
-                  <span class="rv-dist">~120m ↘</span>
-                </div>
-                <div class="radar-village-item">
-                  <span class="rv-dot gray"></span>
-                  <span class="rv-name">Pinecrest</span>
-                  <span class="rv-dist">~110m ↖</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Quest & Objective Tracker -->
-            <div class="quest-card">
-              <div class="quest-header">
-                <span class="header-title-wrap"
-                  ><img
-                    src="/assets/ui/plan alt.png"
-                    class="hud-pixel-icon"
-                    alt="Quests"
-                  />
-                  Objectives</span
-                >
-              </div>
-              <div class="quest-list" id="quest-list-items"></div>
-            </div>
-          </aside>
-
-          <!-- BOTTOM HUD: ACTION PROMPT & 8-SLOT HOTBAR -->
+          <!-- BOTTOM HUD: ACTION PROMPT & MINIMAL 8-SLOT HOTBAR -->
           <footer class="game-hud-bottom">
             <!-- Center Action Tooltip Prompt (3-Piece Sunnyside Stretchable Label) -->
             <div class="action-prompt-pill hidden" id="game-action-prompt">
@@ -894,15 +850,9 @@
               <span class="prompt-cap-right"></span>
             </div>
 
-            <!-- 8-Slot Quick Hotbar -->
+            <!-- Minimal 8-Slot Quick Hotbar -->
             <div class="hotbar-wrapper">
               <div class="hotbar-grid" id="hotbar-slots-container"></div>
-              <div class="hotbar-key-hints">
-                <span
-                  >Keys 1-8 or Scroll to select item &bull; Left-click to
-                  use/chop/attack &bull; [F] Eat/Feed</span
-                >
-              </div>
             </div>
           </footer>
 

@@ -70,6 +70,7 @@ export interface ValidationReport {
     openCountrysideRemaining: boolean;
     noStage4Crops: boolean;
     fencesAroundFarms: boolean;
+    noRoadsCutWater: boolean;
   };
   violations: string[];
 }
@@ -590,6 +591,7 @@ export class SettlementGenerator {
             const nx = cx + ox;
             const ny = cy + oy;
             if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+              if (this.grid[ny][nx].isWater || this.grid[ny][nx].terrain === 'sand_tile_01') continue;
               if (!this.grid[ny][nx].isRoad) {
                 this.grid[ny][nx].isRoad = true;
                 this.grid[ny][nx].blocked = true;
@@ -625,6 +627,7 @@ export class SettlementGenerator {
           const nx = x + ox;
           const ny = y + oy;
           if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+            if (this.grid[ny][nx].isWater || this.grid[ny][nx].terrain === 'sand_tile_01') continue;
             if (!this.grid[ny][nx].isRoad) {
               this.grid[ny][nx].isRoad = true;
               this.grid[ny][nx].blocked = true;
@@ -694,109 +697,144 @@ export class SettlementGenerator {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // STEP 4: Water bodies — Join of 2 to 4 big squares with diagonals at corners
+  // STEP 4: Natural inland water bodies — Pristine ponds nestled in open meadows (NEVER cut by roads)
   // ─────────────────────────────────────────────────────────────────
   private generateWaterBodies() {
     // Guaranteed 1 to 2 scenic ponds for wildlife/ducks and village landscape
     const pondCount = this.rng() > 0.4 ? 2 : 1;
 
     for (let p = 0; p < pondCount; p++) {
-      // Find open area far from borders and avoiding heavy road overlap
-      let cx = 0;
-      let cy = 0;
-      let found = false;
+      let acceptedPondCells: GridCoord[] | null = null;
 
-      for (let attempt = 0; attempt < 40; attempt++) {
-        const tx = Math.floor(14 + this.rng() * (this.width - 40));
-        const ty = Math.floor(12 + this.rng() * (this.height - 38));
+      // Try multiple attempts and adaptive dimensions to find an open meadow strictly clear of roads
+      for (let attempt = 0; attempt < 80; attempt++) {
+        // Vary center across open sectors of the village grid
+        const cx = Math.floor(14 + this.rng() * (this.width - 28));
+        const cy = Math.floor(12 + this.rng() * (this.height - 24));
 
-        if (!this.grid[ty][tx].isRoad && !this.grid[ty][tx].isWater) {
-          cx = tx;
-          cy = ty;
-          found = true;
+        // Quick pre-check: center and immediate neighborhood must not be road or water
+        let centerClear = true;
+        for (let dy = -3; dy <= 3; dy++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            const ny = cy + dy;
+            const nx = cx + dx;
+            if (nx < 2 || nx >= this.width - 2 || ny < 2 || ny >= this.height - 2) {
+              centerClear = false;
+              break;
+            }
+            if (this.grid[ny][nx].isRoad || this.grid[ny][nx].isRoadReserved || this.grid[ny][nx].isWater) {
+              centerClear = false;
+              break;
+            }
+          }
+          if (!centerClear) break;
+        }
+        if (!centerClear) continue;
+
+        // Scale pond size gracefully: generous organic ovals adapting if village layout is compact
+        const baseRadius = attempt < 25 ? 7 : attempt < 50 ? 6 : 5;
+        const numOvals = 2 + Math.floor(this.rng() * 2); // 2 or 3 overlapping rotating ovals
+        const candidateWaterMask = new Set<string>();
+
+        let curX = cx;
+        let curY = cy;
+
+        for (let s = 0; s < numOvals; s++) {
+          const rx = baseRadius + Math.floor(this.rng() * 3); // 5..9
+          const ry = Math.max(4, baseRadius - 1 + Math.floor(this.rng() * 3)); // 4..8
+          const rotAngle = (this.rng() - 0.5) * Math.PI * 0.8;
+          const cosR = Math.cos(rotAngle);
+          const sinR = Math.sin(rotAngle);
+
+          const ox = s === 0 ? curX : Math.max(rx + 3, Math.min(this.width - rx - 4, curX));
+          const oy = s === 0 ? curY : Math.max(ry + 3, Math.min(this.height - ry - 4, curY));
+
+          const minBx = Math.max(2, Math.floor(ox - rx - 2));
+          const maxBx = Math.min(this.width - 3, Math.ceil(ox + rx + 2));
+          const minBy = Math.max(2, Math.floor(oy - ry - 2));
+          const maxBy = Math.min(this.height - 3, Math.ceil(oy + ry + 2));
+
+          const harmonicSeed = this.rng() * 20;
+
+          for (let wy = minBy; wy <= maxBy; wy++) {
+            for (let wx = minBx; wx <= maxBx; wx++) {
+              const dx = wx - ox;
+              const dy = wy - oy;
+
+              // Rotate into oval local space
+              const lx = dx * cosR + dy * sinR;
+              const ly = -dx * sinR + dy * cosR;
+
+              const theta = Math.atan2(ly, lx);
+              const wavyMod = 1.0 + 0.08 * Math.sin(2 * theta + harmonicSeed) + 0.06 * Math.cos(3 * theta + harmonicSeed);
+              const distSq = (lx / (rx * wavyMod)) ** 2 + (ly / (ry * wavyMod)) ** 2;
+
+              if (distSq <= 1.0) {
+                candidateWaterMask.add(`${wx},${wy}`);
+              }
+            }
+          }
+
+          // Advance to next oval center with gentle shift
+          const moveAng = this.rng() * Math.PI * 2;
+          const moveDist = 3 + this.rng() * 4;
+          curX = Math.max(rx + 4, Math.min(this.width - rx - 5, Math.round(ox + Math.cos(moveAng) * moveDist)));
+          curY = Math.max(ry + 4, Math.min(this.height - ry - 5, Math.round(oy + Math.sin(moveAng) * moveDist)));
+        }
+
+        if (candidateWaterMask.size < 20) continue; // Minimum viable scenic water body
+
+        // CRITICAL: Strict check that NO water cell AND NO cell within a 2-tile clearance buffer
+        // touches or cuts ANY road, road reservation, map border, or existing water body!
+        let hasCollision = false;
+        const candidateCoords: GridCoord[] = [];
+
+        for (const key of candidateWaterMask) {
+          const [gxStr, gyStr] = key.split(',');
+          const gx = parseInt(gxStr, 10);
+          const gy = parseInt(gyStr, 10);
+          candidateCoords.push({ x: gx, y: gy });
+
+          // 2-tile safety buffer around water for sandy shoreline and green buffer
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const ny = gy + dy;
+              const nx = gx + dx;
+              if (nx < 1 || nx >= this.width - 1 || ny < 1 || ny >= this.height - 1) {
+                hasCollision = true;
+                break;
+              }
+              const cell = this.grid[ny][nx];
+              if (cell.isRoad || cell.isRoadReserved || cell.isWater) {
+                hasCollision = true;
+                break;
+              }
+            }
+            if (hasCollision) break;
+          }
+          if (hasCollision) break;
+        }
+
+        if (!hasCollision) {
+          acceptedPondCells = candidateCoords;
           break;
         }
       }
 
-      if (!found) continue;
+      if (!acceptedPondCells || acceptedPondCells.length === 0) continue;
 
-      // Multi-Oval Merge: Curvy, organic natural water bodies with soft flowing contours
-      const numOvals = 3 + Math.floor(this.rng() * 3); // 3 to 5 overlapping rotating ovals
-      const waterMask = new Set<string>();
-
-      let curX = cx;
-      let curY = cy;
-
-      for (let s = 0; s < numOvals; s++) {
-        // Semi-axes: rx and ry between 8 and 14 (diameter 16 to 28 cells)
-        const rx = 8 + Math.floor(this.rng() * 6);
-        const ry = 7 + Math.floor(this.rng() * 6);
-        const rotAngle = (this.rng() - 0.5) * Math.PI * 0.8;
-        const cosR = Math.cos(rotAngle);
-        const sinR = Math.sin(rotAngle);
-
-        const ox = s === 0 ? curX : Math.max(rx + 2, Math.min(this.width - rx - 2, curX));
-        const oy = s === 0 ? curY : Math.max(ry + 2, Math.min(this.height - ry - 2, curY));
-
-        const minBx = Math.max(1, Math.floor(ox - rx - 2));
-        const maxBx = Math.min(this.width - 2, Math.ceil(ox + rx + 2));
-        const minBy = Math.max(1, Math.floor(oy - ry - 2));
-        const maxBy = Math.min(this.height - 2, Math.ceil(oy + ry + 2));
-
-        const harmonicSeed = this.rng() * 20;
-
-        for (let wy = minBy; wy <= maxBy; wy++) {
-          for (let wx = minBx; wx <= maxBx; wx++) {
-            const dx = wx - ox;
-            const dy = wy - oy;
-
-            // Rotate into oval local space
-            const lx = dx * cosR + dy * sinR;
-            const ly = -dx * sinR + dy * cosR;
-
-            const theta = Math.atan2(ly, lx);
-            // Curvy harmonic wave modulation
-            const wavyMod = 1.0 + 0.08 * Math.sin(2 * theta + harmonicSeed) + 0.06 * Math.cos(3 * theta + harmonicSeed);
-            const distSq = (lx / (rx * wavyMod)) ** 2 + (ly / (ry * wavyMod)) ** 2;
-
-            if (distSq <= 1.0) {
-              waterMask.add(`${wx},${wy}`);
-            }
-          }
-        }
-
-        // Advance to next oval center with deep overlap
-        const moveAng = this.rng() * Math.PI * 2;
-        const moveDist = 5 + this.rng() * 6;
-        curX = Math.max(rx + 3, Math.min(this.width - rx - 3, Math.round(ox + Math.cos(moveAng) * moveDist)));
-        curY = Math.max(ry + 3, Math.min(this.height - ry - 3, Math.round(oy + Math.sin(moveAng) * moveDist)));
-      }
-
-      if (waterMask.size === 0) continue;
-
-      const isWaterCell = (gx: number, gy: number): boolean => {
-        return waterMask.has(`${gx},${gy}`);
-      };
-
+      // Stamp the pure, un-cut inland pond into the world
       const pondCells: GridCoord[] = [];
-
-      // Inland ponds are pure natural water bodies (no bridges, no piers)
-      for (const key of waterMask) {
-        const [gxStr, gyStr] = key.split(',');
-        const gx = parseInt(gxStr, 10);
-        const gy = parseInt(gyStr, 10);
-
-        // Keep roads intact so overland paths curve naturally around water
-        if (this.grid[gy][gx].isRoad) continue;
-
-        this.grid[gy][gx].isWater = true;
-        this.grid[gy][gx].blocked = true;
-        this.grid[gy][gx].isRoad = false;
-        this.grid[gy][gx].isBridge = false;
-        this.grid[gy][gx].isRoadReserved = false;
-        this.grid[gy][gx].rotation = undefined;
-        this.grid[gy][gx].terrain = 'water_tile_01';
-        pondCells.push({ x: gx, y: gy });
+      for (const pt of acceptedPondCells) {
+        const cell = this.grid[pt.y][pt.x];
+        cell.isWater = true;
+        cell.blocked = true;
+        cell.isRoad = false;
+        cell.isBridge = false;
+        cell.isRoadReserved = false;
+        cell.rotation = undefined;
+        cell.terrain = 'water_tile_01';
+        pondCells.push({ x: pt.x, y: pt.y });
       }
 
       // Add Sandy Shore Shelf around pond perimeter (Grass -> Sand Shelf -> Shallow Water)
@@ -982,19 +1020,33 @@ export class SettlementGenerator {
    * the smallest path joining from its front door to the nearest road to its south.
    */
   private joinHousesToRoads() {
+    const pathCrossesWater = (fx: number, fy: number, tx: number, ty: number): boolean => {
+      let x = fx;
+      let y = fy;
+      while (y < ty) {
+        y++;
+        if (this.grid[y]?.[x]?.isWater || this.grid[y]?.[x]?.terrain === 'sand_tile_01') return true;
+      }
+      while (x !== tx) {
+        x += Math.sign(tx - x);
+        if (this.grid[y]?.[x]?.isWater || this.grid[y]?.[x]?.terrain === 'sand_tile_01') return true;
+      }
+      return false;
+    };
+
     for (const house of this.houses) {
       if (!house.door) continue;
       const startX = house.door.x;
       const startY = house.door.y;
 
-      // Find closest road cell located strictly south of the house
+      // Find closest road cell located strictly south of the house that doesn't cross water
       let closestRoad: GridCoord | null = null;
       let minDistance = Infinity;
 
       for (const road of this.roadCells) {
         if (road.y > startY) {
           const dist = Math.abs(road.x - startX) + (road.y - startY);
-          if (dist < minDistance) {
+          if (dist < minDistance && !pathCrossesWater(startX, startY + 1, road.x, road.y)) {
             minDistance = dist;
             closestRoad = road;
           }
@@ -1005,7 +1057,7 @@ export class SettlementGenerator {
       if (!closestRoad) {
         for (const road of this.roadCells) {
           const dist = Math.abs(road.x - startX) + Math.abs(road.y - startY);
-          if (dist < minDistance) {
+          if (dist < minDistance && !pathCrossesWater(startX, startY + 1, road.x, road.y)) {
             minDistance = dist;
             closestRoad = road;
           }
@@ -1025,12 +1077,17 @@ export class SettlementGenerator {
           break;
         }
 
+        // Never carve roads into or across water bodies or sand shores
+        if (this.grid[cy][cx].isWater || this.grid[cy][cx].terrain === 'sand_tile_01') {
+          break;
+        }
+
         if (cy >= 0 && cy < this.height && cx >= 0 && cx < this.width) {
           // Do not overwrite water or solid buildings; carve 2-thick connector
           for (let ox = 0; ox <= 1; ox++) {
             const nx = cx + ox;
             if (nx >= 0 && nx < this.width && cy >= 0 && cy < this.height) {
-              if (!this.grid[cy][nx].isWater && !this.grid[cy][nx].blocked) {
+              if (!this.grid[cy][nx].isWater && this.grid[cy][nx].terrain !== 'sand_tile_01' && !this.grid[cy][nx].blocked) {
                 this.grid[cy][nx].terrain = this.getRandomPathTile();
                 this.grid[cy][nx].isRoad = true;
                 this.grid[cy][nx].isRoadReserved = true;
@@ -1434,6 +1491,17 @@ export class SettlementGenerator {
       }
     }
 
+    // Check NO roads cut through water bodies
+    let noRoadsCutWater = true;
+    for (const wb of this.waterBodies) {
+      for (const cell of wb.cells) {
+        if (this.grid[cell.y][cell.x].isRoad) {
+          noRoadsCutWater = false;
+          violations.push(`Water body cell at (${cell.x},${cell.y}) is cut by road!`);
+        }
+      }
+    }
+
     const checks = {
       flatTerrain,
       noIsometricBlocks,
@@ -1450,6 +1518,7 @@ export class SettlementGenerator {
       openCountrysideRemaining,
       noStage4Crops,
       fencesAroundFarms,
+      noRoadsCutWater,
     };
 
     const valid = violations.length === 0 && Object.values(checks).every(Boolean);

@@ -112,7 +112,7 @@ export class LifeformRenderer {
     ];
     for (const s of goblinStrips) {
       this.preloadImage(
-        `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/${s}`
+        `/assets/characters/goblin/${s}`
       );
     }
 
@@ -127,7 +127,7 @@ export class LifeformRenderer {
     ];
     for (const s of skeletonStrips) {
       this.preloadImage(
-        `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/${s}`
+        `/assets/characters/skeleton/${s}`
       );
     }
   }
@@ -455,7 +455,7 @@ export class LifeformRenderer {
         frameDuration = 100;
       }
 
-      const path = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Skeleton/PNG/${stripName}`;
+      const path = `/assets/characters/skeleton/${stripName}`;
       const img = this.getImage(path);
 
       const monsterScale = 1.7 * zoomScale;
@@ -536,7 +536,7 @@ export class LifeformRenderer {
         frameDuration = 100;
       }
 
-      const path = `/Sunnyside_World_ASSET_PACK_V2.1/Sunnyside_World_Assets/Characters/Goblin/PNG/${stripName}`;
+      const path = `/assets/characters/goblin/${stripName}`;
       const img = this.getImage(path);
 
       const monsterScale = 1.7 * zoomScale;

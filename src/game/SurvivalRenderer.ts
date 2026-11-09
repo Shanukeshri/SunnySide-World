@@ -17,7 +17,7 @@ import {
   HUMAN_ANIMATIONS,
 } from "../lifeforms/LifeformRenderer";
 import { CHUNK_SIZE } from "./WorldManager";
-import { ResourceNode, PlacedStructure, EnemyEntity } from "./GameTypes";
+import { ResourceNode, PlacedStructure, Placed3DBlock, EnemyEntity, DroppedItem } from "./GameTypes";
 import { DetailedHouseRenderer } from "../generation/DetailedHouseRenderer";
 
 const TILESET_PATH =
@@ -431,6 +431,7 @@ export class SurvivalRenderer {
   private rockImg: HTMLImageElement | null = null;
   private wheatImg: HTMLImageElement | null = null;
   private soilImg: HTMLImageElement | null = null;
+  private itemDiscImg: HTMLImageElement | null = null;
   private spriteImages: Map<string, HTMLImageElement> = new Map();
   private nightCanvas: HTMLCanvasElement | null = null;
 
@@ -440,6 +441,7 @@ export class SurvivalRenderer {
   public zoom = 2.2;
   public readonly baseTileSize = 16;
   public isWorldGenMode = false;
+  public isMenuMode = false;
 
   // Smooth camera tracking
   public cameraX = 22;
@@ -462,6 +464,7 @@ export class SurvivalRenderer {
     this.rockImg = this.loadImage(ROCK_PATH);
     this.wheatImg = this.loadImage(WHEAT_PATH);
     this.soilImg = this.loadImage(SOIL_PATH);
+    this.itemDiscImg = this.loadImage("/assets/ui/itemdisc_01.png");
 
     this.detailedHouseRenderer.preloadAssets();
 
@@ -536,12 +539,14 @@ export class SurvivalRenderer {
     // Fix 1 & 2: Camera follows the authoritative predicted position, NOT the visual
     // (error-offset) position, so server corrections never cause camera shudder.
     // Smoothing uses exponential decay so it's identical at all frame rates.
-    const pred = (engine as any).networkPrediction;
-    const targetCamX = pred ? pred.predictedX : engine.player.x;
-    const targetCamY = pred ? pred.predictedY : engine.player.y;
-    const smoothing = 1 - Math.exp(-1 * dt);
-    this.cameraX += (targetCamX - this.cameraX) * smoothing;
-    this.cameraY += (targetCamY - this.cameraY) * smoothing;
+    if (!this.isMenuMode) {
+      const pred = (engine as any).networkPrediction;
+      const targetCamX = pred ? pred.predictedX : engine.player.x;
+      const targetCamY = pred ? pred.predictedY : engine.player.y;
+      const smoothing = 1 - Math.exp(-1 * dt);
+      this.cameraX += (targetCamX - this.cameraX) * smoothing;
+      this.cameraY += (targetCamY - this.cameraY) * smoothing;
+    }
 
     const cellSize = this.baseTileSize * this.zoom;
     const halfWidth = canvas.width / 2;
@@ -1158,36 +1163,7 @@ export class SurvivalRenderer {
       }
     }
 
-    // ── LAYER 5: DROPPED ITEMS ON GROUND ────────────────────────
-    for (const item of engine.droppedItems) {
-      const screen = worldToScreen(item.x, item.y);
-      const bobY = Math.sin(item.bobTimer) * 3;
-
-      ctx.fillStyle = "rgba(0,0,0,0.3)";
-      ctx.beginPath();
-      ctx.ellipse(
-        screen.sx + cellSize / 2,
-        screen.sy + cellSize / 2 + 6,
-        6 * (this.zoom / 2),
-        3 * (this.zoom / 2),
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
-
-      const def = ITEM_CATALOG[item.item];
-      ctx.font = `${14 * (this.zoom / 2)}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        def?.icon || "📦",
-        screen.sx + cellSize / 2,
-        screen.sy + cellSize / 2 + bobY,
-      );
-    }
-
-    // ── LAYER 5b: FOOTSTEP GROUND VFX & EXPANDING WATER RIPPLES ─
+    // ── LAYER 5: FOOTSTEP GROUND VFX & EXPANDING WATER RIPPLES ─
     for (const p of engine.footstepParticles) {
       const s = worldToScreen(p.x, p.y);
       ctx.save();
@@ -1222,7 +1198,26 @@ export class SurvivalRenderer {
     }
     const depthList: Renderable[] = [];
 
-    // 6.0 Ambient Perched & Flying Birds
+    // 6.0 Dropped Items on Ground (100% Solid & Opaque with Sunnyside Item Disc)
+    for (const item of engine.droppedItems) {
+      const screen = worldToScreen(item.x, item.y);
+      if (
+        screen.sx < -cellSize * 2 ||
+        screen.sx > canvas.width + cellSize * 2 ||
+        screen.sy < -cellSize * 2 ||
+        screen.sy > canvas.height + cellSize * 2
+      ) {
+        continue;
+      }
+      depthList.push({
+        yOrder: item.y + 0.35,
+        draw: () => {
+          this.drawDroppedItem(ctx, item, worldToScreen, cellSize);
+        },
+      });
+    }
+
+    // 6.0b Ambient Perched & Flying Birds
     for (const bird of engine.ambientBirds) {
       depthList.push({
         yOrder: bird.y + (bird.isFlying ? 2.5 : 0.4),
@@ -1531,11 +1526,13 @@ export class SurvivalRenderer {
           )
             continue;
 
+          if (!cell.cropId) continue;
+
           // Check if crop resource node exists and is depleted
           const cropRes = engine.worldManager.getResourceAt(
             wx + 0.5,
             wy + 0.5,
-            0.6,
+            0.8,
           );
           if (cropRes && cropRes.isDepleted) continue;
 
@@ -1766,8 +1763,13 @@ export class SurvivalRenderer {
 
     // 6.3 Placed Structures (Walls, Doors, Campfires, Chests, Workbenches)
     for (const struct of engine.placedStructures) {
+      const isFloor =
+        struct.type === "wood_floor" ||
+        struct.type === "stone_floor" ||
+        struct.type === "farm_soil" ||
+        struct.type === "wood_bridge";
       depthList.push({
-        yOrder: struct.y + struct.h,
+        yOrder: isFloor ? struct.y - 0.2 : struct.y + struct.h,
         draw: () => {
           const rawScreen = worldToScreen(struct.x, struct.y);
           const shakeOffset =
@@ -1775,31 +1777,266 @@ export class SurvivalRenderer {
               ? Math.random() * 4 - 2
               : 0;
           const screen = { sx: rawScreen.sx + shakeOffset, sy: rawScreen.sy };
-          if (struct.type === "wood_wall") {
-            ctx.fillStyle = "#78350f";
-            ctx.fillRect(
-              screen.sx,
-              screen.sy - cellSize * 0.4,
-              cellSize,
-              cellSize * 1.4,
-            );
+
+          if (struct.type === "wood_floor") {
             ctx.fillStyle = "#92400e";
-            ctx.fillRect(
-              screen.sx + 2,
-              screen.sy - cellSize * 0.3,
-              cellSize - 4,
-              cellSize * 1.2,
-            );
-          } else if (struct.type === "wood_door") {
-            ctx.fillStyle = struct.isOpen ? "rgba(120,53,15,0.4)" : "#78350f";
             ctx.fillRect(screen.sx, screen.sy, cellSize, cellSize);
-            ctx.font = `${10 * (this.zoom / 2)}px sans-serif`;
-            ctx.fillStyle = "#fde047";
-            ctx.fillText(
-              struct.isOpen ? "OPEN" : "DOOR",
-              screen.sx + 2,
-              screen.sy + cellSize / 2,
-            );
+            const plankH = cellSize / 4;
+            for (let p = 0; p < 4; p++) {
+              const py = screen.sy + p * plankH;
+              ctx.fillStyle = "#78350f";
+              ctx.fillRect(screen.sx, py, cellSize, 1.2);
+              ctx.fillStyle = "#b45309";
+              ctx.fillRect(screen.sx + (p % 2 === 0 ? 3 : cellSize * 0.5), py + 2, cellSize * 0.35, 1.5);
+            }
+          } else if (struct.type === "stone_floor") {
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(screen.sx, screen.sy, cellSize, cellSize);
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(screen.sx, screen.sy + cellSize / 2, cellSize, 1.5);
+            ctx.fillRect(screen.sx + cellSize / 2, screen.sy, 1.5, cellSize / 2);
+            ctx.fillRect(screen.sx + cellSize * 0.3, screen.sy + cellSize / 2, 1.5, cellSize / 2);
+            ctx.fillRect(screen.sx + cellSize * 0.75, screen.sy + cellSize / 2, 1.5, cellSize / 2);
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillRect(screen.sx + 2, screen.sy + 2, cellSize / 2 - 4, 1.5);
+          } else if (struct.type === "farm_soil") {
+            if (this.soilImg && this.soilImg.complete && this.soilImg.naturalWidth > 0) {
+              ctx.drawImage(this.soilImg, screen.sx, screen.sy, cellSize, cellSize);
+            } else {
+              ctx.fillStyle = "#3d2314";
+              ctx.fillRect(screen.sx, screen.sy, cellSize, cellSize);
+              const furrowH = cellSize / 4;
+              for (let f = 0; f < 4; f++) {
+                const fy = screen.sy + f * furrowH;
+                ctx.fillStyle = "#271406";
+                ctx.fillRect(screen.sx, fy + furrowH * 0.6, cellSize, furrowH * 0.4);
+                ctx.fillStyle = "#5c381e";
+                ctx.fillRect(screen.sx, fy, cellSize, furrowH * 0.4);
+              }
+            }
+          } else if (struct.type === "wood_bridge") {
+            ctx.fillStyle = "rgba(10, 25, 20, 0.45)";
+            ctx.fillRect(screen.sx + 2, screen.sy + cellSize * 0.75, cellSize - 4, cellSize * 0.35);
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(screen.sx + 1, screen.sy + 1, cellSize - 2, cellSize - 2);
+            const plankW = (cellSize - 4) / 4;
+            for (let i = 0; i < 4; i++) {
+              const px = screen.sx + 2 + i * plankW;
+              ctx.fillStyle = "#854117";
+              ctx.fillRect(px, screen.sy + 3, plankW - 1.5, cellSize - 6);
+              ctx.fillStyle = "#a16207";
+              ctx.fillRect(px, screen.sy + 3, plankW - 1.5, 2);
+            }
+            ctx.fillStyle = "#421d07";
+            ctx.fillRect(screen.sx, screen.sy, cellSize, 3);
+            ctx.fillRect(screen.sx, screen.sy + cellSize - 3, cellSize, 3);
+          } else if (struct.type === "wood_wall") {
+            const wallHeight = cellSize * 1.5;
+            const topY = screen.sy + cellSize - wallHeight;
+            ctx.fillStyle = "rgba(0,0,0,0.32)";
+            ctx.fillRect(screen.sx, screen.sy + cellSize - 3, cellSize, 6);
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(screen.sx, topY, cellSize, wallHeight);
+            const numLogs = 4;
+            const logW = cellSize / numLogs;
+            for (let l = 0; l < numLogs; l++) {
+              const lx = screen.sx + l * logW;
+              ctx.fillStyle = "#783812";
+              ctx.fillRect(lx + 1, topY + 4, logW - 2, wallHeight - 8);
+              ctx.fillStyle = "#944b1c";
+              ctx.fillRect(lx + 2, topY + 5, 2, wallHeight - 10);
+            }
+            ctx.fillStyle = "#421d07";
+            ctx.fillRect(screen.sx, topY, cellSize, 5);
+            ctx.fillStyle = "#854117";
+            ctx.fillRect(screen.sx, topY, cellSize, 2);
+            ctx.fillStyle = "#3a1705";
+            ctx.fillRect(screen.sx, screen.sy + cellSize - 4, cellSize, 4);
+          } else if (struct.type === "stone_wall") {
+            const wallHeight = cellSize * 1.5;
+            const topY = screen.sy + cellSize - wallHeight;
+            ctx.fillStyle = "rgba(0,0,0,0.32)";
+            ctx.fillRect(screen.sx, screen.sy + cellSize - 3, cellSize, 6);
+            ctx.fillStyle = "#334155";
+            ctx.fillRect(screen.sx, topY, cellSize, wallHeight);
+            const courseH = wallHeight / 3;
+            for (let c = 0; c < 3; c++) {
+              const cy = topY + c * courseH;
+              const offset = (c % 2) * (cellSize / 3);
+              for (let b = -1; b < 3; b++) {
+                const bx = screen.sx + b * (cellSize / 2) + offset;
+                const bw = cellSize / 2 - 2;
+                if (bx + bw > screen.sx && bx < screen.sx + cellSize) {
+                  const clipX = Math.max(screen.sx, bx);
+                  const clipW = Math.min(screen.sx + cellSize, bx + bw) - clipX;
+                  ctx.fillStyle = "#64748b";
+                  ctx.fillRect(clipX, cy + 1, clipW, courseH - 2);
+                  ctx.fillStyle = "#94a3b8";
+                  ctx.fillRect(clipX, cy + 1, clipW, 1.5);
+                }
+              }
+            }
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(screen.sx, topY, cellSize, 5);
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillRect(screen.sx, topY, cellSize, 1.5);
+          } else if (struct.type === "wall_window") {
+            const wallHeight = cellSize * 1.5;
+            const topY = screen.sy + cellSize - wallHeight;
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(screen.sx, topY, cellSize, wallHeight);
+            const winW = cellSize * 0.55;
+            const winH = cellSize * 0.6;
+            const winX = screen.sx + (cellSize - winW) / 2;
+            const winY = topY + (wallHeight - winH) / 2;
+            ctx.fillStyle = "#271406";
+            ctx.fillRect(winX - 2, winY - 2, winW + 4, winH + 4);
+            ctx.fillStyle = "#38bdf8";
+            ctx.fillRect(winX, winY, winW, winH);
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(winX + winW / 2 - 1, winY, 2, winH);
+            ctx.fillRect(winX, winY + winH / 2 - 1, winW, 2);
+            ctx.fillStyle = "rgba(255,255,255,0.45)";
+            ctx.fillRect(winX + 2, winY + 2, winW * 0.35, winH * 0.35);
+          } else if (struct.type === "wood_door") {
+            const doorH = cellSize * 1.35;
+            const topY = screen.sy + cellSize - doorH;
+            ctx.fillStyle = "#3a1705";
+            ctx.fillRect(screen.sx, topY, cellSize, doorH);
+            if (struct.isOpen) {
+              ctx.fillStyle = "rgba(20, 10, 5, 0.4)";
+              ctx.fillRect(screen.sx + 4, topY + 4, cellSize - 8, doorH - 4);
+              ctx.fillStyle = "#854117";
+              ctx.fillRect(screen.sx + cellSize - 7, topY + 4, 5, doorH - 6);
+              ctx.fillStyle = "#fbbf24";
+              ctx.fillRect(screen.sx + cellSize - 5, topY + doorH * 0.5, 3, 3);
+            } else {
+              ctx.fillStyle = "#783812";
+              ctx.fillRect(screen.sx + 3, topY + 3, cellSize - 6, doorH - 4);
+              ctx.fillStyle = "#1e293b";
+              ctx.fillRect(screen.sx + 3, topY + doorH * 0.25, cellSize - 6, 2.5);
+              ctx.fillRect(screen.sx + 3, topY + doorH * 0.72, cellSize - 6, 2.5);
+              ctx.fillStyle = "#fbbf24";
+              ctx.beginPath();
+              ctx.arc(screen.sx + cellSize - 8, topY + doorH * 0.52, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            const dist = Math.hypot(engine.player.x - (struct.x + 0.5), engine.player.y - (struct.y + 0.5));
+            if (dist < 2.0) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx - 6, screen.sy - 20, 80, 16);
+              ctx.fillStyle = "#fef08a";
+              ctx.textAlign = "center";
+              ctx.fillText(struct.isOpen ? "[E] Close Door" : "[E] Open Door", screen.sx + 34, screen.sy - 8);
+            }
+          } else if (struct.type === "farm_fence") {
+            const fx = screen.sx;
+            const fy = screen.sy;
+            ctx.fillStyle = "rgba(0,0,0,0.22)";
+            ctx.fillRect(fx + 2, fy + cellSize * 0.7, cellSize - 4, 4);
+
+            const hasN = engine.placedStructures.some((s) => s.x === struct.x && s.y === struct.y - 1 && (s.type === "farm_fence" || s.type === "farm_gate"));
+            const hasS = engine.placedStructures.some((s) => s.x === struct.x && s.y === struct.y + 1 && (s.type === "farm_fence" || s.type === "farm_gate"));
+            const hasE = engine.placedStructures.some((s) => s.x === struct.x + 1 && s.y === struct.y && (s.type === "farm_fence" || s.type === "farm_gate"));
+            const hasW = engine.placedStructures.some((s) => s.x === struct.x - 1 && s.y === struct.y && (s.type === "farm_fence" || s.type === "farm_gate"));
+            const defaultH = !hasN && !hasS && !hasE && !hasW;
+
+            ctx.fillStyle = "#783812";
+            if (hasE || defaultH) {
+              ctx.fillRect(fx + cellSize * 0.4, fy + cellSize * 0.3, cellSize * 0.6, cellSize * 0.1);
+              ctx.fillRect(fx + cellSize * 0.4, fy + cellSize * 0.6, cellSize * 0.6, cellSize * 0.1);
+            }
+            if (hasW) {
+              ctx.fillRect(fx, fy + cellSize * 0.3, cellSize * 0.5, cellSize * 0.1);
+              ctx.fillRect(fx, fy + cellSize * 0.6, cellSize * 0.5, cellSize * 0.1);
+            }
+            if (hasN) {
+              ctx.fillRect(fx + cellSize * 0.45, fy, cellSize * 0.1, cellSize * 0.5);
+            }
+            if (hasS) {
+              ctx.fillRect(fx + cellSize * 0.45, fy + cellSize * 0.5, cellSize * 0.1, cellSize * 0.5);
+            }
+
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(fx + cellSize * 0.38, fy + cellSize * 0.15, cellSize * 0.24, cellSize * 0.75);
+            ctx.fillStyle = "#944b1c";
+            ctx.fillRect(fx + cellSize * 0.38, fy + cellSize * 0.15, cellSize * 0.24, 3);
+          } else if (struct.type === "farm_gate") {
+            const fx = screen.sx;
+            const fy = screen.sy;
+            ctx.fillStyle = "#54260a";
+            ctx.fillRect(fx + 2, fy + cellSize * 0.15, cellSize * 0.18, cellSize * 0.75);
+            ctx.fillRect(fx + cellSize - cellSize * 0.18 - 2, fy + cellSize * 0.15, cellSize * 0.18, cellSize * 0.75);
+            ctx.fillStyle = "#944b1c";
+            ctx.fillRect(fx + 2, fy + cellSize * 0.15, cellSize * 0.18, 2.5);
+            ctx.fillRect(fx + cellSize - cellSize * 0.18 - 2, fy + cellSize * 0.15, cellSize * 0.18, 2.5);
+
+            if (struct.isOpen) {
+              ctx.fillStyle = "#854117";
+              ctx.fillRect(fx + cellSize - cellSize * 0.18 - 4, fy + cellSize * 0.22, 5, cellSize * 0.5);
+            } else {
+              ctx.fillStyle = "#854117";
+              ctx.fillRect(fx + 4, fy + cellSize * 0.28, cellSize - 8, cellSize * 0.1);
+              ctx.fillRect(fx + 4, fy + cellSize * 0.62, cellSize - 8, cellSize * 0.1);
+              ctx.fillStyle = "#54260a";
+              ctx.fillRect(fx + cellSize * 0.46, fy + cellSize * 0.25, 3, cellSize * 0.5);
+              ctx.fillStyle = "#0f172a";
+              ctx.fillRect(fx + cellSize * 0.7, fy + cellSize * 0.44, 4, 4);
+            }
+            const dist = Math.hypot(engine.player.x - (struct.x + 0.5), engine.player.y - (struct.y + 0.5));
+            if (dist < 2.0) {
+              ctx.font = `bold ${9 * (this.zoom / 2)}px sans-serif`;
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(screen.sx - 6, screen.sy - 20, 80, 16);
+              ctx.fillStyle = "#fef08a";
+              ctx.textAlign = "center";
+              ctx.fillText(struct.isOpen ? "[E] Close Gate" : "[E] Open Gate", screen.sx + 34, screen.sy - 8);
+            }
+          } else if (struct.type === "roof_wood" || struct.type === "roof_terracotta") {
+            const rx = screen.sx - cellSize * 0.1;
+            const ry = screen.sy - cellSize * 0.25;
+            const rw = cellSize * 1.2;
+            const rh = cellSize * 1.2;
+            if (struct.type === "roof_terracotta") {
+              ctx.fillStyle = "#dc2626";
+              ctx.fillRect(rx, ry, rw, rh);
+              ctx.fillStyle = "#f87171";
+              for (let r = 0; r < 3; r++) {
+                ctx.fillRect(rx, ry + r * (rh / 3), rw, 3);
+              }
+              ctx.fillStyle = "#991b1b";
+              ctx.fillRect(rx, ry + rh - 4, rw, 4);
+            } else {
+              ctx.fillStyle = "#854117";
+              ctx.fillRect(rx, ry, rw, rh);
+              ctx.fillStyle = "#a16207";
+              for (let r = 0; r < 3; r++) {
+                ctx.fillRect(rx, ry + r * (rh / 3), rw, 2.5);
+              }
+              ctx.fillStyle = "#54260a";
+              ctx.fillRect(rx, ry + rh - 4, rw, 4);
+            }
+          } else if (struct.type === "water_well") {
+            const wellSize = cellSize * 1.3;
+            const wx = screen.sx + (cellSize - wellSize) / 2;
+            const wy = screen.sy + cellSize - wellSize;
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.beginPath();
+            ctx.ellipse(wx + wellSize / 2, wy + wellSize - 4, wellSize * 0.45, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#475569";
+            ctx.beginPath();
+            ctx.arc(wx + wellSize / 2, wy + wellSize * 0.65, wellSize * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#0284c7";
+            ctx.beginPath();
+            ctx.arc(wx + wellSize / 2, wy + wellSize * 0.65, wellSize * 0.26, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#78350f";
+            ctx.fillRect(wx + 3, wy + 2, wellSize - 6, wellSize * 0.35);
+            ctx.fillStyle = "#92400e";
+            ctx.fillRect(wx + 3, wy + 2, wellSize - 6, 3);
           } else if (struct.type === "campfire") {
             ctx.fillStyle = "rgba(0,0,0,0.4)";
             ctx.beginPath();
@@ -2052,28 +2289,6 @@ export class SurvivalRenderer {
               ctx.textAlign = "center";
               ctx.fillText("[E] Sleep", screen.sx + 32, screen.sy - 8);
             }
-          } else if (struct.type === "wall_window") {
-            ctx.fillStyle = "#78350f";
-            ctx.fillRect(screen.sx, screen.sy - cellSize * 0.4, cellSize, cellSize * 1.4);
-            ctx.fillStyle = "#bae6fd";
-            ctx.fillRect(screen.sx + 4, screen.sy - cellSize * 0.1, cellSize - 8, cellSize * 0.5);
-            ctx.strokeStyle = "#475569";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(screen.sx + 4, screen.sy - cellSize * 0.1, cellSize - 8, cellSize * 0.5);
-          } else if (struct.type === "stone_wall") {
-            ctx.fillStyle = "#475569";
-            ctx.fillRect(screen.sx, screen.sy - cellSize * 0.4, cellSize, cellSize * 1.4);
-            ctx.strokeStyle = "#334155";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(screen.sx + 1, screen.sy - cellSize * 0.4 + 1, cellSize - 2, cellSize * 1.4 - 2);
-          } else if (struct.type === "roof_wood") {
-            ctx.fillStyle = "#b45309";
-            ctx.beginPath();
-            ctx.moveTo(screen.sx, screen.sy + cellSize);
-            ctx.lineTo(screen.sx + cellSize / 2, screen.sy - cellSize * 0.4);
-            ctx.lineTo(screen.sx + cellSize, screen.sy + cellSize);
-            ctx.closePath();
-            ctx.fill();
           } else if (struct.type === "brewing_stand") {
             ctx.fillStyle = "#334155";
             ctx.fillRect(screen.sx + 4, screen.sy + cellSize * 0.4, cellSize - 8, cellSize * 0.6);
@@ -2115,6 +2330,16 @@ export class SurvivalRenderer {
               barH,
             );
           }
+        },
+      });
+    }
+
+    // 6.35 Placeable 3D Volumetric Blocks (Multi-Tier Stacking)
+    for (const block of engine.placedBlocks) {
+      depthList.push({
+        yOrder: block.y + 0.9 + block.z * 0.05,
+        draw: () => {
+          this.render3DBlock(ctx, block, engine, cellSize, worldToScreen);
         },
       });
     }
@@ -2202,15 +2427,19 @@ export class SurvivalRenderer {
           ctx.fillText(title, screen.sx + cellSize / 2, screen.sy - 27);
 
           // Sleeping "Zzz" animation
-          if ((npc as any).scheduleState === "SLEEP") {
-            ctx.font = "bold 11px sans-serif";
-            ctx.fillStyle = "#93c5fd";
-            const zBob = (Date.now() / 300) % 3;
-            ctx.fillText("Zzz".slice(0, Math.floor(zBob) + 1), screen.sx + cellSize / 2, screen.sy - 46);
+          if ((npc as any).isSleeping || (npc as any).scheduleState === "SLEEP") {
+            ctx.font = `bold ${10 * (this.zoom / 2)}px 'JetBrains Mono', monospace`;
+            ctx.fillStyle = "#38bdf8";
+            const zBob = (Date.now() / 320) % 3;
+            ctx.fillText("💤 Z" + "zz".slice(0, Math.floor(zBob)), screen.sx + cellSize / 2, screen.sy - 46);
+          } else if ((npc as any).combatTarget) {
+            ctx.font = `bold ${11 * (this.zoom / 2)}px sans-serif`;
+            ctx.fillStyle = "#ef4444";
+            ctx.fillText("⚔️ Fight!", screen.sx + cellSize / 2, screen.sy - 46);
           } else {
             // Overhead active expression bubble (love, chat, etc. - no sweat/water droplets)
             const expr = (npc as any).currentExpression;
-            const exprKey = expr && expr !== "working" ? `ui_expression_${expr}` : null;
+            const exprKey = expr && expr !== "working" && expr !== "sleep" ? `ui_expression_${expr}` : null;
             const distToPlayer = Math.hypot(
               engine.player.x - npc.position.x,
               engine.player.y - npc.position.y,
@@ -2242,6 +2471,19 @@ export class SurvivalRenderer {
                 ctx.drawImage(exprImg, bx, by, bsz, bsz);
               }
             }
+          }
+
+          // Villager Health Bar if damaged
+          const maxHp = (npc as any).maxHealth || 50;
+          if (npc.health < maxHp && npc.health > 0) {
+            const barW = cellSize * 0.8;
+            const barH = 3;
+            const barX = screen.sx + cellSize / 2 - barW / 2;
+            const barY = screen.sy - 38;
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = ((npc as any).role === "guard" || (npc as any).role === "guide") ? "#38bdf8" : "#22c55e";
+            ctx.fillRect(barX, barY, barW * (npc.health / maxHp), barH);
           }
         },
       });
@@ -2299,7 +2541,7 @@ export class SurvivalRenderer {
     }
 
     // 6.7 Player Character & Held Item
-    if (!this.isWorldGenMode) {
+    if (!this.isWorldGenMode && !this.isMenuMode) {
       depthList.push({
         yOrder: engine.player.y + 0.5,
         draw: () => {
@@ -2327,41 +2569,50 @@ export class SurvivalRenderer {
         } else if (p.fishingState && p.fishingState !== "NONE") {
           if (p.fishingState === "CASTING") {
             action = "CASTING";
-            frameIndex = Math.floor(Date.now() / 90) % 15;
+            const progress = Math.min(1, Math.max(0, 1 - (p.fishingTimer || 0) / 0.8));
+            frameIndex = Math.min(14, Math.floor(progress * 15));
+          } else if (p.fishingState === "WAITING" || p.fishingState === "HOOKED") {
+            action = "CASTING";
+            frameIndex = 14; // Stay in the cast waiting pose holding rod in water!
           } else if (p.fishingState === "REELING") {
             action = "REELING";
-            frameIndex = Math.floor(Date.now() / 90) % 13;
+            const progress = Math.min(1, Math.max(0, 1 - (p.fishingTimer || 0) / 1.0));
+            frameIndex = Math.min(12, Math.floor(progress * 13));
           } else if (p.fishingState === "CAUGHT") {
             action = "CAUGHT";
-            frameIndex = Math.floor(Date.now() / 90) % 10;
+            const progress = Math.min(1, Math.max(0, 1 - (p.fishingTimer || 0) / 1.2));
+            frameIndex = Math.min(9, Math.floor(progress * 10));
           }
         } else if (p.doingTimer && p.doingTimer > 0) {
           action = "DOING";
           frameIndex = Math.floor(Date.now() / 110) % 8;
         } else if (p.swingTimer > 0) {
           const activeItem = activeSlot?.item || "";
-          let dur = (p as any).swingDuration || 0.25;
+          let dur = (p as any).swingDuration || 0.35;
           if (activeItem.includes("pickaxe")) {
             action = "MINING";
+            dur = 0.40;
           } else if (activeItem.includes("axe")) {
             action = "AXE";
+            dur = 0.38;
           } else if (
             activeItem.includes("hoe") ||
             activeItem.includes("shovel")
           ) {
             action = "DIG";
-            dur = 0.35;
+            dur = 0.42;
           } else if (activeItem.includes("water")) {
             action = "WATERING";
-            dur = 0.35;
+            dur = 0.42;
           } else if (activeItem.includes("hammer") || engine.buildPiece) {
             action = "HAMMERING";
-            dur = 0.35;
+            dur = 0.42;
           } else if (activeItem.includes("rod")) {
             action = "CASTING";
-            dur = 0.35;
+            dur = 0.40;
           } else {
             action = "ATTACK";
+            dur = 0.34;
           }
           const progress = Math.min(1, Math.max(0, 1 - p.swingTimer / dur));
           const totalF = HUMAN_ANIMATIONS[action]?.totalFrames || 10;
@@ -2473,12 +2724,61 @@ export class SurvivalRenderer {
           ctx.stroke();
           ctx.restore();
         }
+
+        // Fishing Line & Floating Bobber in Water
+        if ((p as any).fishingTarget && (p.fishingState === "WAITING" || p.fishingState === "HOOKED" || p.fishingState === "REELING")) {
+          const ft = (p as any).fishingTarget;
+          const bScreen = worldToScreen(ft.x, ft.y);
+          const bx = bScreen.sx + cellSize / 2;
+          const by = bScreen.sy + cellSize / 2;
+
+          ctx.save();
+          // Fishing line
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(playerCenterX + (isFacingLeft ? -10 : 10), groundY - cellSize * 0.7);
+          ctx.quadraticCurveTo(
+            (playerCenterX + bx) / 2,
+            Math.min(groundY - cellSize, by) - 8,
+            bx,
+            by,
+          );
+          ctx.stroke();
+
+          // Water ripple around bobber
+          const rippleR = 3 + (Math.sin(Date.now() / 250) + 1) * 2;
+          ctx.strokeStyle = "rgba(186, 230, 253, 0.75)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(bx, by + 2, rippleR, rippleR * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Bobber
+          ctx.fillStyle = p.fishingState === "HOOKED" ? "#f59e0b" : "#ef4444";
+          ctx.beginPath();
+          ctx.arc(bx, by + Math.sin(Date.now() / 180) * 1.5, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(bx, by + Math.sin(Date.now() / 180) * 1.5 - 1, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Hooked exclamation
+          if (p.fishingState === "HOOKED") {
+            ctx.font = "bold 13px sans-serif";
+            ctx.fillStyle = "#facc15";
+            ctx.textAlign = "center";
+            ctx.fillText("❗", bx, by - 12);
+          }
+          ctx.restore();
+        }
         },
       });
     }
 
     // 6.8 Other Connected Players (Multiplayer)
-    if (engine.remotePlayers && engine.remotePlayers.length > 0) {
+    if (!this.isMenuMode && engine.remotePlayers && engine.remotePlayers.length > 0) {
       for (const rp of engine.remotePlayers) {
         depthList.push({
           yOrder: rp.y + 0.5,
@@ -2506,13 +2806,19 @@ export class SurvivalRenderer {
             } else if (rp.fishingState && rp.fishingState !== "NONE") {
               if (rp.fishingState === "CASTING") {
                 action = "CASTING";
-                frameIndex = Math.floor(Date.now() / 90) % 15;
+                const progress = Math.min(1, Math.max(0, 1 - (rp.fishingTimer || 0) / 0.8));
+                frameIndex = Math.min(14, Math.floor(progress * 15));
+              } else if (rp.fishingState === "WAITING" || rp.fishingState === "HOOKED") {
+                action = "CASTING";
+                frameIndex = 14;
               } else if (rp.fishingState === "REELING") {
                 action = "REELING";
-                frameIndex = Math.floor(Date.now() / 90) % 13;
+                const progress = Math.min(1, Math.max(0, 1 - (rp.fishingTimer || 0) / 1.0));
+                frameIndex = Math.min(12, Math.floor(progress * 13));
               } else if (rp.fishingState === "CAUGHT") {
                 action = "CAUGHT";
-                frameIndex = Math.floor(Date.now() / 90) % 10;
+                const progress = Math.min(1, Math.max(0, 1 - (rp.fishingTimer || 0) / 1.2));
+                frameIndex = Math.min(9, Math.floor(progress * 10));
               }
             } else if (rp.doingTimer > 0) {
               action = "DOING";
@@ -2762,7 +3068,7 @@ export class SurvivalRenderer {
         // Cutout around Player
         const activeItem = engine.getActiveItemSlot()?.item;
         const isHoldingTorch = activeItem === "torch";
-        if (!this.isWorldGenMode) {
+        if (!this.isWorldGenMode && !this.isMenuMode) {
           const playerScreen = worldToScreen(engine.player.x, engine.player.y);
           const playerRadius = (isHoldingTorch ? 170 : 95) * (this.zoom / 2);
 
@@ -2854,18 +3160,95 @@ export class SurvivalRenderer {
       ctx.restore();
     }
 
-    // ── LAYER 9: BUILDING PREVIEW GHOST ─────────────────────────
-    if (engine.isBuildMode && engine.buildPiece) {
+    // ── LAYER 9: BUILDING PREVIEW GHOST (with 3D Block Volumetric Preview) ──
+    const activeHotbarItem = engine.getActiveItemSlot()?.item;
+    const isHolding3DBlock = activeHotbarItem && activeHotbarItem.startsWith("block_");
+    const previewPiece = engine.buildPiece || (isHolding3DBlock ? activeHotbarItem : null);
+
+    if ((engine.isBuildMode || isHolding3DBlock) && previewPiece) {
+      const is3D = previewPiece.startsWith("block_");
+      const z = is3D ? (engine.buildPreviewZ || 0) : 0;
       const screen = worldToScreen(engine.buildPreviewX, engine.buildPreviewY);
 
       ctx.save();
-      ctx.fillStyle = engine.isBuildPreviewValid
-        ? "rgba(34, 197, 94, 0.4)"
-        : "rgba(239, 68, 68, 0.4)";
-      ctx.fillRect(screen.sx, screen.sy, cellSize, cellSize);
-      ctx.strokeStyle = engine.isBuildPreviewValid ? "#22c55e" : "#ef4444";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(screen.sx, screen.sy, cellSize, cellSize);
+      if (is3D) {
+        const W = cellSize;
+        const dH = Math.round(W * 0.5);
+        const cubeHeight = Math.round(W * 0.65);
+        const cx = screen.sx + W / 2;
+        const by = screen.sy + Math.round(W * 0.65) - z * cubeHeight;
+        const ty = by - cubeHeight;
+
+        const fillTop = engine.isBuildPreviewValid
+          ? "rgba(34, 197, 94, 0.45)"
+          : "rgba(239, 68, 68, 0.45)";
+        const fillLeft = engine.isBuildPreviewValid
+          ? "rgba(22, 163, 74, 0.40)"
+          : "rgba(220, 38, 38, 0.40)";
+        const fillRight = engine.isBuildPreviewValid
+          ? "rgba(21, 128, 61, 0.50)"
+          : "rgba(185, 28, 28, 0.50)";
+        const strokeColor = engine.isBuildPreviewValid ? "#22c55e" : "#ef4444";
+
+        // 1. Top Diamond Face
+        ctx.beginPath();
+        ctx.moveTo(cx, ty - dH / 2);
+        ctx.lineTo(cx + W / 2, ty);
+        ctx.lineTo(cx, ty + dH / 2);
+        ctx.lineTo(cx - W / 2, ty);
+        ctx.closePath();
+        ctx.fillStyle = fillTop;
+        ctx.fill();
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 2. Left Face Quad
+        ctx.beginPath();
+        ctx.moveTo(cx - W / 2, ty);
+        ctx.lineTo(cx, ty + dH / 2);
+        ctx.lineTo(cx, by + dH / 2);
+        ctx.lineTo(cx - W / 2, by);
+        ctx.closePath();
+        ctx.fillStyle = fillLeft;
+        ctx.fill();
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 3. Right Face Quad
+        ctx.beginPath();
+        ctx.moveTo(cx, ty + dH / 2);
+        ctx.lineTo(cx + W / 2, ty);
+        ctx.lineTo(cx + W / 2, by);
+        ctx.lineTo(cx, by + dH / 2);
+        ctx.closePath();
+        ctx.fillStyle = fillRight;
+        ctx.fill();
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Elevation Stack Badge
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${Math.max(10, Math.round(11 * (this.zoom / 2)))}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(`Tier ${z + 1}`, cx, ty - dH / 2 - 6);
+      } else {
+        const topX = screen.sx;
+        const topY = screen.sy;
+        const topW = cellSize;
+        const topH = cellSize;
+        const validColor = "rgba(34, 197, 94, 0.45)";
+        const invalidColor = "rgba(239, 68, 68, 0.45)";
+        const strokeColor = engine.isBuildPreviewValid ? "#22c55e" : "#ef4444";
+
+        ctx.fillStyle = engine.isBuildPreviewValid ? validColor : invalidColor;
+        ctx.fillRect(topX, topY, topW, topH);
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(topX, topY, topW, topH);
+      }
       ctx.restore();
     }
 
@@ -3154,6 +3537,440 @@ export class SurvivalRenderer {
       ctx.textAlign = "center";
       ctx.fillText("Press [J] or [ESC] to close journal • Click tabs 1-3 to switch categories", mx + modalW / 2, my + modalH - 14);
 
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Renders a dropped item on the ground with 100% opacity,
+   * authentic item disc base, bobbing animation, and crisp item sprite/stack badge.
+   */
+  public drawDroppedItem(
+    ctx: CanvasRenderingContext2D,
+    item: DroppedItem,
+    worldToScreen: (x: number, y: number) => { sx: number; sy: number },
+    cellSize: number,
+  ) {
+    const screen = worldToScreen(item.x, item.y);
+    const bobY = Math.sin(item.bobTimer || 0) * 3;
+    const centerX = screen.sx + cellSize / 2;
+    const groundY = screen.sy + cellSize / 2 + 4;
+
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Solid grounding shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(
+      centerX,
+      groundY + 3,
+      7 * (this.zoom / 2),
+      3.5 * (this.zoom / 2),
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+
+    // 2. Sunnyside World Item Disc (wood pedestal)
+    if (this.itemDiscImg && this.itemDiscImg.complete && this.itemDiscImg.naturalWidth > 0) {
+      const discW = 18 * (this.zoom / 2);
+      const discH = 19 * (this.zoom / 2);
+      ctx.drawImage(
+        this.itemDiscImg,
+        centerX - discW / 2,
+        groundY - discH / 2,
+        discW,
+        discH,
+      );
+    }
+
+    // 3. 100% Opaque Item Sprite (or high-contrast fallback)
+    const sprite = this.getItemSprite(item.item);
+    const itemSize = 16 * (this.zoom / 2);
+    const itemDrawY = groundY - itemSize / 2 - 3 + bobY;
+
+    if (sprite && sprite.complete && sprite.naturalWidth > 0) {
+      ctx.drawImage(
+        sprite,
+        centerX - itemSize / 2,
+        itemDrawY,
+        itemSize,
+        itemSize,
+      );
+    } else {
+      const def = (ITEM_CATALOG as any)[item.item];
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${14 * (this.zoom / 2)}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        def?.icon || "📦",
+        centerX,
+        itemDrawY + itemSize / 2,
+      );
+    }
+
+    // 4. Item Stack Count (Opaque badge)
+    if (item.count > 1) {
+      const countStr = `${item.count}`;
+      ctx.font = `bold ${9 * (this.zoom / 2)}px 'JetBrains Mono', monospace`;
+      const tw = ctx.measureText(countStr).width;
+      const badgeW = tw + 6;
+      const badgeH = 11 * (this.zoom / 2);
+      const badgeX = centerX + 3 * (this.zoom / 2);
+      const badgeY = itemDrawY + itemSize - 4;
+
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 2);
+      } else {
+        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      }
+      ctx.fill();
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = "#fef08a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(countStr, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders a volumetric authentic 3D isometric cube with:
+   * - Top Face: Sunlit 2:1 isometric diamond rhombus receiving direct daylight
+   * - Left Face: Vertical facet receiving diffuse fill light with perspective texture
+   * - Right Face: Deep directional shadow vertical facet
+   * - Central 3D Ridge: Crisp dividing edge where left and right faces meet
+   * - Multi-Tier Stacking: Base chevron \/ of tier z+1 perfectly aligns with top diamond of tier z
+   * - Ground Drop Shadow: Ambient ground shadow under tier z = 0
+   */
+  public render3DBlock(
+    ctx: CanvasRenderingContext2D,
+    block: Placed3DBlock,
+    engine: any,
+    cellSize: number,
+    worldToScreen: (wx: number, wy: number) => { sx: number; sy: number },
+  ) {
+    const rawScreen = worldToScreen(block.x, block.y);
+    const shakeOffset =
+      block.shakeTimer && block.shakeTimer > 0 ? Math.random() * 4 - 2 : 0;
+    const sx = rawScreen.sx + shakeOffset;
+    const sy = rawScreen.sy;
+
+    const W = cellSize;
+    // Consistent 2.5D tier vertical height increment (proportional to cell size)
+    const tierH = Math.round(W * 0.54);
+    const topDepth = Math.round(W * 0.60);
+    const zLift = block.z * tierH;
+
+    // Base ground contact Y
+    const groundBottomY = sy + W;
+    const faceBottomY = groundBottomY - zLift;
+    const faceTopY = faceBottomY - tierH;
+    const topFaceTopY = faceTopY - topDepth;
+
+    // Check adjacent neighbors at same elevation to join continuous walls seamlessly
+    const hasEast = !!engine.getBlockAt(block.x + 1, block.y, block.z);
+    const hasWest = !!engine.getBlockAt(block.x - 1, block.y, block.z);
+    const hasNorth = !!engine.getBlockAt(block.x, block.y - 1, block.z);
+    const hasBlockAbove = !!engine.getBlockAt(block.x, block.y, block.z + 1);
+
+    // ── 0. GROUND CONTACT SHADOW & HEIGHT-AWARE CAST SHADOW ──
+    if (block.z === 0) {
+      // Ground contact shadow at base of tier 0
+      ctx.save();
+      ctx.fillStyle = "rgba(10, 18, 12, 0.40)";
+      ctx.beginPath();
+      ctx.ellipse(
+        sx + W / 2,
+        groundBottomY - 1,
+        W * 0.52,
+        Math.max(3, Math.round(tierH * 0.22)),
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Directional cast shadow extending northward proportional to total height
+    if (!hasNorth && !hasBlockAbove) {
+      const shadowLength = Math.round((block.z + 1) * tierH * 0.45);
+      ctx.save();
+      ctx.fillStyle = "rgba(8, 16, 26, 0.18)";
+      ctx.beginPath();
+      ctx.moveTo(sx, topFaceTopY + topDepth * 0.3);
+      ctx.lineTo(sx - shadowLength * 0.35, topFaceTopY - shadowLength);
+      ctx.lineTo(sx + W - shadowLength * 0.35, topFaceTopY - shadowLength);
+      ctx.lineTo(sx + W, topFaceTopY + topDepth * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ── 1. FRONT VERTICAL FACE (Direct South-Facing, Directional Diffuse Shade) ──
+    ctx.save();
+    const faceW = W + (hasEast ? 1 : 0); // eliminate 1px subpixel seams between joined wall blocks
+    const faceH = tierH;
+
+    switch (block.material) {
+      case "block_stone": {
+        // Medium granite tone
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+
+        // Course mortar lines
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, faceTopY + Math.round(faceH * 0.5));
+        ctx.lineTo(sx + faceW, faceTopY + Math.round(faceH * 0.5));
+        ctx.stroke();
+
+        // Staggered vertical masonry joints
+        const jOffset = (block.x % 2 === 0) ? 0.35 : 0.65;
+        ctx.beginPath();
+        ctx.moveTo(sx + Math.round(faceW * jOffset), faceTopY);
+        ctx.lineTo(sx + Math.round(faceW * jOffset), faceTopY + Math.round(faceH * 0.5));
+        ctx.moveTo(sx + Math.round(faceW * (1 - jOffset)), faceTopY + Math.round(faceH * 0.5));
+        ctx.lineTo(sx + Math.round(faceW * (1 - jOffset)), faceBottomY);
+        ctx.stroke();
+
+        // Chipped granite texture dots
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(sx + Math.round(faceW * 0.2), faceTopY + Math.round(faceH * 0.3), 2, 2);
+        ctx.fillRect(sx + Math.round(faceW * 0.75), faceTopY + Math.round(faceH * 0.7), 2, 2);
+        break;
+      }
+      case "block_wood": {
+        // Warm timber planks
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+
+        // Vertical plank seams
+        ctx.fillStyle = "#451a03";
+        ctx.fillRect(sx + Math.round(faceW * 0.33), faceTopY, 1, faceH);
+        ctx.fillRect(sx + Math.round(faceW * 0.66), faceTopY, 1, faceH);
+
+        // Wood grain streaks
+        ctx.fillStyle = "#92400e";
+        ctx.fillRect(sx + 2, faceTopY + Math.round(faceH * 0.25), Math.round(faceW * 0.25), 1);
+        ctx.fillRect(sx + Math.round(faceW * 0.4), faceTopY + Math.round(faceH * 0.65), Math.round(faceW * 0.22), 1);
+        break;
+      }
+      case "block_dirt": {
+        // Loamy brown earth
+        ctx.fillStyle = "#5c2e0b";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+
+        // Soil granules / pebbles
+        ctx.fillStyle = "#3b1c04";
+        ctx.fillRect(sx + Math.round(faceW * 0.25), faceTopY + Math.round(faceH * 0.4), 2, 2);
+        ctx.fillRect(sx + Math.round(faceW * 0.7), faceTopY + Math.round(faceH * 0.65), 2, 2);
+        break;
+      }
+      case "block_brick": {
+        // Terracotta red bricks
+        ctx.fillStyle = "#7f1d1d";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+
+        // Horizontal mortar course
+        ctx.strokeStyle = "#450a0a";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, faceTopY + Math.round(faceH * 0.33));
+        ctx.lineTo(sx + faceW, faceTopY + Math.round(faceH * 0.33));
+        ctx.moveTo(sx, faceTopY + Math.round(faceH * 0.66));
+        ctx.lineTo(sx + faceW, faceTopY + Math.round(faceH * 0.66));
+        ctx.stroke();
+
+        // Staggered vertical joints
+        ctx.beginPath();
+        ctx.moveTo(sx + Math.round(faceW * 0.5), faceTopY);
+        ctx.lineTo(sx + Math.round(faceW * 0.5), faceTopY + Math.round(faceH * 0.33));
+        ctx.moveTo(sx + Math.round(faceW * 0.25), faceTopY + Math.round(faceH * 0.33));
+        ctx.lineTo(sx + Math.round(faceW * 0.25), faceTopY + Math.round(faceH * 0.66));
+        ctx.moveTo(sx + Math.round(faceW * 0.75), faceTopY + Math.round(faceH * 0.33));
+        ctx.lineTo(sx + Math.round(faceW * 0.75), faceTopY + Math.round(faceH * 0.66));
+        ctx.moveTo(sx + Math.round(faceW * 0.5), faceTopY + Math.round(faceH * 0.66));
+        ctx.lineTo(sx + Math.round(faceW * 0.5), faceBottomY);
+        ctx.stroke();
+        break;
+      }
+      case "block_sandstone": {
+        // Warm sandstone
+        ctx.fillStyle = "#b45309";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+
+        // Sediment strata bands
+        ctx.fillStyle = "#92400e";
+        ctx.fillRect(sx, faceTopY + Math.round(faceH * 0.35), faceW, 1.5);
+        ctx.fillRect(sx, faceTopY + Math.round(faceH * 0.7), faceW, 1.5);
+        break;
+      }
+      case "block_glass": {
+        // Pale cyan translucent glass face
+        ctx.fillStyle = "rgba(56, 189, 248, 0.40)";
+        ctx.fillRect(sx, faceTopY, faceW, faceH);
+        // Specular sheen streak
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx + 3, faceTopY + faceH - 3);
+        ctx.lineTo(sx + faceW - 3, faceTopY + 3);
+        ctx.stroke();
+        break;
+      }
+    }
+
+    // Exposed Side Facets (directional shadow when neighbor is missing)
+    if (!hasEast) {
+      const sideW = Math.max(2, Math.round(W * 0.14));
+      ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+      ctx.fillRect(sx + W - sideW, faceTopY, sideW, faceH);
+    }
+    if (!hasWest) {
+      const sideW = Math.max(1, Math.round(W * 0.08));
+      ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+      ctx.fillRect(sx, faceTopY, sideW, faceH);
+    }
+
+    // Bottom shadow bevel line
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.fillRect(sx, faceBottomY - 1, faceW, 1);
+    ctx.restore();
+
+    // ── 2. TOP HORIZONTAL FACE (Sunlit Overhead Surface) ──
+    if (!hasBlockAbove) {
+      ctx.save();
+      const topW = W + (hasEast ? 1 : 0);
+      const topH = topDepth;
+
+      switch (block.material) {
+        case "block_stone": {
+          // Lighter sunlit granite cap
+          ctx.fillStyle = "#64748b";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          // Highlight specks
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillRect(sx + Math.round(topW * 0.3), topFaceTopY + Math.round(topH * 0.4), 2, 2);
+          ctx.fillRect(sx + Math.round(topW * 0.7), topFaceTopY + Math.round(topH * 0.6), 2, 2);
+          break;
+        }
+        case "block_wood": {
+          // Sunlit golden timber
+          ctx.fillStyle = "#b45309";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          ctx.fillStyle = "#d97706";
+          ctx.fillRect(sx + 2, topFaceTopY + Math.round(topH * 0.4), topW - 4, 1);
+          break;
+        }
+        case "block_dirt": {
+          // Grassy top cap
+          ctx.fillStyle = "#65a30d";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          ctx.fillStyle = "#84cc16";
+          ctx.fillRect(sx + Math.round(topW * 0.4), topFaceTopY + Math.round(topH * 0.3), 2, 2);
+          break;
+        }
+        case "block_brick": {
+          // Bright terracotta brick cap
+          ctx.fillStyle = "#b91c1c";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          ctx.fillStyle = "#dc2626";
+          ctx.fillRect(sx + 2, topFaceTopY + 2, topW - 4, 1);
+          break;
+        }
+        case "block_sandstone": {
+          // Sun-bleached warm sandstone
+          ctx.fillStyle = "#f59e0b";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          ctx.fillStyle = "#fbbf24";
+          ctx.fillRect(sx + Math.round(topW * 0.3), topFaceTopY + Math.round(topH * 0.4), 3, 2);
+          break;
+        }
+        case "block_glass": {
+          // Luminous translucent glass cap
+          ctx.fillStyle = "rgba(186, 230, 253, 0.55)";
+          ctx.fillRect(sx, topFaceTopY, topW, topH);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(sx + 2, topFaceTopY + topH - 2);
+          ctx.lineTo(sx + topW - 2, topFaceTopY + 2);
+          ctx.stroke();
+          break;
+        }
+      }
+
+      // Exposed top face edges
+      if (!hasEast) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.fillRect(sx + topW - Math.round(W * 0.12), topFaceTopY, Math.round(W * 0.12), topH);
+      }
+      if (!hasWest) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+        ctx.fillRect(sx, topFaceTopY, Math.round(W * 0.08), topH);
+      }
+
+      // Top front dividing ridge highlight (separates horizontal top from vertical front)
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.fillRect(sx, faceTopY - 1, topW, 1.5);
+
+      // ── 3. AUTHENTIC CASTLE CRENELLATIONS & BATTLEMENTS (Defensive Wall Requirement 7.5) ──
+      if (
+        (block.material === "block_stone" || block.material === "block_brick") &&
+        block.z >= 1
+      ) {
+        const merlonW = Math.max(3, Math.round(W * 0.36));
+        const merlonH = Math.max(3, Math.round(tierH * 0.32));
+        const merlonColor = block.material === "block_stone" ? "#475569" : "#7f1d1d";
+        const merlonTop = block.material === "block_stone" ? "#64748b" : "#b91c1c";
+
+        // Left merlon
+        ctx.fillStyle = merlonColor;
+        ctx.fillRect(sx, topFaceTopY - merlonH, merlonW, merlonH);
+        ctx.fillStyle = merlonTop;
+        ctx.fillRect(sx, topFaceTopY - merlonH, merlonW, 1.5);
+
+        // Right merlon
+        if (!hasEast) {
+          ctx.fillStyle = merlonColor;
+          ctx.fillRect(sx + W - merlonW, topFaceTopY - merlonH, merlonW, merlonH);
+          ctx.fillStyle = merlonTop;
+          ctx.fillRect(sx + W - merlonW, topFaceTopY - merlonH, merlonW, 1.5);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    // ── 4. DAMAGE CRACKING ──
+    if (block.health < block.maxHealth) {
+      const dmgRatio = 1 - block.health / block.maxHealth;
+      ctx.save();
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * (this.zoom / 2)));
+      ctx.beginPath();
+      // Crack across front face
+      ctx.moveTo(sx + W * 0.5, faceTopY);
+      ctx.lineTo(sx + W * 0.35, faceTopY + tierH * 0.5);
+      ctx.lineTo(sx + W * 0.6, faceBottomY);
+      if (dmgRatio > 0.5) {
+        ctx.moveTo(sx + W * 0.35, faceTopY + tierH * 0.5);
+        ctx.lineTo(sx + W * 0.2, faceTopY + tierH * 0.8);
+      }
+      ctx.stroke();
       ctx.restore();
     }
   }

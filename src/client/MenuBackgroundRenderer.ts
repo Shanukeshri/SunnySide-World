@@ -1,103 +1,185 @@
-import Phaser from "phaser";
-import { WorldManager } from "../game/WorldManager";
+import { SurvivalEngine } from "../game/SurvivalEngine";
+import { SurvivalRenderer } from "../game/SurvivalRenderer";
 
-class MenuBackgroundScene extends Phaser.Scene {
-  private worldManager!: WorldManager;
-  private cameraPanSpeed = 1.0; // pixels per frame
-
-  constructor() {
-    super({ key: "MenuBackgroundScene" });
-  }
-
-  preload() {
-    // Load just enough assets to render the terrain and village
-    this.load.image("iso_grass_block", "/assets/iso_grass_block.png");
-    this.load.image("iso_dirt_block", "/assets/iso_dirt_block.png");
-    this.load.image("iso_sand_block", "/assets/iso_sand_block.png");
-    this.load.image("iso_water_block", "/assets/iso_water_block.png");
-    
-    // Some basic sprites for houses/trees
-    this.load.image("tree_01", "/assets/tree_01.png");
-  }
-
-  create() {
-    // Random seed for the background village
-    const seed = Math.floor(Math.random() * 100000);
-    this.worldManager = new WorldManager(seed);
-    
-    // Generate some chunks
-    for (let dy = -3; dy <= 3; dy++) {
-      for (let dx = -3; dx <= 3; dx++) {
-        const chunk = this.worldManager.getOrCreateChunk(dx, dy);
-        // We will just render the chunks simply using graphics for performance in the background,
-        // or actually draw the isometric tiles.
-        // For the sake of simplicity and performance on the main menu, let's render a flat 2D top-down view
-        // like the 'Village Generator' tab does, but animated!
-      }
-    }
-
-    // Let's draw the village directly to a graphics object to keep it super lightweight
-    const graphics = this.add.graphics();
-    this.drawVillageToGraphics(graphics);
-
-    // Setup Camera
-    this.cameras.main.setZoom(2.0);
-    this.cameras.main.centerOn(0, 0);
-  }
-
-  private drawVillageToGraphics(graphics: Phaser.GameObjects.Graphics) {
-    graphics.clear();
-    const tileSize = 16;
-    const startX = -100;
-    const endX = 100;
-    const startY = -100;
-    const endY = 100;
-
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        const tile = this.worldManager.getTile(x, y);
-        
-        let color = 0x86efac; // Grass
-        if (tile.isWater) color = 0x3b82f6;
-        else if (tile.isRoad) color = 0xd4d4d8;
-        else if (tile.isFarm) color = 0xb45309;
-
-        graphics.fillStyle(color, 1.0);
-        graphics.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        
-        if (tile.isBlocked && !tile.isWater) {
-          graphics.fillStyle(0x1e293b, 0.8);
-          graphics.fillRect(x * tileSize + 2, y * tileSize + 2, tileSize - 4, tileSize - 4);
-        }
-      }
-    }
-  }
-
-  update(time: number, delta: number) {
-    // Slowly pan the camera to the right
-    this.cameras.main.scrollX += (this.cameraPanSpeed * delta) / 16;
-    this.cameras.main.scrollY += (Math.sin(time / 2000) * delta) / 32; // Slight bobbing
-  }
-}
-
+/**
+ * MenuBackgroundRenderer: Renders the starting screen using the EXACT same world rendering
+ * as the game, focused on a procedural village settlement, and panning slowly with a smooth
+ * cinematic camera trajectory.
+ */
 export class MenuBackgroundRenderer {
-  private game: Phaser.Game;
+  private container: HTMLElement | null = null;
+  private canvas: HTMLCanvasElement;
+  private animId: number | null = null;
+  private engine: SurvivalEngine;
+  private renderer: SurvivalRenderer;
+  private startTime: number = performance.now();
+  private lastTime: number = performance.now();
+  private villageCenterX: number = 55;
+  private villageCenterY: number = 44;
+  private onResize: () => void;
 
   constructor(containerId: string) {
-    const config: Phaser.Types.Core.GameConfig = {
-      type: Phaser.AUTO,
-      parent: containerId,
-      width: "100%",
-      height: "100%",
-      backgroundColor: "#0f172a",
-      pixelArt: true,
-      scene: [MenuBackgroundScene],
-    };
+    this.container = document.getElementById(containerId);
 
-    this.game = new Phaser.Game(config);
+    this.canvas = document.createElement("canvas");
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
+    this.canvas.style.display = "block";
+
+    if (this.container) {
+      this.container.innerHTML = "";
+      this.container.appendChild(this.canvas);
+    }
+
+    // Generate procedural world with villages
+    const randomSeed = Math.floor(Math.random() * 1000000) + 1;
+    this.engine = new SurvivalEngine(randomSeed, false, 8);
+
+    // Warm daytime lighting for starting screen
+    this.engine.worldTime.timeOfDay = "Day";
+    this.engine.worldTime.hour = 11;
+    this.engine.worldTime.minute = 30;
+    this.engine.worldTime.lightLevel = 1.0;
+
+    // Use the exact same world renderer as the game
+    this.renderer = new SurvivalRenderer();
+    this.renderer.isMenuMode = true;
+    this.renderer.zoom = 2.0;
+
+    // Locate the primary village settlement center
+    this.findVillageCenter();
+
+    // Position camera initially at village center
+    this.renderer.cameraX = this.villageCenterX;
+    this.renderer.cameraY = this.villageCenterY;
+    this.engine.player.x = this.villageCenterX;
+    this.engine.player.y = this.villageCenterY;
+    this.engine.worldManager.updatePlayerLocation(
+      this.villageCenterX,
+      this.villageCenterY,
+    );
+
+    this.onResize = () => this.handleResize();
+    window.addEventListener("resize", this.onResize);
+    this.handleResize();
+
+    this.startLoop();
+  }
+
+  private findVillageCenter() {
+    const wm = this.engine.worldManager;
+    if (wm.villages && wm.villages.length > 0) {
+      const v = wm.villages[0];
+      if (v.data?.houses && v.data.houses.length > 0) {
+        let sumX = 0;
+        let sumY = 0;
+        for (const h of v.data.houses) {
+          sumX += v.gridX + h.x + (h.footprintW || 8) / 2;
+          sumY += v.gridY + h.y + (h.footprintH || 8) / 2;
+        }
+        this.villageCenterX = sumX / v.data.houses.length;
+        this.villageCenterY = sumY / v.data.houses.length;
+        return;
+      }
+      this.villageCenterX = v.gridX + (v.width || 40) / 2;
+      this.villageCenterY = v.gridY + (v.height || 40) / 2;
+      return;
+    }
+
+    if (wm.villagePlannedSites && wm.villagePlannedSites.length > 0) {
+      const s = wm.villagePlannedSites[0];
+      this.villageCenterX = s.targetX;
+      this.villageCenterY = s.targetY;
+      return;
+    }
+
+    this.villageCenterX = 55;
+    this.villageCenterY = 44;
+  }
+
+  private handleResize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = this.canvas.getBoundingClientRect();
+    const w = rect.width || window.innerWidth;
+    const h = rect.height || window.innerHeight;
+
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+  }
+
+  private startLoop() {
+    const render = (now: number) => {
+      this.renderFrame(now);
+      this.animId = requestAnimationFrame(render);
+    };
+    this.animId = requestAnimationFrame(render);
+  }
+
+  private renderFrame(now: number) {
+    const dt = Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000));
+    this.lastTime = now;
+
+    // Slow, serene, cinematic panning across the village
+    const t = (now - this.startTime) * 0.00007; // Very slow and calm
+    const spanRadiusX = 8.5; // in tiles
+    const spanRadiusY = 5.5;
+
+    const camX =
+      this.villageCenterX +
+      Math.sin(t * 0.9) * spanRadiusX +
+      Math.cos(t * 0.3) * (spanRadiusX * 0.35);
+    const camY =
+      this.villageCenterY +
+      Math.cos(t * 0.7) * spanRadiusY +
+      Math.sin(t * 0.25) * (spanRadiusY * 0.3);
+
+    this.renderer.cameraX = camX;
+    this.renderer.cameraY = camY;
+    this.engine.player.x = camX;
+    this.engine.player.y = camY;
+    this.engine.worldManager.updatePlayerLocation(camX, camY);
+
+    // Keep pleasant daytime lighting
+    this.engine.worldTime.timeOfDay = "Day";
+    this.engine.worldTime.hour = 11;
+    this.engine.worldTime.minute = 30;
+    this.engine.worldTime.lightLevel = 1.0;
+
+    // Update world simulation (smoke particles, birds, wind, ambient weather)
+    this.engine.update(dt);
+
+    // Render using the exact same world rendering engine
+    this.renderer.render(this.canvas, this.engine, dt);
+
+    // Soft cinematic radial vignette overlay for menu UI contrast
+    const ctx = this.canvas.getContext("2d");
+    if (ctx) {
+      const halfW = this.canvas.width / 2;
+      const halfH = this.canvas.height / 2;
+      const gradient = ctx.createRadialGradient(
+        halfW,
+        halfH,
+        Math.min(halfW, halfH) * 0.35,
+        halfW,
+        halfH,
+        Math.max(halfW, halfH) * 1.05,
+      );
+      gradient.addColorStop(0, "rgba(255, 245, 210, 0.03)");
+      gradient.addColorStop(0.7, "rgba(15, 23, 42, 0.35)");
+      gradient.addColorStop(1, "rgba(10, 15, 30, 0.72)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
   }
 
   public destroy() {
-    this.game.destroy(true);
+    if (this.animId !== null) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
+    window.removeEventListener("resize", this.onResize);
+    if (this.canvas.parentElement) {
+      this.canvas.parentElement.removeChild(this.canvas);
+    }
   }
 }
