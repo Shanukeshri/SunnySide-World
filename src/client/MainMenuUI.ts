@@ -3,7 +3,7 @@ import { MenuBackgroundRenderer } from "./MenuBackgroundRenderer";
 export class MainMenuUI {
   private bgRenderer: MenuBackgroundRenderer | null = null;
   private onStartGameCallback:
-    | ((mode: "single" | "multi", inviteCode?: string) => void)
+    | ((mode: "single" | "multi" | "stream", inviteCode?: string) => void)
     | null = null;
 
   constructor() {
@@ -21,6 +21,7 @@ export class MainMenuUI {
       "btn-close-multiplayer",
     );
     const btnHostGame = document.getElementById("btn-host-game");
+    const btnStreamGame = document.getElementById("btn-stream-game");
     const btnJoinGame = document.getElementById("btn-join-game");
     const inviteCodeInput = document.getElementById(
       "invite-code-input",
@@ -53,6 +54,11 @@ export class MainMenuUI {
     btnHostGame?.addEventListener("click", () => {
       this.hideMenu();
       if (this.onStartGameCallback) this.onStartGameCallback("multi");
+    });
+
+    btnStreamGame?.addEventListener("click", () => {
+      this.hideMenu();
+      if (this.onStartGameCallback) this.onStartGameCallback("stream");
     });
 
     btnJoinGame?.addEventListener("click", () => {
@@ -115,7 +121,7 @@ export class MainMenuUI {
   }
 
   public setOnStartGame(
-    callback: (mode: "single" | "multi", inviteCode?: string) => void,
+    callback: (mode: "single" | "multi" | "stream", inviteCode?: string) => void,
   ) {
     this.onStartGameCallback = callback;
   }

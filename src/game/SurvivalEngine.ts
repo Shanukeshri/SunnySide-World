@@ -2465,7 +2465,7 @@ export class SurvivalEngine {
   /**
    * Updates day/night clock, light levels, and ambient illumination.
    */
-  private updateWorldTime(dt: number) {
+  public updateWorldTime(dt: number) {
     this.worldTime.totalSeconds += dt;
     const cycleLength = 480; // 8 minutes
     const dayProgress =
@@ -2837,7 +2837,7 @@ export class SurvivalEngine {
   /**
    * Magnetizes dropped items towards player and auto-picks them up into inventory.
    */
-  private updateDroppedItems(dt: number) {
+  public updateDroppedItems(dt: number) {
     for (let i = this.droppedItems.length - 1; i >= 0; i--) {
       const item = this.droppedItems[i];
       item.bobTimer += dt * 4;
@@ -2884,17 +2884,26 @@ export class SurvivalEngine {
    * Entities > 4 chunks away: animals are culled/not simulated, NPCs are frozen in place.
    */
   public updateLifeforms(dt: number) {
-    const pcx = Math.floor(this.player.x / 16);
-    const pcy = Math.floor(this.player.y / 16);
+    const activePlayerChunks = [{ cx: Math.floor(this.player.x / 16), cy: Math.floor(this.player.y / 16) }];
+    if (this.remotePlayers && Array.isArray(this.remotePlayers)) {
+      for (const rp of this.remotePlayers) {
+        if (!rp.isDead && rp.health > 0) {
+          activePlayerChunks.push({ cx: Math.floor(rp.x / 16), cy: Math.floor(rp.y / 16) });
+        }
+      }
+    }
+    const isNearAnyPlayer = (ex: number, ey: number, radius = 4) => {
+      const ecx = Math.floor(ex / 16);
+      const ecy = Math.floor(ey / 16);
+      return activePlayerChunks.some(pc => Math.abs(ecx - pc.cx) <= radius && Math.abs(ecy - pc.cy) <= radius);
+    };
 
-    // 1. Animals: culled & dormant outside 4 chunks
+    // 1. Animals: culled & dormant outside active player chunk radius
     for (const animal of this.animals) {
       if (!animal.isActive) continue;
 
-      const acx = Math.floor(animal.position.x / 16);
-      const acy = Math.floor(animal.position.y / 16);
-      if (Math.abs(acx - pcx) > 4 || Math.abs(acy - pcy) > 4) {
-        continue; // Culled when outside active 4-chunk radius
+      if (!isNearAnyPlayer(animal.position.x, animal.position.y)) {
+        continue; // Culled when outside active player radius
       }
 
       animal.updateAI(dt, this.detector, this.worldTime, this.worldManager);
@@ -2927,13 +2936,11 @@ export class SurvivalEngine {
       }
     }
 
-    // 2. NPCs: frozen in place on unloaded chunks, resumed when chunk re-enters 4-chunk radius
+    // 2. NPCs: frozen in place on unloaded chunks, resumed when chunk re-enters active player radius
     for (const npc of this.npcs) {
       if (!npc.isActive) continue;
 
-      const ncx = Math.floor(npc.position.x / 16);
-      const ncy = Math.floor(npc.position.y / 16);
-      if (Math.abs(ncx - pcx) > 4 || Math.abs(ncy - pcy) > 4) {
+      if (!isNearAnyPlayer(npc.position.x, npc.position.y)) {
         // Frozen on unloaded chunk (position & state preserved)
         (npc as any).isFrozen = true;
         continue;
@@ -2948,7 +2955,7 @@ export class SurvivalEngine {
   /**
    * Hostile Enemy AI (Slimes, Goblins, Wolves) active at night.
    */
-  private updateEnemies(dt: number) {
+  public updateEnemies(dt: number) {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       if (!enemy.isAlive) {

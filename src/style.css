@@ -2837,3 +2837,26 @@ button, a, .tab-btn, .hotbar-slot, .inv-slot, input, [role="tab"], .hud-action-b
   filter: grayscale(1) opacity(0.35);
 }
 
+/* ═══════════════════════════════════════════════════════════════════ */
+/* PLAYROOMKIT MOBILE JOYSTICK & TOUCH CONTROLS */
+/* ═══════════════════════════════════════════════════════════════════ */
+#pr-joystick {
+  z-index: 9999 !important;
+  touch-action: none;
+  background: rgba(15, 23, 42, 0.5) !important;
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+#pr-joystick div {
+  touch-action: none;
+}
+
+/* Mobile Button Active States */
+.hud-icon-btn.active {
+  background: rgba(56, 189, 248, 0.25) !important;
+  border-color: #38bdf8 !important;
+}
+
+

@@ -81,18 +81,63 @@ export class EnvironmentDetector {
    * Checks if a logical tile coordinate is traversable for entities.
    */
   public isWalkable(x: number, y: number, allowWater: boolean = false, waterOnly: boolean = false): boolean {
+    if (this.worldManager) {
+      const tileX = Math.floor(x);
+      const tileY = Math.floor(y);
+      const tile = this.worldManager.getTile(tileX, tileY);
+      if (!tile) return false;
+
+      const isBridge = Boolean(tile.isBridge || (tile.terrain && tile.terrain.startsWith('bridge_')));
+      const isWater = Boolean((tile.isWater || (tile.terrain && tile.terrain.startsWith('water_'))) && !isBridge);
+
+      if (waterOnly) {
+        return isWater;
+      }
+      if (isWater && !allowWater) {
+        return false;
+      }
+      if (tile.isBlocked) {
+        return false;
+      }
+
+      // Houses extra safety padding for creatures
+      if (this.worldManager.villages) {
+        for (const v of this.worldManager.villages) {
+          if (v.data?.houses) {
+            for (const house of v.data.houses) {
+              const hx = v.gridX + house.x;
+              const hy = v.gridY + house.y;
+              if (
+                x >= hx - 0.25 &&
+                x < hx + house.footprintW + 0.25 &&
+                y >= hy - 0.25 &&
+                y < hy + house.footprintH + 0.25
+              ) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    if (!this.settlementData) return true;
+
     const margin = 0.5;
+    const localX = x - this.originX;
+    const localY = y - this.originY;
     if (
-      x < margin ||
-      x >= this.settlementData.width - margin ||
-      y < margin ||
-      y >= this.settlementData.height - margin
+      localX < margin ||
+      localX >= this.settlementData.width - margin ||
+      localY < margin ||
+      localY >= this.settlementData.height - margin
     ) {
       return false;
     }
 
-    const tileX = Math.floor(x);
-    const tileY = Math.floor(y);
+    const tileX = Math.floor(localX);
+    const tileY = Math.floor(localY);
     const row = this.settlementData.grid[tileY];
     if (!row) return false;
     const cell = row[tileX];
@@ -101,35 +146,15 @@ export class EnvironmentDetector {
     const isBridge = Boolean(cell.isBridge || cell.terrain?.startsWith('bridge_'));
     const isCellWater = Boolean((cell.isWater || cell.terrain?.startsWith('water_')) && !isBridge);
 
-    // If creature is swimming (e.g. ducks in pond)
     if (waterOnly) {
       return isCellWater;
     }
 
-    // Land creature walking into water
     if (isCellWater && !allowWater) {
       return false;
     }
 
-    // Buildings & solid structures (houses): ALL of house is strictly non-passable for animals/creatures
-    if (this.worldManager?.villages) {
-      for (const v of this.worldManager.villages) {
-        if (v.data?.houses) {
-          for (const house of v.data.houses) {
-            const hx = v.gridX + house.x;
-            const hy = v.gridY + house.y;
-            if (
-              x >= hx - 0.25 &&
-              x < hx + house.footprintW + 0.25 &&
-              y >= hy - 0.25 &&
-              y < hy + house.footprintH + 0.25
-            ) {
-              return false;
-            }
-          }
-        }
-      }
-    } else if (this.settlementData?.houses) {
+    if (this.settlementData.houses) {
       for (const house of this.settlementData.houses) {
         const hx = this.originX + house.x;
         const hy = this.originY + house.y;
@@ -144,50 +169,53 @@ export class EnvironmentDetector {
       }
     }
 
-    // Farm objects: fences, closed gates, chests, crates, troughs, water bowls
     if (this.settlementData.farmObjects) {
       for (const obj of this.settlementData.farmObjects) {
         if (obj.id === 'fence_wood_gate_open') continue;
+        const ox = this.originX + obj.x;
+        const oy = this.originY + obj.y;
         const w = obj.footprintW || 1;
         const h = obj.footprintH || 1;
         if (
-          x >= obj.x &&
-          x < obj.x + w &&
-          y >= obj.y &&
-          y < obj.y + h
+          x >= ox &&
+          x < ox + w &&
+          y >= oy &&
+          y < oy + h
         ) {
           return false;
         }
       }
     }
 
-    // Wells
     if (this.settlementData.wells) {
       for (const well of this.settlementData.wells) {
+        const wx = this.originX + well.x;
+        const wy = this.originY + well.y;
         const w = well.footprintW || 1;
         const h = well.footprintH || 1;
         if (
-          x >= well.x &&
-          x < well.x + w &&
-          y >= well.y &&
-          y < well.y + h
+          x >= wx &&
+          x < wx + w &&
+          y >= wy &&
+          y < wy + h
         ) {
           return false;
         }
       }
     }
 
-    // Trees of all types and stages (tree_01 - tree_05, saplings, stumps): solid trunk/base
     if (this.settlementData.trees) {
       for (const tree of this.settlementData.trees) {
+        const tx = this.originX + tree.x;
+        const ty = this.originY + tree.y;
         const w = tree.footprintW || 2;
         const h = tree.footprintH || 2;
-        const startY = h > 1 ? tree.y + h - 1 : tree.y;
+        const startY = h > 1 ? ty + h - 1 : ty;
         if (
-          x >= tree.x + 0.15 &&
-          x < tree.x + w - 0.15 &&
+          x >= tx + 0.15 &&
+          x < tx + w - 0.15 &&
           y >= startY &&
-          y < tree.y + h
+          y < ty + h
         ) {
           return false;
         }

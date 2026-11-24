@@ -66,6 +66,9 @@ export interface AnimationRenderState {
   playerHopOffset?: number; // legacy hop offset
   flipX: boolean; // true when facing LEFT
   deathAlpha?: number; // visual fade on death
+  action?: string;
+  showTool?: boolean;
+  hasTool?: boolean;
 }
 
 export interface RangeValue {

@@ -186,23 +186,39 @@ export class PlayerSystem {
   public canMoveTo(x: number, y: number, movingPlayer?: PlayerEntityState): boolean {
     const footX = x + 0.5;
     const footY = y + 0.65;
-    const rx = 0.35;
-    const ry = 0.25;
+    const rx = 0.28;
+    const ry = 0.20;
     const pts = [
+      // 4 corners of foot bounding box
       { x: footX - rx, y: footY - ry },
       { x: footX + rx, y: footY - ry },
       { x: footX - rx, y: footY + ry },
       { x: footX + rx, y: footY + ry },
+      // Center foot point
+      { x: footX, y: footY },
+      // 4 edge midpoints
+      { x: footX, y: footY - ry },
+      { x: footX, y: footY + ry },
+      { x: footX - rx, y: footY },
+      { x: footX + rx, y: footY },
     ];
     for (const p of pts) {
-      const tile = this.gameState.worldManager.getTile(
-        Math.floor(p.x),
-        Math.floor(p.y)
-      );
-      if (tile.isWater || tile.isBlocked) return false;
-      if (this.isBlockedByStructure(footX, footY)) return false;
+      const tx = Math.floor(p.x);
+      const ty = Math.floor(p.y);
+      const tile = this.gameState.worldManager.getTile(tx, ty);
+      const isBridge =
+        tile.isBridge ||
+        tile.terrain?.startsWith("bridge_") ||
+        this.gameState.placedStructures.some(
+          (s) => s.structureType === "wood_bridge" && s.x === tx && s.y === ty,
+        );
+
+      if (tile.isWater && !isBridge) return false;
+      if (tile.isBlocked && !isBridge) return false;
     }
+    if (this.isBlockedByStructure(footX, footY)) return false;
     if (this.gameState.worldManager.isBlockedByTreeTrunk(footX, footY)) return false;
+    if (this.gameState.worldManager.isBlockedByFence(footX, footY)) return false;
     if (movingPlayer && this.isBlockedByOtherPlayer(footX, footY, movingPlayer)) return false;
     return true;
   }
@@ -230,6 +246,9 @@ export class PlayerSystem {
     for (const struct of this.gameState.placedStructures) {
       const isSolid =
         struct.structureType === "wood_wall" ||
+        struct.structureType === "stone_wall" ||
+        struct.structureType === "wall_window" ||
+        struct.structureType === "farm_fence" ||
         struct.structureType === "chest" ||
         struct.structureType === "workbench" ||
         (struct.structureType === "wood_door" && !struct.isOpen);

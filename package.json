@@ -13,7 +13,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@geckos.io/snapshot-interpolation": "^1.1.1",
     "phaser": "^3.88.2",
+    "playroomkit": "^0.0.97",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "tsx": "^4.23.13"
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^26.4.1",
     "concurrently": "^10.0.5",
+    "puppeteer-core": "^25.18.1",
     "typescript": "^5.7.3",
     "vite": "^6.2.0"
   }

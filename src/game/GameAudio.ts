@@ -13,6 +13,9 @@ class SoundSynthesizer {
   private readonly BGM_VOLUME = 0.10;
 
   constructor() {
+    if (typeof window !== "undefined") {
+      (window as any).GameAudio = this;
+    }
     // Attempt instant autoplay on site arrival, with user interaction fallbacks
     this.startBgm();
     this.setupUserInteractionListener();

@@ -274,6 +274,7 @@ export interface EnemyEntity {
   hurtTimer: number;
   deathTimer: number;
   isAlive: boolean;
+  isDead?: boolean;
   // Special Enemy Variants:
   subType?: "neutral_trader" | "hostile_raider" | "night_invasion" | "crypt_guardian" | "TRADER" | "NIGHT_RAID";
   tradeOffer?: {

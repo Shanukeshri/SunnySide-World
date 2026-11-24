@@ -36,6 +36,7 @@ import { SPECIES_CONFIGS } from "./lifeforms/speciesConfig";
 import { isAssetCollidable } from "./data/assetCollision";
 import { WorldManager } from "./game/WorldManager";
 import { NetworkClient } from "./client/NetworkClient";
+import "playroomkit/style.css";
 
 // ═══════════════════════════════════════════════════════════════════
 // LAZY PHASER GAME INIT
@@ -480,17 +481,24 @@ window.addEventListener("DOMContentLoaded", () => {
     switchTab("game");
 
     // In multiplayer, we use the network client
-    if (mode === "multi") {
+    if (mode === "stream") {
+      console.log("Hosting game in Phone Controller (Stream) Mode");
+      ensureSurvivalGameLoaded();
+      setTimeout(() => {
+        networkClient?.hostWorld("Host", "mophair", { streamMode: true });
+      }, 300);
+    } else if (mode === "multi") {
+      ensureSurvivalGameLoaded();
       if (inviteCode) {
         console.log("Joining game with invite code:", inviteCode);
         setTimeout(() => {
           networkClient?.joinWorld(inviteCode, "Player", "mophair");
-        }, 500);
+        }, 300);
       } else {
-        console.log("Hosting a new multiplayer game");
+        console.log("Hosting a new multiplayer game with Playroom Lobby");
         setTimeout(() => {
           networkClient?.hostWorld("Host", "mophair");
-        }, 500);
+        }, 300);
       }
     } else {
       // Single player
@@ -1623,18 +1631,34 @@ function handleRemotePlayerAction(action: { sessionId: string; type: string; [ke
 
 function handleSyncEntities(entities: any) {
   if (!survivalEngine || !entities) return;
+
+  // 0. World Time Sync (Day/Night, Clock & Lighting)
+  if (entities.worldTime) {
+    Object.assign(survivalEngine.worldTime, entities.worldTime);
+  }
+
+  // Fast O(1) animal map indexing
+  if (!(survivalEngine as any)._animalMap || (survivalEngine as any)._animalMapVersion !== survivalEngine.animals.length) {
+    (survivalEngine as any)._animalMap = new Map(survivalEngine.animals.map((a: any) => [a.id, a]));
+    (survivalEngine as any)._animalMapVersion = survivalEngine.animals.length;
+  }
+  const animalMap: Map<number, any> = (survivalEngine as any)._animalMap;
+
   if (entities.animals && Array.isArray(entities.animals)) {
+    const initAnimals = (survivalEngine as any)._syncedAnimalIds || ((survivalEngine as any)._syncedAnimalIds = new Set<number>());
     for (const sa of entities.animals) {
       if (networkClient) {
         networkClient.interpolator.push(sa.id, sa.x, sa.y, sa.vx || 0, sa.vy || 0);
       }
-      const local = survivalEngine.animals.find((a: any) => a.id === sa.id);
+      const local = animalMap.get(sa.id);
       if (local) {
         const dx = sa.x - local.position.x;
         const dy = sa.y - local.position.y;
-        if (Math.hypot(dx, dy) > 3.5) {
+        const isFirst = !initAnimals.has(sa.id);
+        if (isFirst || Math.hypot(dx, dy) > 2.5) {
           local.position.x = sa.x;
           local.position.y = sa.y;
+          initAnimals.add(sa.id);
         }
         (local as any).vx = sa.vx || 0;
         (local as any).vy = sa.vy || 0;
@@ -1650,18 +1674,29 @@ function handleSyncEntities(entities: any) {
       }
     }
   }
+
+  // Fast O(1) NPC map indexing
+  if (!(survivalEngine as any)._npcMap || (survivalEngine as any)._npcMapVersion !== survivalEngine.npcs.length) {
+    (survivalEngine as any)._npcMap = new Map(survivalEngine.npcs.map((n: any) => [n.id, n]));
+    (survivalEngine as any)._npcMapVersion = survivalEngine.npcs.length;
+  }
+  const npcMap: Map<number, any> = (survivalEngine as any)._npcMap;
+
   if (entities.npcs && Array.isArray(entities.npcs)) {
+    const initNpcs = (survivalEngine as any)._syncedNpcIds || ((survivalEngine as any)._syncedNpcIds = new Set<number>());
     for (const sn of entities.npcs) {
       if (networkClient) {
         networkClient.interpolator.push(sn.id, sn.x, sn.y, sn.vx || 0, sn.vy || 0);
       }
-      const local = survivalEngine.npcs.find((n: any) => n.id === sn.id);
+      const local = npcMap.get(sn.id);
       if (local) {
         const dx = sn.x - local.position.x;
         const dy = sn.y - local.position.y;
-        if (Math.hypot(dx, dy) > 3.5) {
+        const isFirst = !initNpcs.has(sn.id);
+        if (isFirst || Math.hypot(dx, dy) > 2.5) {
           local.position.x = sn.x;
           local.position.y = sn.y;
+          initNpcs.add(sn.id);
         }
         (local as any).vx = sn.vx || 0;
         (local as any).vy = sn.vy || 0;
@@ -1671,6 +1706,35 @@ function handleSyncEntities(entities: any) {
       }
     }
   }
+
+  // Hostile Enemies Reconciliation
+  if (entities.enemies && Array.isArray(entities.enemies)) {
+    for (const se of entities.enemies) {
+      if (networkClient) {
+        networkClient.interpolator.push(se.id, se.x, se.y, se.vx || 0, se.vy || 0);
+      }
+      const existing = survivalEngine.enemies.find((e: any) => e.id === se.id);
+      if (!existing) {
+        survivalEngine.enemies.push({
+          id: se.id,
+          type: se.type,
+          x: se.x,
+          y: se.y,
+          vx: se.vx || 0,
+          vy: se.vy || 0,
+          health: se.health,
+          maxHealth: se.maxHealth,
+          direction: se.direction,
+          isDead: se.isDead,
+        } as any);
+      } else {
+        existing.health = se.health;
+        existing.isDead = se.isDead;
+        existing.direction = se.direction;
+      }
+    }
+  }
+
   // Depleted resources reconciliation
   if (entities.depletedResources && Array.isArray(entities.depletedResources)) {
     for (const resId of entities.depletedResources) {
@@ -1740,16 +1804,30 @@ function applyMultiplayerSnapshot(snapshot: any) {
   survivalEngine.sessionId = localId || "";
   const local = snapshot.players.find((player: any) => player.sessionId === localId);
   if (local) {
-    networkClient.prediction.reconcile(local);
+    networkClient.prediction.reconcile(
+      local,
+      (x: number, y: number) => (survivalEngine as any).canMoveTo(x, y)
+    );
     Object.assign(survivalEngine.player, {
       health: local.health, hunger: local.hunger, stamina: local.stamina,
       isSprinting: local.isSprinting, direction: local.direction, facing: local.facing,
     });
   }
   survivalEngine.remotePlayers = snapshot.players.filter((player: any) => player.sessionId !== localId).map((player: any) => {
-    networkClient.interpolator.push(player.sessionId, player.x, player.y, player.vx, player.vy);
     const old = survivalEngine!.remotePlayers.find((item: any) => item.id === player.sessionId);
     const merged = { ...old, ...player, id: player.sessionId };
+    if (old && Number.isFinite(old.x) && Number.isFinite(old.y)) {
+      if (Math.hypot(player.x - old.x, player.y - old.y) > 4.0) {
+        merged.x = player.x;
+        merged.y = player.y;
+      } else {
+        merged.x = old.x;
+        merged.y = old.y;
+      }
+    } else {
+      merged.x = player.x;
+      merged.y = player.y;
+    }
     if (old && old.hopTimer > 0 && (!player.hopTimer || player.hopTimer <= 0)) {
       merged.hopTimer = old.hopTimer;
       merged.hopOffset = old.hopOffset;
@@ -1774,6 +1852,8 @@ function applyMultiplayerSnapshot(snapshot: any) {
 }
 
 function joinMultiplayerWorld(snapshot: any) {
+  document.getElementById("main-menu")?.classList.add("hidden");
+  ensureSurvivalGameLoaded();
   // Each client creates the same deterministic map from the server's shared seed.
   survivalEngine = new SurvivalEngine(snapshot.seed);
   (survivalEngine as any).renderer = survivalRenderer;
@@ -1788,6 +1868,7 @@ function joinMultiplayerWorld(snapshot: any) {
   const slot0 = survivalEngine.getActiveItemSlot();
   (survivalEngine.player as any).activeHeldItem = slot0?.item || "wooden_axe";
   applyMultiplayerSnapshot(snapshot);
+  survivalRenderer?.snapCameraTo(survivalEngine.player.x, survivalEngine.player.y);
   setMultiplayerStatus(`Online · invite code ${snapshot.roomCode}`, snapshot.players.length);
   if (hudRoomCodeVal && hudRoomCodeTag) {
     hudRoomCodeVal.textContent = snapshot.roomCode;
@@ -1885,8 +1966,16 @@ function survivalGameLoop(now: number) {
       // 1. Authoritative Continuous Movement with Local Prediction (Phase 1 & 3)
       updatePlayerContinuousMovement(dt);
 
+      // 1b. World Time Advancement (Clock & Day/Night Cycle)
+      survivalEngine.updateWorldTime(dt);
+
+      // 1c. Dropped Items Magnet & Pickup
+      survivalEngine.updateDroppedItems(dt);
+
       // 2. Client updates local cosmetic timers, particles, and smooth prediction
       (survivalEngine as any).updateParticles(dt);
+      (survivalEngine as any).updateFloraReactions?.(dt);
+      (survivalEngine as any).updateAmbientBirds?.(dt);
       if (survivalEngine.player.swingTimer > 0)
         survivalEngine.player.swingTimer -= dt;
       if (survivalEngine.player.hopTimer > 0) {
@@ -1924,6 +2013,9 @@ function survivalGameLoop(now: number) {
       // If this client is the HOST, run lifeform simulation and broadcast to peers
       if (networkClient?.isHost) {
         survivalEngine.updateLifeforms(dt);
+        survivalEngine.updateEnemies(dt);
+        (survivalEngine as any).updateStructureEconomy?.(dt);
+
         const getVelocity = (entity: any) => {
           let vx = 0;
           let vy = 0;
@@ -1938,44 +2030,69 @@ function survivalGameLoop(now: number) {
           }
           return { vx, vy };
         };
-        for (const a of survivalEngine.animals) {
-          const v = getVelocity(a);
-          networkClient.interpolator.push(a.id, a.position.x, a.position.y, v.vx, v.vy);
-        }
-        for (const n of survivalEngine.npcs) {
-          const v = getVelocity(n);
-          networkClient.interpolator.push(n.id, n.position.x, n.position.y, v.vx, v.vy);
-        }
-        if (now - lastEntitiesSyncTime >= 45) {
+
+        const activePlayerPositions = [
+          { x: survivalEngine.player.x, y: survivalEngine.player.y },
+          ...survivalEngine.remotePlayers.map((rp: any) => ({ x: rp.x, y: rp.y })),
+        ];
+        const isNearAnyPlayer = (x: number, y: number, radius = 96) => {
+          return activePlayerPositions.some((p) => Math.hypot(p.x - x, p.y - y) <= radius);
+        };
+
+        if (now - lastEntitiesSyncTime >= 50) {
           lastEntitiesSyncTime = now;
           networkClient.sendEntitiesSync({
-            animals: survivalEngine.animals.map((a: any) => {
-              const v = getVelocity(a);
-              return {
-                id: a.id,
-                x: a.position.x,
-                y: a.position.y,
-                vx: v.vx,
-                vy: v.vy,
-                state: a.behaviorState,
-                direction: a.direction,
-                facing: a.anim.flipX,
-                health: a.health,
-              };
-            }),
-            npcs: survivalEngine.npcs.map((n: any) => {
-              const v = getVelocity(n);
-              return {
-                id: n.id,
-                x: n.position.x,
-                y: n.position.y,
-                vx: v.vx,
-                vy: v.vy,
-                state: n.behaviorState,
-                facing: n.anim.flipX,
-                direction: n.direction,
-              };
-            }),
+            worldTime: {
+              totalSeconds: survivalEngine.worldTime.totalSeconds,
+              hour: survivalEngine.worldTime.hour,
+              minute: survivalEngine.worldTime.minute,
+              dayNumber: survivalEngine.worldTime.dayNumber,
+              timeOfDay: survivalEngine.worldTime.timeOfDay,
+              lightLevel: survivalEngine.worldTime.lightLevel,
+            },
+            animals: survivalEngine.animals
+              .filter((a: any) => isNearAnyPlayer(a.position.x, a.position.y))
+              .map((a: any) => {
+                const v = getVelocity(a);
+                return {
+                  id: a.id,
+                  x: a.position.x,
+                  y: a.position.y,
+                  vx: v.vx,
+                  vy: v.vy,
+                  state: a.behaviorState,
+                  direction: a.direction,
+                  facing: a.anim.flipX,
+                  health: a.health,
+                };
+              }),
+            npcs: survivalEngine.npcs
+              .filter((n: any) => isNearAnyPlayer(n.position.x, n.position.y))
+              .map((n: any) => {
+                const v = getVelocity(n);
+                return {
+                  id: n.id,
+                  x: n.position.x,
+                  y: n.position.y,
+                  vx: v.vx,
+                  vy: v.vy,
+                  state: n.behaviorState,
+                  facing: n.anim.flipX,
+                  direction: n.direction,
+                };
+              }),
+            enemies: survivalEngine.enemies.map((e: any) => ({
+              id: e.id,
+              type: e.type,
+              x: e.x,
+              y: e.y,
+              vx: e.vx || 0,
+              vy: e.vy || 0,
+              health: e.health,
+              maxHealth: e.maxHealth,
+              direction: e.direction,
+              isDead: e.isDead,
+            })),
             depletedResources: [...survivalEngine.worldManager.depletedResourceIds],
             placedStructures: survivalEngine.placedStructures.map((s: any) => ({
               id: s.id,
@@ -2000,8 +2117,11 @@ function survivalGameLoop(now: number) {
       // 3. Smooth Entity Interpolation at 60 FPS (Phase 6 of authoritative_server.txt)
       if (networkClient) {
         if (!networkClient.isHost) {
+          const gx = survivalEngine.player.x;
+          const gy = survivalEngine.player.y;
           // Wildlife animals (Guest glides smoothly at 60 FPS based on host authoritative positions & velocities)
           for (const a of survivalEngine.animals) {
+            if (Math.hypot(a.position.x - gx, a.position.y - gy) > 96) continue;
             const res = networkClient.interpolator.getInterpolatedEntity(
               a.id,
               a.position.x,
@@ -2010,6 +2130,7 @@ function survivalGameLoop(now: number) {
             );
             a.position.x = res.x;
             a.position.y = res.y;
+            (a as any).movement.isMoving = res.isMoving;
             if (res.isMoving) {
               if (Math.abs(res.vx) > Math.abs(res.vy)) {
                 a.direction = res.vx > 0 ? "RIGHT" : "LEFT";
@@ -2030,6 +2151,7 @@ function survivalGameLoop(now: number) {
           }
           // Village NPCs (Guest glides smoothly at 60 FPS based on host authoritative positions & velocities)
           for (const n of survivalEngine.npcs) {
+            if (Math.hypot(n.position.x - gx, n.position.y - gy) > 96) continue;
             const res = networkClient.interpolator.getInterpolatedEntity(
               n.id,
               n.position.x,
@@ -2038,7 +2160,9 @@ function survivalGameLoop(now: number) {
             );
             n.position.x = res.x;
             n.position.y = res.y;
+            (n as any).movement.isMoving = res.isMoving;
             if (res.isMoving) {
+              n.anim.action = "WALK";
               if (Math.abs(res.vx) > Math.abs(res.vy)) {
                 n.direction = res.vx > 0 ? "RIGHT" : "LEFT";
                 n.anim.flipX = res.vx < 0; // humans face right by default
@@ -2052,6 +2176,7 @@ function survivalGameLoop(now: number) {
                   (n.anim.currentFrame + 1) % (n.anim.totalFrames || 4);
               }
             } else {
+              n.anim.action = "IDLE";
               n.anim.currentFrame = 0;
               n.anim.frameTimer = 0;
             }
@@ -2754,6 +2879,121 @@ function renderRadarMiniMap() {
 }
 
 const activeSurvivalKeys = new Set<string>();
+(window as any).activeSurvivalKeys = activeSurvivalKeys;
+
+export function triggerPlayerRoll() {
+  if (!survivalEngine || survivalEngine.player.isDead) return;
+  survivalEngine.player.rollTimer = 0.4;
+  survivalEngine.jump();
+  networkClient?.sendAction({ type: "roll", facing: survivalEngine.player.facing });
+}
+
+export function triggerPlayerInteract() {
+  if (!survivalEngine || survivalEngine.player.isDead) return;
+  survivalEngine.handleInteractKey();
+  networkClient?.sendAction({ type: "interact", action: "interact" });
+}
+
+export function triggerPlayerAction(targetX?: number, targetY?: number) {
+  if (!survivalEngine || !survivalRenderer || survivalEngine.player.isDead) return;
+  const p = survivalEngine.player;
+  const wx = targetX !== undefined ? targetX : (p.facing === "LEFT" ? p.x - 1 : p.x + 1);
+  const wy = targetY !== undefined ? targetY : p.y;
+  executePlayerWorldAction(wx, wy);
+}
+
+export function executePlayerWorldAction(worldX: number, worldY: number) {
+  if (!survivalEngine || !survivalRenderer || survivalEngine.player.isDead) return;
+  const activeItem = survivalEngine.getActiveItemSlot()?.item || null;
+  const is3DBlockPiece =
+    (survivalEngine.isBuildMode &&
+      survivalEngine.buildPiece?.startsWith("block_")) ||
+    (activeItem && activeItem.startsWith("block_"));
+
+  if (is3DBlockPiece) {
+    const material = (survivalEngine.buildPiece &&
+    survivalEngine.buildPiece.startsWith("block_")
+      ? survivalEngine.buildPiece
+      : activeItem) as BlockMaterial;
+    const targetX = Math.round(worldX);
+    const targetY = Math.round(worldY);
+    const topBlock = survivalEngine.getTopBlock(targetX, targetY);
+    const targetZ = topBlock ? topBlock.z + 1 : 0;
+
+    const placed = survivalEngine.place3DBlock(
+      material,
+      targetX,
+      targetY,
+      targetZ,
+      false,
+    );
+    if (placed) {
+      renderHotbar();
+      const duration = 0.25;
+      (survivalEngine.player as any).swingDuration = duration;
+      survivalEngine.player.swingTimer = duration;
+      networkClient?.sendAction({
+        type: "swing",
+        tool: material,
+        actionName: "HAMMERING",
+        facing: survivalEngine.player.facing,
+        targetX,
+        targetY,
+        duration,
+      });
+    }
+  } else if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
+    survivalEngine.placeStructure(
+      survivalEngine.buildPiece,
+      worldX,
+      worldY,
+    );
+    networkClient?.sendAction({
+      type: "place",
+      piece: survivalEngine.buildPiece,
+      x: worldX,
+      y: worldY,
+    });
+  } else {
+    survivalEngine.handleWorldClick(worldX, worldY);
+    let actionName = "ATTACK";
+    let duration = 0.25;
+    if (activeItem) {
+      if (activeItem.includes("pickaxe")) {
+        actionName = "MINING";
+      } else if (activeItem.includes("axe")) {
+        actionName = "AXE";
+      } else if (activeItem.includes("shovel") || activeItem.includes("hoe")) {
+        actionName = "DIG";
+        duration = 0.35;
+      } else if (activeItem.includes("water")) {
+        actionName = "WATERING";
+        duration = 0.35;
+      } else if (activeItem.includes("hammer")) {
+        actionName = "HAMMERING";
+        duration = 0.35;
+      } else if (activeItem.includes("rod")) {
+        actionName = "CASTING";
+        duration = 0.35;
+      }
+    }
+    (survivalEngine.player as any).swingDuration = duration;
+    survivalEngine.player.swingTimer = duration;
+    networkClient?.sendAction({
+      type: "swing",
+      tool: activeItem,
+      actionName,
+      facing: survivalEngine.player.facing,
+      targetX: worldX,
+      targetY: worldY,
+      duration,
+      fishingState:
+        survivalEngine.player.fishingState !== "NONE"
+          ? survivalEngine.player.fishingState
+          : undefined,
+    });
+  }
+}
 
 export function updatePlayerContinuousMovement(dt: number = 0.025) {
   if (!survivalEngine) return;
@@ -2766,6 +3006,36 @@ export function updatePlayerContinuousMovement(dt: number = 0.025) {
     dx -= 1;
   if (activeSurvivalKeys.has("d") || activeSurvivalKeys.has("arrowright"))
     dx += 1;
+
+  if (networkClient?.getMobileMovement) {
+    const mob = networkClient.getMobileMovement();
+    dx += mob.dx;
+    dy += mob.dy;
+    if (mob.isSprinting) {
+      survivalEngine.player.isSprinting = true;
+    }
+  }
+
+  // Handle edge-triggered mobile buttons
+  if (networkClient?.mobileJoystick) {
+    const isAction = Boolean(networkClient.mobileJoystick.isPressed?.("action"));
+    if (isAction && !(survivalEngine.player as any)._lastMobileAction) {
+      triggerPlayerAction();
+    }
+    (survivalEngine.player as any)._lastMobileAction = isAction;
+
+    const isRoll = Boolean(networkClient.mobileJoystick.isPressed?.("roll"));
+    if (isRoll && !(survivalEngine.player as any)._lastMobileRoll) {
+      triggerPlayerRoll();
+    }
+    (survivalEngine.player as any)._lastMobileRoll = isRoll;
+
+    const isInteract = Boolean(networkClient.mobileJoystick.isPressed?.("interact"));
+    if (isInteract && !(survivalEngine.player as any)._lastMobileInteract) {
+      triggerPlayerInteract();
+    }
+    (survivalEngine.player as any)._lastMobileInteract = isInteract;
+  }
 
   survivalEngine.player.vx = dx;
   survivalEngine.player.vy = dy;
@@ -2907,6 +3177,14 @@ function initSurvivalInputs() {
       survivalEngine?.toggleJournalModal();
     }
 
+    // Toggle Mobile Touch Controls [C]
+    if (key === "c") {
+      const isVisible = networkClient?.toggleMobileControls();
+      const btn = document.getElementById("btn-toggle-mobile-controls");
+      if (isVisible) btn?.classList.add("active");
+      else btn?.classList.remove("active");
+    }
+
     // Build mode [B]
     if (key === "b") {
       if (survivalEngine) {
@@ -3038,92 +3316,25 @@ function initSurvivalInputs() {
       const worldX = survivalRenderer.cameraX + (screenX - halfW) / cellSize;
       const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
 
-      const activeItem = survivalEngine.getActiveItemSlot()?.item || null;
-      const is3DBlockPiece =
-        (survivalEngine.isBuildMode &&
-          survivalEngine.buildPiece?.startsWith("block_")) ||
-        (activeItem && activeItem.startsWith("block_"));
-
-      if (is3DBlockPiece) {
-        const material = (survivalEngine.buildPiece &&
-        survivalEngine.buildPiece.startsWith("block_")
-          ? survivalEngine.buildPiece
-          : activeItem) as BlockMaterial;
-        const targetX = Math.round(worldX);
-        const targetY = Math.round(worldY);
-        const topBlock = survivalEngine.getTopBlock(targetX, targetY);
-        const targetZ = topBlock ? topBlock.z + 1 : 0;
-
-        const placed = survivalEngine.place3DBlock(
-          material,
-          targetX,
-          targetY,
-          targetZ,
-          false,
-        );
-        if (placed) {
-          renderHotbar();
-          const duration = 0.25;
-          (survivalEngine.player as any).swingDuration = duration;
-          survivalEngine.player.swingTimer = duration;
-          networkClient?.sendAction({
-            type: "swing",
-            tool: material,
-            actionName: "HAMMERING",
-            facing: survivalEngine.player.facing,
-            targetX,
-            targetY,
-            duration,
-          });
-        }
-      } else if (survivalEngine.isBuildMode && survivalEngine.buildPiece) {
-        survivalEngine.placeStructure(
-          survivalEngine.buildPiece,
-          worldX,
-          worldY,
-        );
-        networkClient?.sendAction({
-          type: "place",
-          piece: survivalEngine.buildPiece,
-          x: worldX,
-          y: worldY,
-        });
-      } else {
-        survivalEngine.handleWorldClick(worldX, worldY);
-        let actionName = "ATTACK";
-        let duration = 0.25;
-        if (activeItem) {
-          if (activeItem.includes("pickaxe")) {
-            actionName = "MINING";
-          } else if (activeItem.includes("axe")) {
-            actionName = "AXE";
-          } else if (activeItem.includes("shovel") || activeItem.includes("hoe")) {
-            actionName = "DIG";
-            duration = 0.35;
-          } else if (activeItem.includes("water")) {
-            actionName = "WATERING";
-            duration = 0.35;
-          } else if (activeItem.includes("hammer")) {
-            actionName = "HAMMERING";
-            duration = 0.35;
-          } else if (activeItem.includes("rod")) {
-            actionName = "CASTING";
-            duration = 0.35;
-          }
-        }
-        (survivalEngine.player as any).swingDuration = duration;
-        networkClient?.sendAction({
-          type: "swing",
-          tool: activeItem,
-          actionName,
-          facing: survivalEngine.player.facing,
-          targetX: worldX,
-          targetY: worldY,
-          duration,
-          fishingState: survivalEngine.player.fishingState !== "NONE" ? survivalEngine.player.fishingState : undefined,
-        });
-      }
+      executePlayerWorldAction(worldX, worldY);
     });
+
+    survivalCanvas.addEventListener("touchstart", (e) => {
+      if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        if (touch.clientX < 200 && touch.clientY > window.innerHeight - 200) return;
+        const rect = survivalCanvas.getBoundingClientRect();
+        const cellSize = survivalRenderer.baseTileSize * survivalRenderer.zoom;
+        const screenX = touch.clientX - rect.left;
+        const screenY = touch.clientY - rect.top;
+        const halfW = survivalCanvas.width / 2;
+        const halfH = survivalCanvas.height / 2;
+        const worldX = survivalRenderer.cameraX + (screenX - halfW) / cellSize;
+        const worldY = survivalRenderer.cameraY + (screenY - halfH) / cellSize;
+        executePlayerWorldAction(worldX, worldY);
+      }
+    }, { passive: true });
 
     survivalCanvas.addEventListener("mousemove", (e) => {
       if (!isSurvivalTabActive || !survivalEngine || !survivalRenderer) return;
@@ -3235,6 +3446,17 @@ function initSurvivalUI() {
       } else {
         icon.classList.remove("audio-muted");
       }
+    }
+  });
+
+  // Mobile Controls toggle
+  const btnToggleMobileControls = document.getElementById("btn-toggle-mobile-controls");
+  btnToggleMobileControls?.addEventListener("click", () => {
+    const isVisible = networkClient?.toggleMobileControls();
+    if (isVisible) {
+      btnToggleMobileControls.classList.add("active");
+    } else {
+      btnToggleMobileControls.classList.remove("active");
     }
   });
 

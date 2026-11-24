@@ -341,32 +341,60 @@ export class WorldManager {
     this.stampVillageIntoChunks(realmVillage);
   }
 
-  public isInsideAnyVillage(wx: number, wy: number): boolean {
+  /**
+   * Returns the organic distance to the nearest village settlement center.
+   * Includes 2D fractal noise perturbation to ensure natural, undulating island/meadow borders
+   * with absolutely zero straight lines or rectangular artifacts.
+   */
+  public getDistanceToNearestVillageCenter(x: number, y: number): { rawDist: number; organicDist: number } {
+    let minRawDist = 99999;
+    let minOrganicDist = 99999;
+
+    const checkCandidate = (cx: number, cy: number) => {
+      const dx = x - cx;
+      const dy = y - cy;
+      const rawDist = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+      // Smooth continuous fractal noise perturbation for organic borders
+      const wobble = this.noiseTerrain(Math.cos(angle) * 1.6 + cx * 0.012, Math.sin(angle) * 1.6 + cy * 0.012) * 16;
+      const organicDist = rawDist + wobble;
+
+      if (rawDist < minRawDist) minRawDist = rawDist;
+      if (organicDist < minOrganicDist) minOrganicDist = organicDist;
+    };
+
+    // Check realized villages
     for (const v of this.villages) {
-      if (
-        wx >= v.gridX &&
-        wx < v.gridX + v.width &&
-        wy >= v.gridY &&
-        wy < v.gridY + v.height
-      ) {
-        return true;
-      }
+      checkCandidate(v.gridX + v.width / 2, v.gridY + v.height / 2);
     }
+    // Check planned village sites
     for (const site of this.villagePlannedSites) {
-      if (
-        wx >= site.targetX &&
-        wx < site.targetX + VILLAGE_WIDTH &&
-        wy >= site.targetY &&
-        wy < site.targetY + VILLAGE_HEIGHT
-      ) {
+      checkCandidate(site.targetX + VILLAGE_WIDTH / 2, site.targetY + VILLAGE_HEIGHT / 2);
+    }
+
+    return { rawDist: minRawDist, organicDist: minOrganicDist };
+  }
+
+  public isInsideAnyVillage(wx: number, wy: number): boolean {
+    const chunkX = Math.floor(wx / CHUNK_SIZE);
+    const chunkY = Math.floor(wy / CHUNK_SIZE);
+    const chunk = this.chunks.get(`${chunkX},${chunkY}`);
+    if (chunk) {
+      const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const ly = ((wy % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+      const tile = chunk.tiles[ly]?.[lx];
+      if (tile && (tile.isRoad || tile.isFarm || tile.isBridge || tile.inVillageId !== undefined)) {
         return true;
       }
     }
-    return false;
+    const { organicDist } = this.getDistanceToNearestVillageCenter(wx, wy);
+    return organicDist < 46;
   }
 
   /**
    * Stamps village terrain, roads, houses, farms, wells, and trees into existing or new chunks.
+   * Selectively stamps only actual village features (roads, buildings, farm plots, ponds)
+   * and preserves the underlying natural procedural world terrain for all open meadows.
    */
   private stampVillageIntoChunks(v: WorldRealmVillage) {
     if (this.stampedVillages.has(v.id)) return;
@@ -376,29 +404,70 @@ export class WorldManager {
     const startY = v.gridY;
     const data = v.data;
 
-    // Purge any procedural wilderness resources that were generated in the overlapping chunks
-    const minChunkX = Math.floor(startX / CHUNK_SIZE);
-    const maxChunkX = Math.floor((startX + v.width) / CHUNK_SIZE);
-    const minChunkY = Math.floor(startY / CHUNK_SIZE);
-    const maxChunkY = Math.floor((startY + v.height) / CHUNK_SIZE);
+    // Track all occupied feature & structure tiles to prevent resource conflicts
+    const occupiedTiles = new Set<string>();
+
+    // 1. House footprints (exterior walls + interior + doorstep)
+    for (const house of data.houses) {
+      const hw = house.footprintW || 4;
+      const hh = house.footprintH || 4;
+      for (let dy = -1; dy <= hh; dy++) {
+        for (let dx = -1; dx <= hw; dx++) {
+          occupiedTiles.add(`${startX + house.x + dx},${startY + house.y + dy}`);
+        }
+      }
+    }
+
+    // 2. Wells
+    for (const well of data.wells) {
+      occupiedTiles.add(`${startX + well.x},${startY + well.y}`);
+    }
+
+    // 3. Farm objects & fences
+    if (data.farmObjects) {
+      for (const obj of data.farmObjects) {
+        occupiedTiles.add(`${startX + obj.x},${startY + obj.y}`);
+      }
+    }
+
+    // 4. Purge ONLY procedural wilderness resources that physically conflict with actual village structures, roads, or farms!
+    // No more blanket rectangular wipe of the whole 110x88 chunk area!
+    const minChunkX = Math.floor((startX - 2) / CHUNK_SIZE);
+    const maxChunkX = Math.floor((startX + v.width + 2) / CHUNK_SIZE);
+    const minChunkY = Math.floor((startY - 2) / CHUNK_SIZE);
+    const maxChunkY = Math.floor((startY + v.height + 2) / CHUNK_SIZE);
 
     for (let cy = minChunkY; cy <= maxChunkY; cy++) {
       for (let cx = minChunkX; cx <= maxChunkX; cx++) {
         const chunk = this.chunks.get(`${cx},${cy}`);
         if (chunk) {
-          chunk.resources = chunk.resources.filter(
-            (r) =>
-              !(
-                r.x >= startX &&
-                r.x < startX + v.width &&
-                r.y >= startY &&
-                r.y < startY + v.height
-              ),
-          );
+          chunk.resources = chunk.resources.filter((r) => {
+            const rw = r.w || 1;
+            const rh = r.h || 1;
+            for (let dy = 0; dy < rh; dy++) {
+              for (let dx = 0; dx < rw; dx++) {
+                const rx = r.x + dx;
+                const ry = r.y + dy;
+                // If resource touches any occupied structure tile: purge it
+                if (occupiedTiles.has(`${rx},${ry}`)) return false;
+                const lx = rx - startX;
+                const ly = ry - startY;
+                if (lx >= 0 && lx < v.width && ly >= 0 && ly < v.height) {
+                  const vCell = data.grid[ly]?.[lx];
+                  if (vCell && (vCell.isRoad || vCell.isFarm || vCell.isWater || vCell.isBridge)) {
+                    return false;
+                  }
+                }
+              }
+            }
+            return true; // Keep natural wilderness trees & rocks in open spaces!
+          });
         }
       }
     }
 
+    // 5. Selectively stamp ONLY actual village features (roads, farms, ponds, bridges, structures)
+    // Untouched meadow cells leave the natural procedural world terrain intact!
     for (let ly = 0; ly < v.height; ly++) {
       for (let lx = 0; lx < v.width; lx++) {
         const wx = startX + lx;
@@ -406,17 +475,30 @@ export class WorldManager {
         const vCell = data.grid[ly]?.[lx];
         if (!vCell) continue;
 
-        const tile = this.getTile(wx, wy);
-        tile.inVillageId = v.id;
-        tile.terrain = vCell.terrain;
-        tile.isRoad = vCell.isRoad;
-        tile.isFarm = vCell.isFarm;
-        tile.isWater = vCell.isWater;
-        tile.isBridge = vCell.isBridge || vCell.terrain === "bridge_wood";
-        // Bridges, roads, farms, and grass are ALWAYS walkable; only deep water is blocked
-        tile.isBlocked = vCell.isWater && !tile.isBridge;
-        if (vCell.rotation !== undefined) {
-          tile.rotation = vCell.rotation;
+        const isFeature =
+          vCell.isRoad ||
+          vCell.isFarm ||
+          vCell.isWater ||
+          vCell.isBridge ||
+          vCell.terrain === "sand_tile_01" ||
+          vCell.terrain === "shore_transition_01";
+        const isUnderStructure = occupiedTiles.has(`${wx},${wy}`);
+
+        if (isFeature || isUnderStructure) {
+          const tile = this.getTile(wx, wy);
+          tile.inVillageId = v.id;
+
+          if (isFeature) {
+            tile.terrain = vCell.terrain;
+            tile.isRoad = vCell.isRoad;
+            tile.isFarm = vCell.isFarm;
+            tile.isWater = vCell.isWater;
+            tile.isBridge = vCell.isBridge || vCell.terrain === "bridge_wood";
+            tile.isBlocked = vCell.isWater && !tile.isBridge;
+            if (vCell.rotation !== undefined) {
+              tile.rotation = vCell.rotation;
+            }
+          }
         }
       }
     }
@@ -711,27 +793,25 @@ export class WorldManager {
   private generateWildernessTile(x: number, y: number): WorldTile {
     const isOnHighway = this.isPointOnHighway(x, y);
 
-    // 1. Proximity to nearest village settlement (ensures villages are always on massive main islands)
-    let minVillageDist = 9999;
-    for (const v of this.villages) {
-      const vcx = v.gridX + v.width / 2;
-      const vcy = v.gridY + v.height / 2;
-      const dist = Math.hypot(x - vcx, y - vcy);
-      if (dist < minVillageDist) minVillageDist = dist;
-    }
+    // 1. Proximity to nearest village settlement (organic distance with continuous noise wobble)
+    const { organicDist } = this.getDistanceToNearestVillageCenter(x, y);
 
     // 2. Macro Oceanic Noise (creates huge continents separated by wide oceans)
     // Scale ~140 tiles wavelength
     const macroOcean = this.noiseTerrain(x * 0.007, y * 0.007);
     const satelliteIsland = this.noiseForest(x * 0.025, y * 0.025);
 
-    // Villages have guaranteed large continental landmass around them (radius 42 tiles)
+    // Villages have guaranteed large continental landmass around them with organic undulating borders (no straight lines!)
     let landElevation = 1.0;
-    if (minVillageDist < 42) {
-      landElevation = 1.0; // Guaranteed village continent
-    } else if (minVillageDist < 60) {
-      const blend = (minVillageDist - 42) / 18;
-      landElevation = (1 - blend) * 1.0 + blend * macroOcean;
+    let lakeSuppression = 0;
+    if (organicDist < 62) {
+      landElevation = 1.0; // Guaranteed solid village continent
+      lakeSuppression = 1.0;
+    } else if (organicDist < 96) {
+      const t = (organicDist - 62) / 34;
+      const smoothT = t * t * (3 - 2 * t);
+      landElevation = (1 - smoothT) * 1.0 + smoothT * macroOcean;
+      lakeSuppression = 1.0 - smoothT;
     } else {
       landElevation = macroOcean;
       // Satellite offshore islands emerge in open ocean:
@@ -740,7 +820,9 @@ export class WorldManager {
       }
     }
 
-    const lakeNoise = this.noiseWater(x * 0.006, y * 0.006);
+    const rawLakeNoise = this.noiseWater(x * 0.006, y * 0.006);
+    // Smoothly suppress natural wilderness lakes in the core village zone so they don't drown roads or houses:
+    const lakeNoise = rawLakeNoise - lakeSuppression * 0.55;
     const isNaturalWater = landElevation < -0.08 || lakeNoise > 0.32;
 
     // 3. Highways build overpass wooden platforms/bridges directly over water/oceans (NO land underneath!)
@@ -853,18 +935,24 @@ export class WorldManager {
         const wy = chunk.chunkY * CHUNK_SIZE + ty;
         const tile = chunk.tiles[ty][tx];
 
-        // Do not spawn wilderness resources inside villages or on water, roads, or occupied tiles
-        if (this.isInsideAnyVillage(wx, wy)) continue;
+        // Do not spawn wilderness resources on water, roads, occupied tiles, or village features
         if (tile.isWater || tile.isRoad || tile.isBlocked) continue;
+        if (tile.inVillageId !== undefined) continue;
+
+        const { organicDist } = this.getDistanceToNearestVillageCenter(wx, wy);
+        // Near the dense village core, trees naturally thin out smoothly without sharp square borders:
+        const villageFactor = Math.min(1.0, Math.max(0.0, (organicDist - 22) / 36));
+        if (villageFactor <= 0.05) continue; // Keep central town square open
 
         const forestNoise = this.noiseForest(wx * 0.04, wy * 0.04);
         const roll = rng();
 
-        // 1. Trees: High density in forest/jungle regions, sparse in open plains
-        const treeChance =
+        // 1. Trees: High density in forest/jungle regions, smooth natural thinning towards village outskirts
+        const baseTreeChance =
           forestNoise > 0.3 ? 0.45 : forestNoise > 0.05 ? 0.22 : 0.07;
+        const treeChance = baseTreeChance * villageFactor;
         if (roll < treeChance) {
-          // Check full 2x2 footprint: must not touch water, road, blocked tiles, or village
+          // Check full 2x2 footprint: must not touch water, road, or blocked tiles
           let canPlaceTree = true;
           for (let fdy = 0; fdy < 2; fdy++) {
             for (let fdx = 0; fdx < 2; fdx++) {
@@ -874,7 +962,7 @@ export class WorldManager {
                 checkTile.isWater ||
                 checkTile.isRoad ||
                 checkTile.isBlocked ||
-                this.isInsideAnyVillage(wx + fdx, wy + fdy)
+                checkTile.inVillageId !== undefined
               ) {
                 canPlaceTree = false;
                 break;

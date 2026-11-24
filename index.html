@@ -76,14 +76,15 @@
           <div class="menu-modal-card">
             <button id="btn-close-multiplayer" class="menu-modal-close" aria-label="Close multiplayer">×</button>
             <h2 id="multiplayer-title">Play Together</h2>
-            <p>Host a shared world, then give its invite code to a friend.</p>
-            <button id="btn-host-game" class="menu-btn primary-menu-btn">Host New World</button>
+            <p>Zero-backend multiplayer via PlayroomKit & @geckos.io/snapshot-interpolation.</p>
+            <button id="btn-host-game" class="menu-btn primary-menu-btn">Host World (Playroom Lobby)</button>
+            <button id="btn-stream-game" class="menu-btn secondary-menu-btn" style="margin-top: 6px;">📱 Phone Controller Mode</button>
             <div class="menu-divider"><span>or join a friend</span></div>
             <label for="invite-code-input">Invite code</label>
-            <input id="invite-code-input" class="menu-text-input" maxlength="5" placeholder="ABCDE" autocomplete="off" />
+            <input id="invite-code-input" class="menu-text-input" maxlength="5" placeholder="ABCD" autocomplete="off" />
             <p id="join-error-text" class="menu-error" role="alert"></p>
             <button id="btn-join-game" class="menu-btn multiplayer-menu-btn">Join World</button>
-            <small>WebRTC improves peer responsiveness; Socket.IO keeps the world in sync.</small>
+            <small style="color: #94a3b8; display: block; margin-top: 10px;">⚡ WebRTC-First + Snapshot Interpolation for jitter-free real-time syncing.</small>
           </div>
         </div>
       </div>
@@ -777,6 +778,15 @@
                     alt="Sound"
                   />
                   <span class="hud-key-badge">M</span>
+                </button>
+
+                <button
+                  id="btn-toggle-mobile-controls"
+                  class="hud-icon-btn"
+                  title="Toggle Mobile Controls [C]"
+                >
+                  <span style="font-size: 16px; line-height: 1;">📱</span>
+                  <span class="hud-key-badge">C</span>
                 </button>
 
                 <button

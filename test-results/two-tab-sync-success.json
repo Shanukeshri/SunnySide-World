@@ -1,0 +1,24 @@
+{
+  "roomCode": "W4T5",
+  "hostObservedGuest": {
+    "id": "pGzfB4klhrRc",
+    "x": 22,
+    "y": 18,
+    "vy": 3.8,
+    "direction": "DOWN"
+  },
+  "guestObservedHost": {
+    "id": "b0AQb8_7pHV7",
+    "x": 22,
+    "y": 18,
+    "vx": 3.8,
+    "direction": "RIGHT"
+  },
+  "mobileTest": {
+    "hasJoystick": true,
+    "isVisible": true,
+    "domPresent": true
+  },
+  "timestamp": "2026-11-24T14:20:13.178Z",
+  "status": "PASS"
+}
